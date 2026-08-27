@@ -16,6 +16,8 @@ def export_dataset(
     episode_paths: list[Path],
     output_directory: Path,
     validation_fraction: float = 0.2,
+    *,
+    validation_sources: set[str] | None = None,
 ) -> JSON_OBJECT:
     if not episode_paths:
         raise ValueError("at least one VLA episode is required")
@@ -33,10 +35,25 @@ def export_dataset(
         episodes.append((episode_id, path.name, episode))
     episodes.sort(key=lambda item: item[0])
 
-    validation_count = 0
-    if len(episodes) > 1 and validation_fraction > 0:
-        validation_count = max(1, min(len(episodes) - 1, round(len(episodes) * validation_fraction)))
-    validation_ids = {episode_id for episode_id, _, _ in episodes[:validation_count]}
+    if validation_sources is None:
+        validation_count = 0
+        if len(episodes) > 1 and validation_fraction > 0:
+            validation_count = max(1, min(len(episodes) - 1, round(len(episodes) * validation_fraction)))
+        validation_ids = {episode_id for episode_id, _, _ in episodes[:validation_count]}
+        split_strategy = "episode_hash_fraction"
+    else:
+        sources = [source for _, source, _ in episodes]
+        if len(set(sources)) != len(sources):
+            raise ValueError("explicit VLA split requires unique episode source names")
+        unknown = validation_sources - set(sources)
+        if unknown:
+            raise ValueError(f"validation episode source not found: {sorted(unknown)[0]}")
+        if not validation_sources or len(validation_sources) == len(episodes):
+            raise ValueError("explicit VLA split requires non-empty train and validation sets")
+        validation_ids = {
+            episode_id for episode_id, source, _ in episodes if source in validation_sources
+        }
+        split_strategy = "explicit_episode_sources"
     samples = {"train": [], "validation": []}
     split_episodes = {"train": [], "validation": []}
 
@@ -54,7 +71,8 @@ def export_dataset(
         "format": "synapse2action.vla_dataset",
         "episode_count": len(episodes),
         "sample_count": sum(len(values) for values in samples.values()),
-        "validation_fraction": validation_fraction,
+        "validation_fraction": len(validation_ids) / len(episodes),
+        "split_strategy": split_strategy,
         "features": {
             "instruction": "string",
             "camera": {"encoding": "mono8", "storage": "base64"},

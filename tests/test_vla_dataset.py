@@ -90,6 +90,29 @@ class VLADatasetTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "duplicate"):
                 export_dataset([first, second], root / "dataset")
 
+    def test_explicit_validation_source_controls_episode_split(self) -> None:
+        first = recorded_episode()
+        second = renamed_episode(first, "alternate instruction")
+
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            first_path = root / "first.json"
+            second_path = root / "second.json"
+            save_episode(first_path, first)
+            save_episode(second_path, second)
+
+            manifest = export_dataset(
+                [first_path, second_path],
+                root / "dataset",
+                validation_sources={"second.json"},
+            )
+
+        metadata = {item["source"]: item["episode_id"] for item in manifest["episodes"]}
+        self.assertEqual(manifest["split_strategy"], "explicit_episode_sources")
+        self.assertEqual(manifest["validation_fraction"], 0.5)
+        self.assertEqual(manifest["splits"]["validation"]["episodes"], [metadata["second.json"]])
+        self.assertEqual(manifest["splits"]["train"]["episodes"], [metadata["first.json"]])
+
 
 if __name__ == "__main__":
     unittest.main()

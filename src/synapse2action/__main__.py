@@ -21,6 +21,7 @@ from .vla_episode import RecordingVLABackend, ReplayVLABackend, load_episode, sa
 from .vla_dataset import export_dataset
 from .vla_baseline import KNNVLABackend, load_knn_checkpoint, train_knn_baseline
 from .vla_benchmark import benchmark_vla_baseline
+from .vla_crossval import run_leave_one_scenario_out
 from .vla_ridge import RidgeVLABackend, load_ridge_checkpoint, train_ridge_baseline
 from .vla_http import EmbeddedVLAServer, HTTPVLABackend
 
@@ -76,6 +77,8 @@ def main() -> int:
     parser.add_argument("--vla-checkpoint", type=Path)
     parser.add_argument("--benchmark-vla-baseline", type=Path)
     parser.add_argument("--benchmark-navigation-scenarios", type=Path)
+    parser.add_argument("--cross-validate-vla-baseline", type=Path, nargs="+")
+    parser.add_argument("--cross-validation-output", type=Path)
     parser.add_argument("--demo-html", type=Path)
     parser.add_argument("--demo-scenario", type=Path)
     parser.add_argument("--demo-suite", type=Path)
@@ -97,10 +100,22 @@ def main() -> int:
         parser.error("--export-vla-dataset and --vla-dataset-output must be provided together")
     if args.train_vla_baseline and not args.vla_checkpoint:
         parser.error("--train-vla-baseline requires --vla-checkpoint")
-    if bool(args.benchmark_vla_baseline) != bool(args.benchmark_navigation_scenarios):
-        parser.error("benchmark dataset and navigation scenarios must be provided together")
+    if args.benchmark_vla_baseline and not args.benchmark_navigation_scenarios:
+        parser.error("benchmark dataset requires navigation scenarios")
+    if args.benchmark_navigation_scenarios and not (
+        args.benchmark_vla_baseline or args.cross_validate_vla_baseline
+    ):
+        parser.error("navigation benchmark scenarios require benchmark or cross-validation episodes")
     if args.benchmark_vla_baseline and not args.vla_checkpoint:
         parser.error("--benchmark-vla-baseline requires --vla-checkpoint")
+    if bool(args.cross_validate_vla_baseline) != bool(args.cross_validation_output):
+        parser.error("cross-validation episodes and output directory must be provided together")
+    if args.cross_validate_vla_baseline and not args.benchmark_navigation_scenarios:
+        parser.error("VLA cross-validation requires --benchmark-navigation-scenarios")
+    if args.cross_validate_vla_baseline and (
+        args.benchmark_vla_baseline or args.train_vla_baseline or args.export_vla_dataset
+    ):
+        parser.error("VLA cross-validation cannot be combined with export, training, or benchmark")
     if args.vla_checkpoint and not (
         args.train_vla_baseline or args.vla_navigation_demo or args.benchmark_vla_baseline
     ):
@@ -124,7 +139,14 @@ def main() -> int:
 
     navigation_scenario = load_navigation_scenario(args.navigation_scenario) if args.navigation_scenario else None
 
-    if args.benchmark_vla_baseline:
+    if args.cross_validate_vla_baseline:
+        report = run_leave_one_scenario_out(
+            args.cross_validate_vla_baseline,
+            args.benchmark_navigation_scenarios,
+            args.cross_validation_output,
+            args.vla_baseline_algorithm,
+        )
+    elif args.benchmark_vla_baseline:
         report = benchmark_vla_baseline(
             args.benchmark_vla_baseline,
             args.vla_checkpoint,
