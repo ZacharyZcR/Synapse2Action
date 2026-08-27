@@ -195,6 +195,7 @@ PYTHONPATH=src python3 -m synapse2action --vla-navigation-demo
 PYTHONPATH=src python3 -m synapse2action --vla-navigation-demo --embedded-vla
 PYTHONPATH=src python3 -m synapse2action --vla-navigation-demo --record-vla-episode artifacts/navigation-episode.json
 PYTHONPATH=src python3 -m synapse2action --vla-navigation-demo --replay-vla-episode artifacts/navigation-episode.json
+PYTHONPATH=src python3 -m synapse2action --export-vla-dataset artifacts/train.episode.json artifacts/validation.episode.json --vla-dataset-output artifacts/vla-dataset
 PYTHONPATH=src python3 -m synapse2action --demo-html demo.html --output demo.json
 PYTHONPATH=src python3 -m synapse2action --demo-scenario experiments/demos/blue_block.json --demo-html blue-demo.html
 PYTHONPATH=src python3 -m synapse2action --demo-suite experiments/demos --artifact-directory artifacts/demo-suite --output artifacts/demo-suite.json
@@ -217,6 +218,8 @@ The `--demo` command runs the complete hardware-free happy path: seeded noisy SS
 Use `--embedded-vla` to send the same reset and inference payloads over real loopback HTTP. An external service can replace it with `--vla-base-url http://localhost:9000/v1`; the optional API key is read from `VLA_API_KEY`. / 使用 `--embedded-vla` 可让相同的 reset 与 inference payload 经过真实 loopback HTTP。外部服务可通过 `--vla-base-url http://localhost:9000/v1` 替换内置服务；可选 API Key 从 `VLA_API_KEY` 读取。
 
 Use `--record-vla-episode` to persist every serialized observation/action pair, then use `--replay-vla-episode` to reproduce the run without an inference service. Replay is step-exact: a changed task or observation fails instead of silently returning an unrelated recorded action. / 使用 `--record-vla-episode` 可持久化每一组序列化 Observation/Action，随后用 `--replay-vla-episode` 在没有推理服务时复现运行。回放要求逐步精确一致；任务或观测发生变化时会失败，不会静默返回无关的历史动作。
+
+Use `--export-vla-dataset` with two or more episode files to create `manifest.json`, `train.jsonl`, and `validation.jsonl`. Splitting happens at episode level before frames are expanded, so adjacent observations from one trajectory cannot leak across train and validation. / 使用 `--export-vla-dataset` 输入两个或更多 episode 文件，可生成 `manifest.json`、`train.jsonl` 与 `validation.jsonl`。系统先按 episode 划分，再展开帧，因此同一轨迹的相邻 Observation 不会泄漏到 train 和 validation 两侧。
 
 The planner selects a typed skill; the policy expands it into `approach`, `grasp`, `transport`, and `release` steps; the robot executes only the supplied trajectory. / Planner 选择类型化技能，Policy 将其展开为 `approach`、`grasp`、`transport` 与 `release`，Robot 只执行收到的轨迹。
 

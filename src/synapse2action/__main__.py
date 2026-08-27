@@ -17,6 +17,7 @@ from .synthetic_intent import run_intent_suite
 from .visualization import render_demo_html
 from .vla import DeterministicVLABackend, VLAInferenceBackend, run_vla_navigation_demo
 from .vla_episode import RecordingVLABackend, ReplayVLABackend, load_episode, save_episode
+from .vla_dataset import export_dataset
 from .vla_http import EmbeddedVLAServer, HTTPVLABackend
 
 
@@ -46,6 +47,9 @@ def main() -> int:
     parser.add_argument("--embedded-vla", action="store_true")
     parser.add_argument("--record-vla-episode", type=Path)
     parser.add_argument("--replay-vla-episode", type=Path)
+    parser.add_argument("--export-vla-dataset", type=Path, nargs="+")
+    parser.add_argument("--vla-dataset-output", type=Path)
+    parser.add_argument("--validation-fraction", type=float, default=0.2)
     parser.add_argument("--demo-html", type=Path)
     parser.add_argument("--demo-scenario", type=Path)
     parser.add_argument("--demo-suite", type=Path)
@@ -59,6 +63,8 @@ def main() -> int:
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
 
+    if bool(args.export_vla_dataset) != bool(args.vla_dataset_output):
+        parser.error("--export-vla-dataset and --vla-dataset-output must be provided together")
     if args.embedded_vla and args.vla_base_url:
         parser.error("--embedded-vla cannot be combined with --vla-base-url")
     if args.record_vla_episode and args.replay_vla_episode:
@@ -68,7 +74,13 @@ def main() -> int:
     if (args.embedded_vla or args.vla_base_url or args.record_vla_episode or args.replay_vla_episode) and not args.vla_navigation_demo:
         parser.error("VLA backend options require --vla-navigation-demo")
 
-    if args.vla_navigation_demo:
+    if args.export_vla_dataset:
+        report = export_dataset(
+            args.export_vla_dataset,
+            args.vla_dataset_output,
+            args.validation_fraction,
+        )
+    elif args.vla_navigation_demo:
         if args.embedded_vla:
             with EmbeddedVLAServer() as server:
                 report = _run_vla(HTTPVLABackend(server.base_url), args.record_vla_episode)
