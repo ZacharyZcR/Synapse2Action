@@ -25,6 +25,19 @@ class VLACrossValidationTests(unittest.TestCase):
                 root / "temporal",
                 "temporal-ridge",
             )
+            chunked_open = run_leave_one_scenario_out(
+                episodes,
+                SCENARIOS,
+                root / "chunked-open",
+                "chunked-ridge",
+            )
+            chunked_receding = run_leave_one_scenario_out(
+                episodes,
+                SCENARIOS,
+                root / "chunked-receding",
+                "chunked-ridge",
+                execution_horizon=1,
+            )
             knn = run_leave_one_scenario_out(episodes, SCENARIOS, root / "knn", "knn")
 
             first_fold = ridge["folds"][0]
@@ -50,6 +63,23 @@ class VLACrossValidationTests(unittest.TestCase):
         self.assertEqual(temporal["closed_loop_passed"], 10)
         self.assertEqual(temporal["closed_loop_success_rate"], 1.0)
         self.assertEqual(temporal["failed"], 0)
+        self.assertAlmostEqual(chunked_open["validation_velocity_mae"], 0.019343048297592078)
+        self.assertEqual(chunked_open["predicted_action_horizon"], 4)
+        self.assertEqual(chunked_open["execution_horizon"], 4)
+        self.assertEqual(chunked_open["closed_loop_passed"], 8)
+        self.assertEqual(
+            {fold["scenario"] for fold in chunked_open["folds"] if not fold["passed"]},
+            {"center_crate_late", "short_range_blocked"},
+        )
+        self.assertEqual(sum(fold["control_cycles"] for fold in chunked_open["folds"]), 160)
+        self.assertEqual(chunked_receding["predicted_action_horizon"], 4)
+        self.assertEqual(chunked_receding["execution_horizon"], 1)
+        self.assertEqual(chunked_receding["closed_loop_passed"], 10)
+        self.assertEqual(chunked_receding["failed"], 0)
+        self.assertEqual(
+            sum(fold["control_cycles"] for fold in chunked_receding["folds"]),
+            478,
+        )
         self.assertEqual(knn["validation_samples"], 461)
         self.assertAlmostEqual(knn["validation_velocity_mae"], 0.08412305629771478)
         self.assertEqual(knn["closed_loop_passed"], 2)

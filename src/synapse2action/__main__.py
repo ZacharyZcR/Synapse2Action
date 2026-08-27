@@ -25,6 +25,7 @@ from .vla_crossval import run_leave_one_scenario_out
 from .vla_ridge import (
     RidgeVLABackend,
     load_ridge_checkpoint,
+    train_chunked_temporal_ridge_baseline,
     train_ridge_baseline,
     train_temporal_ridge_baseline,
 )
@@ -35,11 +36,12 @@ def _run_vla(
     backend: VLAInferenceBackend,
     record_path: Path | None = None,
     scenario: NavigationScenario | None = None,
+    execution_horizon: int | None = None,
 ) -> dict[str, object]:
     if record_path is None:
-        return run_vla_navigation_demo(backend, scenario)
+        return run_vla_navigation_demo(backend, scenario, execution_horizon)
     recorder = RecordingVLABackend(backend)
-    report = run_vla_navigation_demo(recorder, scenario)
+    report = run_vla_navigation_demo(recorder, scenario, execution_horizon)
     episode = recorder.episode()
     save_episode(record_path, episode)
     report["recorded_episode"] = str(record_path)
@@ -80,7 +82,7 @@ def main() -> int:
     parser.add_argument("--train-vla-baseline", type=Path)
     parser.add_argument(
         "--vla-baseline-algorithm",
-        choices=("knn", "ridge", "temporal-ridge"),
+        choices=("knn", "ridge", "temporal-ridge", "chunked-ridge"),
         default="knn",
     )
     parser.add_argument("--vla-checkpoint", type=Path)
@@ -88,6 +90,7 @@ def main() -> int:
     parser.add_argument("--benchmark-navigation-scenarios", type=Path)
     parser.add_argument("--cross-validate-vla-baseline", type=Path, nargs="+")
     parser.add_argument("--cross-validation-output", type=Path)
+    parser.add_argument("--vla-execution-horizon", type=int)
     parser.add_argument("--demo-html", type=Path)
     parser.add_argument("--demo-scenario", type=Path)
     parser.add_argument("--demo-suite", type=Path)
@@ -125,6 +128,12 @@ def main() -> int:
         args.benchmark_vla_baseline or args.train_vla_baseline or args.export_vla_dataset
     ):
         parser.error("VLA cross-validation cannot be combined with export, training, or benchmark")
+    if args.vla_execution_horizon is not None and args.vla_execution_horizon <= 0:
+        parser.error("--vla-execution-horizon must be positive")
+    if args.vla_execution_horizon is not None and not (
+        args.vla_navigation_demo or args.benchmark_vla_baseline or args.cross_validate_vla_baseline
+    ):
+        parser.error("--vla-execution-horizon requires VLA demo, benchmark, or cross-validation")
     if args.vla_checkpoint and not (
         args.train_vla_baseline or args.vla_navigation_demo or args.benchmark_vla_baseline
     ):
@@ -154,12 +163,14 @@ def main() -> int:
             args.benchmark_navigation_scenarios,
             args.cross_validation_output,
             args.vla_baseline_algorithm,
+            args.vla_execution_horizon,
         )
     elif args.benchmark_vla_baseline:
         report = benchmark_vla_baseline(
             args.benchmark_vla_baseline,
             args.vla_checkpoint,
             args.benchmark_navigation_scenarios,
+            args.vla_execution_horizon,
         )
     elif args.navigation_suite:
         report = run_navigation_suite(args.navigation_suite, args.navigation_episode_directory)
@@ -168,6 +179,7 @@ def main() -> int:
             "knn": train_knn_baseline,
             "ridge": train_ridge_baseline,
             "temporal-ridge": train_temporal_ridge_baseline,
+            "chunked-ridge": train_chunked_temporal_ridge_baseline,
         }
         report = trainers[args.vla_baseline_algorithm](
             args.train_vla_baseline,
@@ -186,12 +198,17 @@ def main() -> int:
                     HTTPVLABackend(server.base_url),
                     args.record_vla_episode,
                     navigation_scenario,
+                    args.vla_execution_horizon,
                 )
                 report["vla_http_requests"] = len(server.requests)
                 report["vla_http_operations"] = [request.operation for request in server.requests]
         elif args.replay_vla_episode:
             replay = ReplayVLABackend(load_episode(args.replay_vla_episode))
-            report = _run_vla(replay, scenario=navigation_scenario)
+            report = _run_vla(
+                replay,
+                scenario=navigation_scenario,
+                execution_horizon=args.vla_execution_horizon,
+            )
             replay.assert_complete()
             report["replayed_episode"] = str(args.replay_vla_episode)
             report["replayed_steps"] = replay.index
@@ -200,6 +217,7 @@ def main() -> int:
                 HTTPVLABackend(args.vla_base_url, api_key=os.getenv(args.vla_api_key_env)),
                 args.record_vla_episode,
                 navigation_scenario,
+                args.vla_execution_horizon,
             )
         else:
             backend = (
@@ -207,7 +225,12 @@ def main() -> int:
                 if args.vla_checkpoint
                 else DeterministicVLABackend()
             )
-            report = _run_vla(backend, args.record_vla_episode, navigation_scenario)
+            report = _run_vla(
+                backend,
+                args.record_vla_episode,
+                navigation_scenario,
+                args.vla_execution_horizon,
+            )
     elif args.navigation_demo:
         report = run_navigation_demo(scenario=navigation_scenario)
     elif args.demo_suite:

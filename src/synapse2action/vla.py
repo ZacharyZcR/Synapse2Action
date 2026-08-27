@@ -31,8 +31,10 @@ class VLAInferenceBackend(Protocol):
 @dataclass(slots=True)
 class VLANavigationPolicy:
     backend: VLAInferenceBackend
+    execution_horizon: int | None = None
     task: NavigationTask | None = None
     request_count: int = 0
+    predicted_action_horizon: int = 0
 
     @property
     def replan_count(self) -> int | None:
@@ -45,6 +47,7 @@ class VLANavigationPolicy:
     def reset(self, task: NavigationTask) -> None:
         self.task = task
         self.request_count = 0
+        self.predicted_action_horizon = 0
         self.backend.reset(_encode({"schema_version": 1, "task": _task_payload(task)}))
 
     def predict(self, observation: NavigationObservation) -> ActionChunk:
@@ -52,7 +55,13 @@ class VLANavigationPolicy:
             raise ValueError("VLA observation does not match the active task")
         response = self.backend.infer(_encode(_observation_payload(observation)))
         self.request_count += 1
-        return _decode_action_chunk(response)
+        chunk = _decode_action_chunk(response)
+        self.predicted_action_horizon = len(chunk.commands)
+        if self.execution_horizon is None:
+            return chunk
+        if self.execution_horizon <= 0:
+            raise ValueError("VLA execution horizon must be positive")
+        return ActionChunk(chunk.commands[: self.execution_horizon])
 
 
 @dataclass(slots=True)
@@ -88,12 +97,20 @@ class DeterministicVLABackend:
 def run_vla_navigation_demo(
     backend: VLAInferenceBackend | None = None,
     scenario: NavigationScenario | None = None,
+    execution_horizon: int | None = None,
 ) -> dict[str, object]:
     backend = backend or DeterministicVLABackend()
-    report = run_navigation_demo(VLANavigationPolicy(backend), scenario=scenario)
+    policy = VLANavigationPolicy(backend, execution_horizon)
+    report = run_navigation_demo(policy, scenario=scenario)
     report["demo"] = f"vla_adapter_{report['scenario']}"
     report["vla_backend"] = type(backend).__name__
     report["serialized_observations"] = report["control_cycles"]
+    report["predicted_action_horizon"] = policy.predicted_action_horizon
+    report["execution_horizon"] = (
+        min(execution_horizon, policy.predicted_action_horizon)
+        if execution_horizon is not None
+        else policy.predicted_action_horizon
+    )
     return report
 
 

@@ -5,7 +5,11 @@ from pathlib import Path
 from .vla_baseline import train_knn_baseline
 from .vla_benchmark import benchmark_vla_baseline
 from .vla_dataset import export_dataset
-from .vla_ridge import train_ridge_baseline, train_temporal_ridge_baseline
+from .vla_ridge import (
+    train_chunked_temporal_ridge_baseline,
+    train_ridge_baseline,
+    train_temporal_ridge_baseline,
+)
 
 
 def run_leave_one_scenario_out(
@@ -13,8 +17,9 @@ def run_leave_one_scenario_out(
     scenario_directory: Path,
     output_directory: Path,
     algorithm: str = "ridge",
+    execution_horizon: int | None = None,
 ) -> dict[str, object]:
-    if algorithm not in {"knn", "ridge", "temporal-ridge"}:
+    if algorithm not in {"knn", "ridge", "temporal-ridge", "chunked-ridge"}:
         raise ValueError("unsupported VLA cross-validation algorithm")
     if len(episode_paths) < 2:
         raise ValueError("VLA cross-validation requires at least two episodes")
@@ -38,12 +43,15 @@ def run_leave_one_scenario_out(
             train_ridge_baseline(dataset_directory, checkpoint_path)
         elif algorithm == "temporal-ridge":
             train_temporal_ridge_baseline(dataset_directory, checkpoint_path)
+        elif algorithm == "chunked-ridge":
+            train_chunked_temporal_ridge_baseline(dataset_directory, checkpoint_path)
         else:
             train_knn_baseline(dataset_directory, checkpoint_path)
         benchmark = benchmark_vla_baseline(
             dataset_directory,
             checkpoint_path,
             scenario_directory,
+            execution_horizon,
         )
         if len(benchmark["results"]) != 1:
             raise ValueError("leave-one-scenario-out fold must contain one validation result")
@@ -69,6 +77,8 @@ def run_leave_one_scenario_out(
         "schema_version": 1,
         "benchmark": f"{algorithm}_vla_leave_one_scenario_out",
         "algorithm": algorithm,
+        "predicted_action_horizon": folds[0]["predicted_action_horizon"],
+        "execution_horizon": folds[0]["execution_horizon"],
         "episode_count": len(episode_paths),
         "fold_count": len(folds),
         "validation_samples": samples,

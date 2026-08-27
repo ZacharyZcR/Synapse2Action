@@ -15,13 +15,18 @@ def benchmark_vla_baseline(
     dataset_directory: Path,
     checkpoint_path: Path,
     scenario_directory: Path,
+    execution_horizon: int | None = None,
 ) -> dict[str, object]:
     payload = json.loads(checkpoint_path.read_text(encoding="utf-8"))
     checkpoint_format = payload.get("format") if isinstance(payload, dict) else None
     if checkpoint_format == "synapse2action.knn_vla":
-        return benchmark_knn_baseline(dataset_directory, checkpoint_path, scenario_directory)
+        return benchmark_knn_baseline(
+            dataset_directory, checkpoint_path, scenario_directory, execution_horizon
+        )
     if checkpoint_format == "synapse2action.ridge_vla":
-        return benchmark_ridge_baseline(dataset_directory, checkpoint_path, scenario_directory)
+        return benchmark_ridge_baseline(
+            dataset_directory, checkpoint_path, scenario_directory, execution_horizon
+        )
     raise ValueError("unsupported VLA baseline checkpoint")
 
 
@@ -29,6 +34,7 @@ def benchmark_knn_baseline(
     dataset_directory: Path,
     checkpoint_path: Path,
     scenario_directory: Path,
+    execution_horizon: int | None = None,
 ) -> dict[str, object]:
     checkpoint = load_knn_checkpoint(checkpoint_path)
     offline = evaluate_knn_baseline(dataset_directory, checkpoint)
@@ -42,6 +48,7 @@ def benchmark_knn_baseline(
         len(offline["training_episode_ids"]),
         offline,
         lambda: KNNVLABackend(checkpoint),
+        execution_horizon,
     )
 
 
@@ -49,6 +56,7 @@ def benchmark_ridge_baseline(
     dataset_directory: Path,
     checkpoint_path: Path,
     scenario_directory: Path,
+    execution_horizon: int | None = None,
 ) -> dict[str, object]:
     checkpoint = load_ridge_checkpoint(checkpoint_path)
     offline = evaluate_ridge_baseline(dataset_directory, checkpoint)
@@ -56,9 +64,13 @@ def benchmark_ridge_baseline(
     validation_ids = manifest["splits"]["validation"]["episodes"]
     return _closed_loop_benchmark(
         (
-            "temporal_ridge_vla_held_out_navigation"
-            if checkpoint.history_steps
-            else "ridge_vla_held_out_navigation"
+            "chunked_temporal_ridge_vla_held_out_navigation"
+            if checkpoint.action_horizon > 1
+            else (
+                "temporal_ridge_vla_held_out_navigation"
+                if checkpoint.history_steps
+                else "ridge_vla_held_out_navigation"
+            )
         ),
         checkpoint_path,
         scenario_directory,
@@ -67,6 +79,7 @@ def benchmark_ridge_baseline(
         len(checkpoint.training_episode_ids),
         offline,
         lambda: RidgeVLABackend(checkpoint),
+        execution_horizon,
     )
 
 
@@ -86,6 +99,7 @@ def _closed_loop_benchmark(
     training_episode_count: int,
     offline: dict[str, object],
     backend_factory: Callable[[], VLAInferenceBackend],
+    execution_horizon: int | None,
 ) -> dict[str, object]:
     episode_metadata = {episode["episode_id"]: episode for episode in manifest["episodes"]}
     scenarios = {
@@ -111,7 +125,7 @@ def _closed_loop_benchmark(
         scenario = scenarios.get(scenario_name)
         if scenario is None:
             raise ValueError(f"validation scenario not found: {scenario_name}")
-        report = run_vla_navigation_demo(backend_factory(), scenario)
+        report = run_vla_navigation_demo(backend_factory(), scenario, execution_horizon)
         final_pose = report["final_pose"]
         goal = report["goal"]
         verify_detail = next(
@@ -127,10 +141,14 @@ def _closed_loop_benchmark(
                 "control_cycles": report["control_cycles"],
                 "goal_error_m": hypot(final_pose["x"] - goal["x"], final_pose["y"] - goal["y"]),
                 "execution_detail": verify_detail,
+                "predicted_action_horizon": report["predicted_action_horizon"],
+                "execution_horizon": report["execution_horizon"],
             }
         )
 
     passed = sum(result["passed"] for result in results)
+    predicted_horizons = {result["predicted_action_horizon"] for result in results}
+    executed_horizons = {result["execution_horizon"] for result in results}
     return {
         "schema_version": 1,
         "benchmark": benchmark_name,
@@ -143,6 +161,12 @@ def _closed_loop_benchmark(
         "closed_loop_passed": passed,
         "closed_loop_failed": len(results) - passed,
         "closed_loop_success_rate": passed / len(results) if results else None,
+        "predicted_action_horizon": (
+            next(iter(predicted_horizons)) if len(predicted_horizons) == 1 else None
+        ),
+        "execution_horizon": (
+            next(iter(executed_horizons)) if len(executed_horizons) == 1 else None
+        ),
         "failed": len(results) - passed,
         "results": results,
     }
