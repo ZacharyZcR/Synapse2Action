@@ -29,6 +29,9 @@ class TaskState(StrEnum):
 class Intent:
     kind: IntentKind
     target: str | None = None
+    target_revision: int | None = None
+    challenge_token: str | None = None
+    at_ms: int | None = None
 
 
 @dataclass(frozen=True, slots=True)

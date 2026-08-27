@@ -5,6 +5,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
+from .authorization import ChallengeStore
 from .components import FakeRobot, MockPlanner, RuleBasedVerifier
 from .contracts import ExecutionResult, Intent, IntentKind, TaskState
 from .harness import Harness
@@ -30,12 +31,27 @@ def run_scenario(path: Path) -> ExperimentResult:
             robot_config.get("detail", "simulated action completed"),
         )
     )
-    harness = Harness(MockPlanner(scenario.get("planner_skill", "pick_and_place")), robot, RuleBasedVerifier())
+    authorization = scenario.get("authorization")
+    authorizer = ChallengeStore(authorization.get("lifetime_ms", 3_000)) if authorization else None
+    harness = Harness(
+        MockPlanner(scenario.get("planner_skill", "pick_and_place")),
+        robot,
+        RuleBasedVerifier(),
+        authorizer=authorizer,
+    )
     error = None
 
     try:
         for item in scenario["intents"]:
-            harness.handle(Intent(IntentKind(item["kind"]), item.get("target")))
+            harness.handle(
+                Intent(
+                    IntentKind(item["kind"]),
+                    item.get("target"),
+                    item.get("target_revision"),
+                    item.get("challenge_token"),
+                    item.get("at_ms"),
+                )
+            )
     except (ValueError, KeyError) as exc:
         error = type(exc).__name__
 

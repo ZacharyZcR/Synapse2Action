@@ -1,0 +1,9 @@
+{
+  "name": "matching context challenge executes",
+  "authorization": {"lifetime_ms": 3000},
+  "intents": [
+    {"kind": "select", "target": "red_cube", "target_revision": 7, "at_ms": 0},
+    {"kind": "confirm", "target_revision": 7, "challenge_token": "challenge-00000001", "at_ms": 500}
+  ],
+  "expect": {"final_state": "completed", "action_count": 1}
+}

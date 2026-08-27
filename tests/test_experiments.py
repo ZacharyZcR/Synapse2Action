@@ -8,7 +8,7 @@ class ExperimentTests(unittest.TestCase):
     def test_all_bundled_scenarios_pass(self) -> None:
         report = run_suite(Path("experiments/scenarios"))
 
-        self.assertEqual(report["passed"], 6)
+        self.assertEqual(report["passed"], 9)
         self.assertEqual(report["failed"], 0)
 
     def test_report_is_deterministic(self) -> None:

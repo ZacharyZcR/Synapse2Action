@@ -54,3 +54,9 @@ duration so deterministic equality can be tested. Timing experiments will use a
 virtual clock until a real integration layer is introduced.
 
 初始 CLI 报告刻意不包含墙钟时间和实测耗时，以便验证确定性一致。接入真实集成层前，所有时序实验均使用虚拟时钟。
+
+## Context-bound authorization / 上下文绑定授权
+
+An optional deterministic challenge binds confirmation to a target, target revision, and expiry time. Challenges are single-use and reject expiry, replay, unknown tokens, and world-state revision drift. The token is a reproducible experiment identifier, not a cryptographic secret. This mechanism prevents stale or mismatched confirmation; it does not prove that a decoded EEG confirmation was intentional.
+
+可选的确定性 challenge 将确认绑定到目标、目标版本和有效期。Challenge 只能消费一次，并拒绝过期、重放、未知 token 与世界状态版本漂移。该 token 是可复现实验标识，不是密码学秘密。它能阻止过期或错位确认，但不能证明 EEG 解码出的确认确实来自用户意图。
