@@ -12,6 +12,7 @@ from .eeg import load_recording, save_recording
 from .embedded_planner import EmbeddedPlannerServer
 from .monte_carlo import run_monte_carlo
 from .llm_planner import OpenAICompatiblePlanner
+from .navigation import run_navigation_demo
 from .synthetic_intent import run_intent_suite
 from .visualization import render_demo_html
 
@@ -22,6 +23,7 @@ def main() -> int:
     parser.add_argument("--intent-directory", type=Path)
     parser.add_argument("--monte-carlo-config", type=Path)
     parser.add_argument("--demo", action="store_true")
+    parser.add_argument("--navigation-demo", action="store_true")
     parser.add_argument("--demo-html", type=Path)
     parser.add_argument("--demo-scenario", type=Path)
     parser.add_argument("--demo-suite", type=Path)
@@ -35,7 +37,9 @@ def main() -> int:
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
 
-    if args.demo_suite:
+    if args.navigation_demo:
+        report = run_navigation_demo()
+    elif args.demo_suite:
         report = run_demo_suite(args.demo_suite, args.artifact_directory)
     elif args.demo or args.demo_html or args.demo_scenario or args.record_eeg or args.replay_eeg or args.embedded_planner:
         scenario = load_demo_scenario(args.demo_scenario) if args.demo_scenario else None

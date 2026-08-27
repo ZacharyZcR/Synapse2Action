@@ -72,6 +72,12 @@ def _pick_and_place_precondition(action: Action, context: SkillContext) -> str |
     return None
 
 
+def _navigate_to_precondition(action: Action, context: SkillContext) -> str | None:
+    if action.arguments["destination"] != context.selected_target:
+        return "planner changed selected destination"
+    return None
+
+
 def default_skill_registry() -> SkillRegistry:
     return SkillRegistry(
         [
@@ -82,6 +88,14 @@ def default_skill_registry() -> SkillRegistry:
                 risk=RiskLevel.MEDIUM,
                 precondition=_pick_and_place_precondition,
                 success_condition=lambda result: result.success,
-            )
+            ),
+            SkillSpec(
+                "navigate_to",
+                MappingProxyType({"destination": str}),
+                timeout_ms=30_000,
+                risk=RiskLevel.MEDIUM,
+                precondition=_navigate_to_precondition,
+                success_condition=lambda result: result.success,
+            ),
         ]
     )

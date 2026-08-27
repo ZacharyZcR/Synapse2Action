@@ -23,6 +23,7 @@ class ScriptedPolicy:
     def prepare(self, action: Action) -> Action:
         steps = {
             "pick_and_place": ("approach", "grasp", "transport", "release"),
+            "navigate_to": ("closed_loop_navigation",),
         }.get(action.skill, ())
         prepared = Action(action.skill, action.arguments, steps)
         self.prepared.append(prepared)

@@ -190,6 +190,7 @@ Run all hardware-free experiment scenarios and print a deterministic JSON report
 
 ```bash
 PYTHONPATH=src python3 -m synapse2action --demo
+PYTHONPATH=src python3 -m synapse2action --navigation-demo
 PYTHONPATH=src python3 -m synapse2action --demo-html demo.html --output demo.json
 PYTHONPATH=src python3 -m synapse2action --demo-scenario experiments/demos/blue_block.json --demo-html blue-demo.html
 PYTHONPATH=src python3 -m synapse2action --demo-suite experiments/demos --artifact-directory artifacts/demo-suite --output artifacts/demo-suite.json
@@ -204,6 +205,8 @@ PYTHONPATH=src python3 -m synapse2action --monte-carlo-config experiments/monte_
 The `--demo` command runs the complete hardware-free happy path: seeded noisy SSVEP samples, frequency-based intent decoding, fake perception and world state, mock planning, scripted policy, a deterministic 2D tabletop robot, and independent final-state verification.
 
 `--demo` 命令运行完整的无设备 happy path：固定 seed 的带噪 SSVEP 样本、频率意图解码、Fake Perception 与 World、Mock Planner、Scripted Policy、确定性二维桌面机器人及独立终态验证。
+
+`--navigation-demo` runs a confirmed A-to-B task as a real closed loop: every cycle observes the current pose, asks a replaceable navigation policy for a short velocity action chunk, applies that chunk through the robot adapter, and independently verifies arrival. / `--navigation-demo` 将确认后的 A 到 B 任务作为真实闭环运行：每个周期读取当前位姿，由可替换 Navigation Policy 生成短时速度 Action Chunk，经 Robot Adapter 执行，并独立验证是否到达。
 
 The planner selects a typed skill; the policy expands it into `approach`, `grasp`, `transport`, and `release` steps; the robot executes only the supplied trajectory. / Planner 选择类型化技能，Policy 将其展开为 `approach`、`grasp`、`transport` 与 `release`，Robot 只执行收到的轨迹。
 
