@@ -1,0 +1,11 @@
+{
+  "name": "clear_short",
+  "destination": "point_b",
+  "start": {"x": -0.2, "y": 0.1, "yaw": 0.0},
+  "goal": {"x": 1.3, "y": 0.1, "yaw": 0.0},
+  "obstacles": [],
+  "sensor_range_m": 3.0,
+  "robot_radius_m": 0.1,
+  "tolerance_m": 0.05,
+  "max_steps": 300
+}

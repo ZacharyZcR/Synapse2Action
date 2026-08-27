@@ -1,0 +1,13 @@
+{
+  "name": "diagonal_dynamic",
+  "destination": "inspection_zone",
+  "start": {"x": 0.0, "y": -0.4, "yaw": 0.0},
+  "goal": {"x": 2.0, "y": 0.6, "yaw": 0.0},
+  "obstacles": [
+    {"obstacle_id": "cart", "x": 1.0, "y": 0.1, "radius": 0.2, "active_from_ms": 200, "active_until_ms": null}
+  ],
+  "sensor_range_m": 2.5,
+  "robot_radius_m": 0.1,
+  "tolerance_m": 0.05,
+  "max_steps": 300
+}

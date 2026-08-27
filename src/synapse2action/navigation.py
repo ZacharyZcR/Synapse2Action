@@ -2,7 +2,9 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
 from hashlib import sha256
-from math import hypot
+import json
+from math import hypot, isfinite
+from pathlib import Path
 from typing import Protocol
 
 from .components import MockPlanner
@@ -25,6 +27,28 @@ class Obstacle2D:
     radius: float
     active_from_ms: int = 0
     active_until_ms: int | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class NavigationScenario:
+    name: str
+    destination: str
+    start: Pose2D
+    goal: Pose2D
+    obstacles: tuple[Obstacle2D, ...] = ()
+    sensor_range_m: float = 3.0
+    robot_radius_m: float = 0.1
+    tolerance_m: float = 0.05
+    max_steps: int = 300
+
+
+DEFAULT_NAVIGATION_SCENARIO = NavigationScenario(
+    "dynamic_obstacle_navigation_a_to_b",
+    "point_b",
+    Pose2D(0.0, 0.0),
+    Pose2D(2.0, 0.0),
+    (Obstacle2D("crate", 1.0, 0.0, 0.25, active_from_ms=600),),
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -307,25 +331,116 @@ def _detour_waypoint(start: Pose2D, goal: Pose2D, obstacle: Obstacle2D, clearanc
     return Pose2D(obstacle.x - dy / length * offset, obstacle.y + dx / length * offset)
 
 
+def load_navigation_scenario(path: Path) -> NavigationScenario:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    expected = {
+        "name",
+        "destination",
+        "start",
+        "goal",
+        "obstacles",
+        "sensor_range_m",
+        "robot_radius_m",
+        "tolerance_m",
+        "max_steps",
+    }
+    if not isinstance(payload, dict) or set(payload) != expected:
+        raise ValueError("navigation scenario does not match schema")
+    if not isinstance(payload["name"], str) or not payload["name"]:
+        raise ValueError("navigation scenario requires a name")
+    if not isinstance(payload["destination"], str) or not payload["destination"]:
+        raise ValueError("navigation scenario requires a destination")
+    if not isinstance(payload["obstacles"], list):
+        raise ValueError("navigation scenario obstacles must be a list")
+    max_steps = payload["max_steps"]
+    if type(max_steps) is not int or max_steps <= 0:
+        raise ValueError("navigation scenario max_steps must be positive")
+    sensor_range = _scenario_number(payload["sensor_range_m"], "sensor_range_m")
+    robot_radius = _scenario_number(payload["robot_radius_m"], "robot_radius_m")
+    tolerance = _scenario_number(payload["tolerance_m"], "tolerance_m")
+    if min(sensor_range, robot_radius, tolerance) <= 0:
+        raise ValueError("navigation scenario dimensions must be positive")
+    return NavigationScenario(
+        payload["name"],
+        payload["destination"],
+        _scenario_pose(payload["start"]),
+        _scenario_pose(payload["goal"]),
+        tuple(_scenario_obstacle(value) for value in payload["obstacles"]),
+        sensor_range,
+        robot_radius,
+        tolerance,
+        max_steps,
+    )
+
+
+def _scenario_pose(value: object) -> Pose2D:
+    if not isinstance(value, dict) or set(value) != {"x", "y", "yaw"}:
+        raise ValueError("navigation scenario pose does not match schema")
+    return Pose2D(*(_scenario_number(value[name], name) for name in ("x", "y", "yaw")))
+
+
+def _scenario_obstacle(value: object) -> Obstacle2D:
+    expected = {"obstacle_id", "x", "y", "radius", "active_from_ms", "active_until_ms"}
+    if not isinstance(value, dict) or set(value) != expected:
+        raise ValueError("navigation obstacle does not match schema")
+    if not isinstance(value["obstacle_id"], str) or not value["obstacle_id"]:
+        raise ValueError("navigation obstacle requires an id")
+    active_from = value["active_from_ms"]
+    active_until = value["active_until_ms"]
+    if type(active_from) is not int or active_from < 0:
+        raise ValueError("navigation obstacle active_from_ms is invalid")
+    if active_until is not None and (type(active_until) is not int or active_until <= active_from):
+        raise ValueError("navigation obstacle active_until_ms is invalid")
+    radius = _scenario_number(value["radius"], "radius")
+    if radius <= 0:
+        raise ValueError("navigation obstacle radius must be positive")
+    return Obstacle2D(
+        value["obstacle_id"],
+        _scenario_number(value["x"], "x"),
+        _scenario_number(value["y"], "y"),
+        radius,
+        active_from,
+        active_until,
+    )
+
+
+def _scenario_number(value: object, name: str) -> float:
+    if type(value) not in (int, float) or not isfinite(value):
+        raise ValueError(f"navigation scenario {name} is invalid")
+    return float(value)
+
+
 def run_navigation_demo(
     policy: NavigationPolicy | None = None,
-    demo_name: str = "dynamic_obstacle_navigation_a_to_b",
+    demo_name: str | None = None,
+    scenario: NavigationScenario | None = None,
 ) -> dict[str, object]:
-    start = Pose2D(0.0, 0.0)
-    goal = Pose2D(2.0, 0.0)
-    obstacles = (Obstacle2D("crate", 1.0, 0.0, 0.25, active_from_ms=600),)
+    scenario = scenario or DEFAULT_NAVIGATION_SCENARIO
+    start = scenario.start
+    goal = scenario.goal
+    obstacles = scenario.obstacles
     active_policy = policy or ScriptedNavigationPolicy()
-    robot = NavigationRobot(start, {"point_b": goal}, policy=active_policy, obstacles=obstacles)
-    harness = Harness(
-        MockPlanner("navigate_to", {"destination": "point_b"}),
-        robot,
-        NavigationVerifier(robot, goal),
+    robot = NavigationRobot(
+        start,
+        {scenario.destination: goal},
+        policy=active_policy,
+        obstacles=obstacles,
+        sensor_range_m=scenario.sensor_range_m,
+        robot_radius_m=scenario.robot_radius_m,
+        tolerance_m=scenario.tolerance_m,
+        max_steps=scenario.max_steps,
     )
-    harness.handle(Intent(IntentKind.SELECT, "point_b"))
+    harness = Harness(
+        MockPlanner("navigate_to", {"destination": scenario.destination}),
+        robot,
+        NavigationVerifier(robot, goal, scenario.tolerance_m),
+    )
+    harness.handle(Intent(IntentKind.SELECT, scenario.destination))
     harness.handle(Intent(IntentKind.CONFIRM))
     return {
         "schema_version": 3,
-        "demo": demo_name,
+        "demo": demo_name or scenario.name,
+        "scenario": scenario.name,
         "navigation_policy": type(active_policy).__name__,
         "passed": harness.state.value == "completed",
         "start": asdict(start),

@@ -1,0 +1,13 @@
+{
+  "name": "center_crate_late",
+  "destination": "point_b",
+  "start": {"x": 0.0, "y": 0.0, "yaw": 0.0},
+  "goal": {"x": 2.0, "y": 0.0, "yaw": 0.0},
+  "obstacles": [
+    {"obstacle_id": "crate", "x": 1.0, "y": 0.0, "radius": 0.25, "active_from_ms": 600, "active_until_ms": null}
+  ],
+  "sensor_range_m": 3.0,
+  "robot_radius_m": 0.1,
+  "tolerance_m": 0.05,
+  "max_steps": 300
+}

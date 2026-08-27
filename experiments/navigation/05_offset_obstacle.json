@@ -1,0 +1,13 @@
+{
+  "name": "offset_obstacle",
+  "destination": "charging_zone",
+  "start": {"x": 0.1, "y": 0.2, "yaw": 0.0},
+  "goal": {"x": 2.5, "y": -0.4, "yaw": 0.0},
+  "obstacles": [
+    {"obstacle_id": "pillar", "x": 1.2, "y": 0.6, "radius": 0.2, "active_from_ms": 0, "active_until_ms": null}
+  ],
+  "sensor_range_m": 3.0,
+  "robot_radius_m": 0.1,
+  "tolerance_m": 0.05,
+  "max_steps": 400
+}

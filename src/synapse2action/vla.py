@@ -12,6 +12,7 @@ from .navigation import (
     BaseVelocity,
     CameraFrame,
     NavigationObservation,
+    NavigationScenario,
     NavigationTask,
     Obstacle2D,
     Pose2D,
@@ -84,9 +85,13 @@ class DeterministicVLABackend:
         )
 
 
-def run_vla_navigation_demo(backend: VLAInferenceBackend | None = None) -> dict[str, object]:
+def run_vla_navigation_demo(
+    backend: VLAInferenceBackend | None = None,
+    scenario: NavigationScenario | None = None,
+) -> dict[str, object]:
     backend = backend or DeterministicVLABackend()
-    report = run_navigation_demo(VLANavigationPolicy(backend), "vla_adapter_dynamic_navigation_a_to_b")
+    report = run_navigation_demo(VLANavigationPolicy(backend), scenario=scenario)
+    report["demo"] = f"vla_adapter_{report['scenario']}"
     report["vla_backend"] = type(backend).__name__
     report["serialized_observations"] = report["control_cycles"]
     return report

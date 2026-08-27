@@ -191,6 +191,8 @@ Run all hardware-free experiment scenarios and print a deterministic JSON report
 ```bash
 PYTHONPATH=src python3 -m synapse2action --demo
 PYTHONPATH=src python3 -m synapse2action --navigation-demo
+PYTHONPATH=src python3 -m synapse2action --navigation-demo --navigation-scenario experiments/navigation/04_diagonal_dynamic.json
+PYTHONPATH=src python3 -m synapse2action --navigation-suite experiments/navigation --navigation-episode-directory artifacts/navigation-episodes
 PYTHONPATH=src python3 -m synapse2action --vla-navigation-demo
 PYTHONPATH=src python3 -m synapse2action --vla-navigation-demo --embedded-vla
 PYTHONPATH=src python3 -m synapse2action --vla-navigation-demo --record-vla-episode artifacts/navigation-episode.json
@@ -212,6 +214,8 @@ PYTHONPATH=src python3 -m synapse2action --monte-carlo-config experiments/monte_
 The `--demo` command runs the complete hardware-free happy path: seeded noisy SSVEP samples, frequency-based intent decoding, fake perception and world state, mock planning, scripted policy, a deterministic 2D tabletop robot, and independent final-state verification.
 
 `--demo` 命令运行完整的无设备 happy path：固定 seed 的带噪 SSVEP 样本、频率意图解码、Fake Perception 与 World、Mock Planner、Scripted Policy、确定性二维桌面机器人及独立终态验证。
+
+Navigation scenarios are data-driven JSON files under `experiments/navigation/`. The bundled suite varies start pose, goal pose, destination language, obstacle position, sensor range, and obstacle activation time. `--navigation-suite` runs every scenario through the serialized VLA path and can write one training episode per scenario. / 导航场景由 `experiments/navigation/` 下的 JSON 驱动。内置 suite 会改变起点、目标、目的地语言、障碍位置、传感范围和障碍出现时间。`--navigation-suite` 通过序列化 VLA 路径运行所有场景，并可为每个场景写出一条训练 episode。
 
 `--navigation-demo` runs a confirmed A-to-B task as a real closed loop. A policy observation combines the task instruction with a timestamped `SensorFrame` containing a deterministic `mono8` camera raster, base proprioception, pose, and locally perceived obstacles. The policy turns the latest multimodal observation into a short velocity action chunk, the robot adapter applies it, and an independent verifier checks both arrival and stopped base state. The scenario begins on a clear path, introduces a crate after 600 ms, and proves that the policy replans from new observations instead of following a frozen startup trajectory. / `--navigation-demo` 将确认后的 A 到 B 任务作为真实闭环运行。Policy Observation 将任务文本与带时间戳的 `SensorFrame` 组合；帧内包含确定性 `mono8` 相机栅格、底盘 proprioception、位姿和局部障碍物。Policy 将最新多模态观测转换成短时速度 Action Chunk，经 Robot Adapter 执行，独立 Verifier 同时检查到达和底盘停止状态。场景开始时道路畅通，在 600ms 后出现箱体，用于证明策略会依据新观测重规划，而不是执行启动时冻结的轨迹。
 

@@ -12,7 +12,8 @@ from .eeg import load_recording, save_recording
 from .embedded_planner import EmbeddedPlannerServer
 from .monte_carlo import run_monte_carlo
 from .llm_planner import OpenAICompatiblePlanner
-from .navigation import run_navigation_demo
+from .navigation import NavigationScenario, load_navigation_scenario, run_navigation_demo
+from .navigation_suite import run_navigation_suite
 from .synthetic_intent import run_intent_suite
 from .visualization import render_demo_html
 from .vla import DeterministicVLABackend, VLAInferenceBackend, run_vla_navigation_demo
@@ -22,11 +23,15 @@ from .vla_baseline import KNNVLABackend, load_knn_checkpoint, train_knn_baseline
 from .vla_http import EmbeddedVLAServer, HTTPVLABackend
 
 
-def _run_vla(backend: VLAInferenceBackend, record_path: Path | None = None) -> dict[str, object]:
+def _run_vla(
+    backend: VLAInferenceBackend,
+    record_path: Path | None = None,
+    scenario: NavigationScenario | None = None,
+) -> dict[str, object]:
     if record_path is None:
-        return run_vla_navigation_demo(backend)
+        return run_vla_navigation_demo(backend, scenario)
     recorder = RecordingVLABackend(backend)
-    report = run_vla_navigation_demo(recorder)
+    report = run_vla_navigation_demo(recorder, scenario)
     episode = recorder.episode()
     save_episode(record_path, episode)
     report["recorded_episode"] = str(record_path)
@@ -42,6 +47,9 @@ def main() -> int:
     parser.add_argument("--monte-carlo-config", type=Path)
     parser.add_argument("--demo", action="store_true")
     parser.add_argument("--navigation-demo", action="store_true")
+    parser.add_argument("--navigation-scenario", type=Path)
+    parser.add_argument("--navigation-suite", type=Path)
+    parser.add_argument("--navigation-episode-directory", type=Path)
     parser.add_argument("--vla-navigation-demo", action="store_true")
     parser.add_argument("--vla-base-url")
     parser.add_argument("--vla-api-key-env", default="VLA_API_KEY")
@@ -66,6 +74,10 @@ def main() -> int:
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
 
+    if args.navigation_scenario and not (args.navigation_demo or args.vla_navigation_demo):
+        parser.error("--navigation-scenario requires a navigation demo")
+    if args.navigation_episode_directory and not args.navigation_suite:
+        parser.error("--navigation-episode-directory requires --navigation-suite")
     if bool(args.export_vla_dataset) != bool(args.vla_dataset_output):
         parser.error("--export-vla-dataset and --vla-dataset-output must be provided together")
     if args.train_vla_baseline and not args.vla_checkpoint:
@@ -89,7 +101,11 @@ def main() -> int:
     if (args.embedded_vla or args.vla_base_url or args.record_vla_episode or args.replay_vla_episode) and not args.vla_navigation_demo:
         parser.error("VLA backend options require --vla-navigation-demo")
 
-    if args.train_vla_baseline:
+    navigation_scenario = load_navigation_scenario(args.navigation_scenario) if args.navigation_scenario else None
+
+    if args.navigation_suite:
+        report = run_navigation_suite(args.navigation_suite, args.navigation_episode_directory)
+    elif args.train_vla_baseline:
         report = train_knn_baseline(args.train_vla_baseline, args.vla_checkpoint)
     elif args.export_vla_dataset:
         report = export_dataset(
@@ -100,12 +116,16 @@ def main() -> int:
     elif args.vla_navigation_demo:
         if args.embedded_vla:
             with EmbeddedVLAServer() as server:
-                report = _run_vla(HTTPVLABackend(server.base_url), args.record_vla_episode)
+                report = _run_vla(
+                    HTTPVLABackend(server.base_url),
+                    args.record_vla_episode,
+                    navigation_scenario,
+                )
                 report["vla_http_requests"] = len(server.requests)
                 report["vla_http_operations"] = [request.operation for request in server.requests]
         elif args.replay_vla_episode:
             replay = ReplayVLABackend(load_episode(args.replay_vla_episode))
-            report = _run_vla(replay)
+            report = _run_vla(replay, scenario=navigation_scenario)
             replay.assert_complete()
             report["replayed_episode"] = str(args.replay_vla_episode)
             report["replayed_steps"] = replay.index
@@ -113,6 +133,7 @@ def main() -> int:
             report = _run_vla(
                 HTTPVLABackend(args.vla_base_url, api_key=os.getenv(args.vla_api_key_env)),
                 args.record_vla_episode,
+                navigation_scenario,
             )
         else:
             backend = (
@@ -120,9 +141,9 @@ def main() -> int:
                 if args.vla_checkpoint
                 else DeterministicVLABackend()
             )
-            report = _run_vla(backend, args.record_vla_episode)
+            report = _run_vla(backend, args.record_vla_episode, navigation_scenario)
     elif args.navigation_demo:
-        report = run_navigation_demo()
+        report = run_navigation_demo(scenario=navigation_scenario)
     elif args.demo_suite:
         report = run_demo_suite(args.demo_suite, args.artifact_directory)
     elif args.demo or args.demo_html or args.demo_scenario or args.record_eeg or args.replay_eeg or args.embedded_planner:
