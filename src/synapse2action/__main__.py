@@ -37,11 +37,22 @@ def _run_vla(
     record_path: Path | None = None,
     scenario: NavigationScenario | None = None,
     execution_horizon: int | None = None,
+    temporal_ensemble_decay: float | None = None,
 ) -> dict[str, object]:
     if record_path is None:
-        return run_vla_navigation_demo(backend, scenario, execution_horizon)
+        return run_vla_navigation_demo(
+            backend,
+            scenario,
+            execution_horizon,
+            temporal_ensemble_decay,
+        )
     recorder = RecordingVLABackend(backend)
-    report = run_vla_navigation_demo(recorder, scenario, execution_horizon)
+    report = run_vla_navigation_demo(
+        recorder,
+        scenario,
+        execution_horizon,
+        temporal_ensemble_decay,
+    )
     episode = recorder.episode()
     save_episode(record_path, episode)
     report["recorded_episode"] = str(record_path)
@@ -91,6 +102,7 @@ def main() -> int:
     parser.add_argument("--cross-validate-vla-baseline", type=Path, nargs="+")
     parser.add_argument("--cross-validation-output", type=Path)
     parser.add_argument("--vla-execution-horizon", type=int)
+    parser.add_argument("--vla-temporal-ensemble-decay", type=float)
     parser.add_argument("--demo-html", type=Path)
     parser.add_argument("--demo-scenario", type=Path)
     parser.add_argument("--demo-suite", type=Path)
@@ -134,6 +146,16 @@ def main() -> int:
         args.vla_navigation_demo or args.benchmark_vla_baseline or args.cross_validate_vla_baseline
     ):
         parser.error("--vla-execution-horizon requires VLA demo, benchmark, or cross-validation")
+    if args.vla_temporal_ensemble_decay is not None and not (
+        0 < args.vla_temporal_ensemble_decay <= 1
+    ):
+        parser.error("--vla-temporal-ensemble-decay must be in (0, 1]")
+    if args.vla_temporal_ensemble_decay is not None and args.vla_execution_horizon not in (None, 1):
+        parser.error("temporal ensembling requires execution horizon one")
+    if args.vla_temporal_ensemble_decay is not None and not (
+        args.vla_navigation_demo or args.benchmark_vla_baseline or args.cross_validate_vla_baseline
+    ):
+        parser.error("temporal ensembling requires VLA demo, benchmark, or cross-validation")
     if args.vla_checkpoint and not (
         args.train_vla_baseline or args.vla_navigation_demo or args.benchmark_vla_baseline
     ):
@@ -164,6 +186,7 @@ def main() -> int:
             args.cross_validation_output,
             args.vla_baseline_algorithm,
             args.vla_execution_horizon,
+            args.vla_temporal_ensemble_decay,
         )
     elif args.benchmark_vla_baseline:
         report = benchmark_vla_baseline(
@@ -171,6 +194,7 @@ def main() -> int:
             args.vla_checkpoint,
             args.benchmark_navigation_scenarios,
             args.vla_execution_horizon,
+            args.vla_temporal_ensemble_decay,
         )
     elif args.navigation_suite:
         report = run_navigation_suite(args.navigation_suite, args.navigation_episode_directory)
@@ -199,6 +223,7 @@ def main() -> int:
                     args.record_vla_episode,
                     navigation_scenario,
                     args.vla_execution_horizon,
+                    args.vla_temporal_ensemble_decay,
                 )
                 report["vla_http_requests"] = len(server.requests)
                 report["vla_http_operations"] = [request.operation for request in server.requests]
@@ -208,6 +233,7 @@ def main() -> int:
                 replay,
                 scenario=navigation_scenario,
                 execution_horizon=args.vla_execution_horizon,
+                temporal_ensemble_decay=args.vla_temporal_ensemble_decay,
             )
             replay.assert_complete()
             report["replayed_episode"] = str(args.replay_vla_episode)
@@ -218,6 +244,7 @@ def main() -> int:
                 args.record_vla_episode,
                 navigation_scenario,
                 args.vla_execution_horizon,
+                args.vla_temporal_ensemble_decay,
             )
         else:
             backend = (
@@ -230,6 +257,7 @@ def main() -> int:
                 args.record_vla_episode,
                 navigation_scenario,
                 args.vla_execution_horizon,
+                args.vla_temporal_ensemble_decay,
             )
     elif args.navigation_demo:
         report = run_navigation_demo(scenario=navigation_scenario)

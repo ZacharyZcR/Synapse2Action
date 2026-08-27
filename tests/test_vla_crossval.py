@@ -38,6 +38,14 @@ class VLACrossValidationTests(unittest.TestCase):
                 "chunked-ridge",
                 execution_horizon=1,
             )
+            chunked_ensemble = run_leave_one_scenario_out(
+                episodes,
+                SCENARIOS,
+                root / "chunked-ensemble",
+                "chunked-ridge",
+                execution_horizon=1,
+                temporal_ensemble_decay=0.75,
+            )
             knn = run_leave_one_scenario_out(episodes, SCENARIOS, root / "knn", "knn")
 
             first_fold = ridge["folds"][0]
@@ -79,6 +87,31 @@ class VLACrossValidationTests(unittest.TestCase):
         self.assertEqual(
             sum(fold["control_cycles"] for fold in chunked_receding["folds"]),
             478,
+        )
+        self.assertAlmostEqual(
+            chunked_receding["mean_translational_velocity_delta_mps"],
+            0.012513543458248946,
+        )
+        self.assertEqual(chunked_ensemble["closed_loop_passed"], 10)
+        self.assertEqual(chunked_ensemble["failed"], 0)
+        self.assertEqual(chunked_ensemble["temporal_ensemble_decay"], 0.75)
+        self.assertAlmostEqual(
+            chunked_ensemble["mean_translational_velocity_delta_mps"],
+            0.012338673605871193,
+        )
+        self.assertLess(
+            chunked_ensemble["mean_translational_velocity_delta_mps"],
+            chunked_receding["mean_translational_velocity_delta_mps"],
+        )
+        self.assertEqual(chunked_ensemble["translational_velocity_delta_samples"], 466)
+        self.assertEqual(chunked_ensemble["ensemble_reset_count"], 382)
+        self.assertEqual(
+            sum(fold["control_cycles"] for fold in chunked_ensemble["folds"]),
+            476,
+        )
+        self.assertEqual(
+            max(fold["max_ensemble_contributors"] for fold in chunked_ensemble["folds"]),
+            4,
         )
         self.assertEqual(knn["validation_samples"], 461)
         self.assertAlmostEqual(knn["validation_velocity_mae"], 0.08412305629771478)

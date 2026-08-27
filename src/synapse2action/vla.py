@@ -32,9 +32,14 @@ class VLAInferenceBackend(Protocol):
 class VLANavigationPolicy:
     backend: VLAInferenceBackend
     execution_horizon: int | None = None
+    temporal_ensemble_decay: float | None = None
     task: NavigationTask | None = None
     request_count: int = 0
     predicted_action_horizon: int = 0
+    max_ensemble_contributors: int = 0
+    ensemble_reset_count: int = 0
+    previous_obstacle_ids: frozenset[str] | None = None
+    predictions: list[tuple[int, tuple[BaseVelocity, ...]]] = field(default_factory=list)
 
     @property
     def replan_count(self) -> int | None:
@@ -48,20 +53,62 @@ class VLANavigationPolicy:
         self.task = task
         self.request_count = 0
         self.predicted_action_horizon = 0
+        self.max_ensemble_contributors = 0
+        self.ensemble_reset_count = 0
+        self.previous_obstacle_ids = None
+        self.predictions.clear()
+        if self.temporal_ensemble_decay is not None and not 0 < self.temporal_ensemble_decay <= 1:
+            raise ValueError("VLA temporal ensemble decay must be in (0, 1]")
+        if self.temporal_ensemble_decay is not None and self.execution_horizon not in (None, 1):
+            raise ValueError("VLA temporal ensembling requires execution horizon one")
         self.backend.reset(_encode({"schema_version": 1, "task": _task_payload(task)}))
 
     def predict(self, observation: NavigationObservation) -> ActionChunk:
         if self.task is None or observation.task != self.task:
             raise ValueError("VLA observation does not match the active task")
         response = self.backend.infer(_encode(_observation_payload(observation)))
+        prediction_step = self.request_count
         self.request_count += 1
         chunk = _decode_action_chunk(response)
         self.predicted_action_horizon = len(chunk.commands)
+        if self.temporal_ensemble_decay is not None:
+            obstacle_ids = frozenset(obstacle.obstacle_id for obstacle in observation.obstacles)
+            perception_changed = (
+                self.previous_obstacle_ids is not None
+                and obstacle_ids != self.previous_obstacle_ids
+            )
+            if self.predictions and (obstacle_ids or perception_changed):
+                self.predictions.clear()
+                self.ensemble_reset_count += 1
+            self.previous_obstacle_ids = obstacle_ids
+            self.predictions.append((prediction_step, chunk.commands))
+            self.predictions = [
+                prediction
+                for prediction in self.predictions
+                if prediction[0] + len(prediction[1]) > prediction_step
+            ]
+            return ActionChunk((self._ensemble_command(prediction_step),))
         if self.execution_horizon is None:
             return chunk
         if self.execution_horizon <= 0:
             raise ValueError("VLA execution horizon must be positive")
         return ActionChunk(chunk.commands[: self.execution_horizon])
+
+    def _ensemble_command(self, prediction_step: int) -> BaseVelocity:
+        candidates = []
+        for start, commands in self.predictions:
+            age = prediction_step - start
+            if 0 <= age < len(commands):
+                candidates.append((self.temporal_ensemble_decay**age, commands[age]))
+        self.max_ensemble_contributors = max(self.max_ensemble_contributors, len(candidates))
+        total_weight = sum(weight for weight, _ in candidates)
+        newest = candidates[-1][1]
+        return BaseVelocity(
+            sum(weight * command.vx for weight, command in candidates) / total_weight,
+            sum(weight * command.vy for weight, command in candidates) / total_weight,
+            sum(weight * command.yaw_rate for weight, command in candidates) / total_weight,
+            newest.duration_ms,
+        )
 
 
 @dataclass(slots=True)
@@ -98,19 +145,25 @@ def run_vla_navigation_demo(
     backend: VLAInferenceBackend | None = None,
     scenario: NavigationScenario | None = None,
     execution_horizon: int | None = None,
+    temporal_ensemble_decay: float | None = None,
 ) -> dict[str, object]:
     backend = backend or DeterministicVLABackend()
-    policy = VLANavigationPolicy(backend, execution_horizon)
+    policy = VLANavigationPolicy(backend, execution_horizon, temporal_ensemble_decay)
     report = run_navigation_demo(policy, scenario=scenario)
     report["demo"] = f"vla_adapter_{report['scenario']}"
     report["vla_backend"] = type(backend).__name__
     report["serialized_observations"] = report["control_cycles"]
     report["predicted_action_horizon"] = policy.predicted_action_horizon
     report["execution_horizon"] = (
-        min(execution_horizon, policy.predicted_action_horizon)
+        1
+        if temporal_ensemble_decay is not None
+        else min(execution_horizon, policy.predicted_action_horizon)
         if execution_horizon is not None
         else policy.predicted_action_horizon
     )
+    report["temporal_ensemble_decay"] = temporal_ensemble_decay
+    report["max_ensemble_contributors"] = policy.max_ensemble_contributors
+    report["ensemble_reset_count"] = policy.ensemble_reset_count
     return report
 
 

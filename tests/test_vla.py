@@ -4,6 +4,7 @@ import unittest
 
 from synapse2action.navigation import (
     BaseState,
+    BaseVelocity,
     CameraFrame,
     NavigationObservation,
     NavigationTask,
@@ -82,6 +83,32 @@ class VLATests(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             policy.predict(observation(NavigationTask("navigate to c", Pose2D(2, 0))))
+
+    def test_temporal_ensemble_blends_overlapping_chunk_predictions(self) -> None:
+        backend = StaticBackend(
+            {
+                "schema_version": 1,
+                "commands": [
+                    {"vx": 1.0, "vy": 0.0, "yaw_rate": 0.0, "duration_ms": 100},
+                    {"vx": 0.0, "vy": 0.0, "yaw_rate": 0.0, "duration_ms": 100},
+                ],
+            }
+        )
+        policy = VLANavigationPolicy(
+            backend,
+            execution_horizon=1,
+            temporal_ensemble_decay=0.5,
+        )
+        task = NavigationTask("navigate", Pose2D(1, 0))
+        policy.reset(task)
+
+        first = policy.predict(observation(task))
+        second = policy.predict(observation(task))
+
+        self.assertEqual(first.commands, (BaseVelocity(1.0, 0.0, 0.0, 100),))
+        self.assertAlmostEqual(second.commands[0].vx, 2 / 3)
+        self.assertEqual(policy.max_ensemble_contributors, 2)
+        self.assertEqual(policy.ensemble_reset_count, 0)
 
 
 if __name__ == "__main__":

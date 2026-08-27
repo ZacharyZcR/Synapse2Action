@@ -18,6 +18,7 @@ def run_leave_one_scenario_out(
     output_directory: Path,
     algorithm: str = "ridge",
     execution_horizon: int | None = None,
+    temporal_ensemble_decay: float | None = None,
 ) -> dict[str, object]:
     if algorithm not in {"knn", "ridge", "temporal-ridge", "chunked-ridge"}:
         raise ValueError("unsupported VLA cross-validation algorithm")
@@ -52,6 +53,7 @@ def run_leave_one_scenario_out(
             checkpoint_path,
             scenario_directory,
             execution_horizon,
+            temporal_ensemble_decay,
         )
         if len(benchmark["results"]) != 1:
             raise ValueError("leave-one-scenario-out fold must contain one validation result")
@@ -73,12 +75,26 @@ def run_leave_one_scenario_out(
 
     samples = sum(fold["validation_samples"] for fold in folds)
     passed = sum(fold["passed"] for fold in folds)
+    velocity_delta_samples = sum(
+        fold["translational_velocity_delta_samples"] for fold in folds
+    )
     return {
         "schema_version": 1,
         "benchmark": f"{algorithm}_vla_leave_one_scenario_out",
         "algorithm": algorithm,
         "predicted_action_horizon": folds[0]["predicted_action_horizon"],
         "execution_horizon": folds[0]["execution_horizon"],
+        "temporal_ensemble_decay": temporal_ensemble_decay,
+        "mean_translational_velocity_delta_mps": sum(
+            fold["mean_translational_velocity_delta_mps"]
+            * fold["translational_velocity_delta_samples"]
+            for fold in folds
+        )
+        / velocity_delta_samples
+        if velocity_delta_samples
+        else 0.0,
+        "translational_velocity_delta_samples": velocity_delta_samples,
+        "ensemble_reset_count": sum(fold["ensemble_reset_count"] for fold in folds),
         "episode_count": len(episode_paths),
         "fold_count": len(folds),
         "validation_samples": samples,

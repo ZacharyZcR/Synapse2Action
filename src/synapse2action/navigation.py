@@ -437,6 +437,11 @@ def run_navigation_demo(
     )
     harness.handle(Intent(IntentKind.SELECT, scenario.destination))
     harness.handle(Intent(IntentKind.CONFIRM))
+    executed_commands = [command for chunk in robot.chunks for command in chunk.commands]
+    velocity_deltas = [
+        hypot(current.vx - previous.vx, current.vy - previous.vy)
+        for previous, current in zip(executed_commands, executed_commands[1:])
+    ]
     return {
         "schema_version": 3,
         "demo": demo_name or scenario.name,
@@ -448,6 +453,11 @@ def run_navigation_demo(
         "obstacles": [asdict(obstacle) for obstacle in obstacles],
         "final_pose": asdict(robot.pose),
         "control_cycles": len(robot.chunks),
+        "executed_commands": len(executed_commands),
+        "mean_translational_velocity_delta_mps": (
+            sum(velocity_deltas) / len(velocity_deltas) if velocity_deltas else 0.0
+        ),
+        "translational_velocity_delta_samples": len(velocity_deltas),
         "observations": len(robot.frames),
         "observed_obstacle_frames": sum(bool(frame.obstacles) for frame in robot.frames),
         "replan_count": getattr(active_policy, "replan_count", None),

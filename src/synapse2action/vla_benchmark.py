@@ -16,16 +16,25 @@ def benchmark_vla_baseline(
     checkpoint_path: Path,
     scenario_directory: Path,
     execution_horizon: int | None = None,
+    temporal_ensemble_decay: float | None = None,
 ) -> dict[str, object]:
     payload = json.loads(checkpoint_path.read_text(encoding="utf-8"))
     checkpoint_format = payload.get("format") if isinstance(payload, dict) else None
     if checkpoint_format == "synapse2action.knn_vla":
         return benchmark_knn_baseline(
-            dataset_directory, checkpoint_path, scenario_directory, execution_horizon
+            dataset_directory,
+            checkpoint_path,
+            scenario_directory,
+            execution_horizon,
+            temporal_ensemble_decay,
         )
     if checkpoint_format == "synapse2action.ridge_vla":
         return benchmark_ridge_baseline(
-            dataset_directory, checkpoint_path, scenario_directory, execution_horizon
+            dataset_directory,
+            checkpoint_path,
+            scenario_directory,
+            execution_horizon,
+            temporal_ensemble_decay,
         )
     raise ValueError("unsupported VLA baseline checkpoint")
 
@@ -35,6 +44,7 @@ def benchmark_knn_baseline(
     checkpoint_path: Path,
     scenario_directory: Path,
     execution_horizon: int | None = None,
+    temporal_ensemble_decay: float | None = None,
 ) -> dict[str, object]:
     checkpoint = load_knn_checkpoint(checkpoint_path)
     offline = evaluate_knn_baseline(dataset_directory, checkpoint)
@@ -49,6 +59,7 @@ def benchmark_knn_baseline(
         offline,
         lambda: KNNVLABackend(checkpoint),
         execution_horizon,
+        temporal_ensemble_decay,
     )
 
 
@@ -57,6 +68,7 @@ def benchmark_ridge_baseline(
     checkpoint_path: Path,
     scenario_directory: Path,
     execution_horizon: int | None = None,
+    temporal_ensemble_decay: float | None = None,
 ) -> dict[str, object]:
     checkpoint = load_ridge_checkpoint(checkpoint_path)
     offline = evaluate_ridge_baseline(dataset_directory, checkpoint)
@@ -80,6 +92,7 @@ def benchmark_ridge_baseline(
         offline,
         lambda: RidgeVLABackend(checkpoint),
         execution_horizon,
+        temporal_ensemble_decay,
     )
 
 
@@ -100,6 +113,7 @@ def _closed_loop_benchmark(
     offline: dict[str, object],
     backend_factory: Callable[[], VLAInferenceBackend],
     execution_horizon: int | None,
+    temporal_ensemble_decay: float | None,
 ) -> dict[str, object]:
     episode_metadata = {episode["episode_id"]: episode for episode in manifest["episodes"]}
     scenarios = {
@@ -125,7 +139,12 @@ def _closed_loop_benchmark(
         scenario = scenarios.get(scenario_name)
         if scenario is None:
             raise ValueError(f"validation scenario not found: {scenario_name}")
-        report = run_vla_navigation_demo(backend_factory(), scenario, execution_horizon)
+        report = run_vla_navigation_demo(
+            backend_factory(),
+            scenario,
+            execution_horizon,
+            temporal_ensemble_decay,
+        )
         final_pose = report["final_pose"]
         goal = report["goal"]
         verify_detail = next(
@@ -143,6 +162,14 @@ def _closed_loop_benchmark(
                 "execution_detail": verify_detail,
                 "predicted_action_horizon": report["predicted_action_horizon"],
                 "execution_horizon": report["execution_horizon"],
+                "mean_translational_velocity_delta_mps": report[
+                    "mean_translational_velocity_delta_mps"
+                ],
+                "translational_velocity_delta_samples": report[
+                    "translational_velocity_delta_samples"
+                ],
+                "max_ensemble_contributors": report["max_ensemble_contributors"],
+                "ensemble_reset_count": report["ensemble_reset_count"],
             }
         )
 
@@ -167,6 +194,7 @@ def _closed_loop_benchmark(
         "execution_horizon": (
             next(iter(executed_horizons)) if len(executed_horizons) == 1 else None
         ),
+        "temporal_ensemble_decay": temporal_ensemble_decay,
         "failed": len(results) - passed,
         "results": results,
     }
