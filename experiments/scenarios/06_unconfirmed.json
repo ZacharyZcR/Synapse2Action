@@ -1,0 +1,5 @@
+{
+  "name": "confirmation without selection is rejected",
+  "intents": [{"kind": "confirm"}],
+  "expect": {"final_state": "idle", "action_count": 0, "error": "InvalidTransition"}
+}

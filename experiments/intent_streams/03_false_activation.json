@@ -1,0 +1,7 @@
+{
+  "name": "isolated false activation cannot execute",
+  "seed": 13,
+  "decoder": {"false_activation_probability": 1.0},
+  "windows": [{"at_ms": 0, "truth": null}],
+  "expect": {"final_state": "idle", "min_false_activations": 1, "max_unauthorized_actions": 0}
+}

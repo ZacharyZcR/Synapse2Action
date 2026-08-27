@@ -1,0 +1,13 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "synapse2action"
+version = "0.1.0"
+description = "A safety-first harness from sparse neural intent to robotic action."
+readme = "README.md"
+requires-python = ">=3.12"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/synapse2action"]

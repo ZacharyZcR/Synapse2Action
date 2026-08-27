@@ -1,0 +1,14 @@
+{
+  "seed": 20260827,
+  "trials": 1000,
+  "windows_per_trial": 1000,
+  "window_interval_ms": 100,
+  "false_activation_probability": 0.02,
+  "activation_kinds": ["select", "confirm", "cancel"],
+  "gate": {
+    "min_confirm_delay_ms": 300,
+    "max_confirm_delay_ms": 3000,
+    "refractory_ms": 250,
+    "confirmations_required": 2
+  }
+}

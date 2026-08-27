@@ -1,0 +1,7 @@
+{
+  "name": "duplicate stop remains safe",
+  "seed": 14,
+  "decoder": {"duplicate_probability": 1.0},
+  "windows": [{"at_ms": 0, "truth": {"kind": "stop"}}],
+  "expect": {"final_state": "emergency_stopped", "min_duplicates": 1, "max_unauthorized_actions": 0}
+}

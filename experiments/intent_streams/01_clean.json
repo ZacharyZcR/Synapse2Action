@@ -1,0 +1,10 @@
+{
+  "name": "clean select and confirm stream",
+  "seed": 11,
+  "decoder": {"max_jitter_ms": 20},
+  "windows": [
+    {"at_ms": 0, "truth": {"kind": "select", "target": "red_cube"}},
+    {"at_ms": 1000, "truth": {"kind": "confirm"}}
+  ],
+  "expect": {"final_state": "completed", "max_unauthorized_actions": 0}
+}

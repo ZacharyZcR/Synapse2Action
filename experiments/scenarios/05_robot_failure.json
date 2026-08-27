@@ -1,0 +1,9 @@
+{
+  "name": "robot failure fails verification",
+  "robot": {"success": false, "detail": "simulated timeout"},
+  "intents": [
+    {"kind": "select", "target": "red_cube"},
+    {"kind": "confirm"}
+  ],
+  "expect": {"final_state": "failed", "action_count": 1}
+}

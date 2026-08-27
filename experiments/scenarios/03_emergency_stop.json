@@ -1,0 +1,8 @@
+{
+  "name": "emergency stop preempts selection",
+  "intents": [
+    {"kind": "select", "target": "red_cube"},
+    {"kind": "stop"}
+  ],
+  "expect": {"final_state": "emergency_stopped", "action_count": 0, "stopped": true}
+}

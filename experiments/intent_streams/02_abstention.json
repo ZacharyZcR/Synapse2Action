@@ -1,0 +1,10 @@
+{
+  "name": "uncertain windows abstain",
+  "seed": 12,
+  "decoder": {"confidence_threshold": 0.7},
+  "windows": [
+    {"at_ms": 0, "confidence": 0.42, "truth": {"kind": "select", "target": "red_cube"}},
+    {"at_ms": 1000, "confidence": 0.51, "truth": {"kind": "confirm"}}
+  ],
+  "expect": {"final_state": "idle", "min_abstentions": 2, "max_unauthorized_actions": 0}
+}

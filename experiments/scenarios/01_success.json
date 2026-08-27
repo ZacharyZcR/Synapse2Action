@@ -1,0 +1,8 @@
+{
+  "name": "confirmed pick and place succeeds",
+  "intents": [
+    {"kind": "select", "target": "red_cube"},
+    {"kind": "confirm"}
+  ],
+  "expect": {"final_state": "completed", "action_count": 1}
+}

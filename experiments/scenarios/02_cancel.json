@@ -1,0 +1,8 @@
+{
+  "name": "cancelled target never executes",
+  "intents": [
+    {"kind": "select", "target": "red_cube"},
+    {"kind": "cancel"}
+  ],
+  "expect": {"final_state": "cancelled", "action_count": 0}
+}
