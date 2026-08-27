@@ -22,7 +22,12 @@ from .vla_dataset import export_dataset
 from .vla_baseline import KNNVLABackend, load_knn_checkpoint, train_knn_baseline
 from .vla_benchmark import benchmark_vla_baseline
 from .vla_crossval import run_leave_one_scenario_out
-from .vla_ridge import RidgeVLABackend, load_ridge_checkpoint, train_ridge_baseline
+from .vla_ridge import (
+    RidgeVLABackend,
+    load_ridge_checkpoint,
+    train_ridge_baseline,
+    train_temporal_ridge_baseline,
+)
 from .vla_http import EmbeddedVLAServer, HTTPVLABackend
 
 
@@ -73,7 +78,11 @@ def main() -> int:
     parser.add_argument("--vla-dataset-output", type=Path)
     parser.add_argument("--validation-fraction", type=float, default=0.2)
     parser.add_argument("--train-vla-baseline", type=Path)
-    parser.add_argument("--vla-baseline-algorithm", choices=("knn", "ridge"), default="knn")
+    parser.add_argument(
+        "--vla-baseline-algorithm",
+        choices=("knn", "ridge", "temporal-ridge"),
+        default="knn",
+    )
     parser.add_argument("--vla-checkpoint", type=Path)
     parser.add_argument("--benchmark-vla-baseline", type=Path)
     parser.add_argument("--benchmark-navigation-scenarios", type=Path)
@@ -155,10 +164,14 @@ def main() -> int:
     elif args.navigation_suite:
         report = run_navigation_suite(args.navigation_suite, args.navigation_episode_directory)
     elif args.train_vla_baseline:
-        report = (
-            train_ridge_baseline(args.train_vla_baseline, args.vla_checkpoint)
-            if args.vla_baseline_algorithm == "ridge"
-            else train_knn_baseline(args.train_vla_baseline, args.vla_checkpoint)
+        trainers = {
+            "knn": train_knn_baseline,
+            "ridge": train_ridge_baseline,
+            "temporal-ridge": train_temporal_ridge_baseline,
+        }
+        report = trainers[args.vla_baseline_algorithm](
+            args.train_vla_baseline,
+            args.vla_checkpoint,
         )
     elif args.export_vla_dataset:
         report = export_dataset(

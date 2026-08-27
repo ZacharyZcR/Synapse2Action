@@ -5,7 +5,7 @@ from pathlib import Path
 from .vla_baseline import train_knn_baseline
 from .vla_benchmark import benchmark_vla_baseline
 from .vla_dataset import export_dataset
-from .vla_ridge import train_ridge_baseline
+from .vla_ridge import train_ridge_baseline, train_temporal_ridge_baseline
 
 
 def run_leave_one_scenario_out(
@@ -14,7 +14,7 @@ def run_leave_one_scenario_out(
     output_directory: Path,
     algorithm: str = "ridge",
 ) -> dict[str, object]:
-    if algorithm not in {"knn", "ridge"}:
+    if algorithm not in {"knn", "ridge", "temporal-ridge"}:
         raise ValueError("unsupported VLA cross-validation algorithm")
     if len(episode_paths) < 2:
         raise ValueError("VLA cross-validation requires at least two episodes")
@@ -36,6 +36,8 @@ def run_leave_one_scenario_out(
         )
         if algorithm == "ridge":
             train_ridge_baseline(dataset_directory, checkpoint_path)
+        elif algorithm == "temporal-ridge":
+            train_temporal_ridge_baseline(dataset_directory, checkpoint_path)
         else:
             train_knn_baseline(dataset_directory, checkpoint_path)
         benchmark = benchmark_vla_baseline(

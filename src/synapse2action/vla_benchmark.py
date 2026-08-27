@@ -55,7 +55,11 @@ def benchmark_ridge_baseline(
     manifest = _manifest(dataset_directory)
     validation_ids = manifest["splits"]["validation"]["episodes"]
     return _closed_loop_benchmark(
-        "ridge_vla_held_out_navigation",
+        (
+            "temporal_ridge_vla_held_out_navigation"
+            if checkpoint.history_steps
+            else "ridge_vla_held_out_navigation"
+        ),
         checkpoint_path,
         scenario_directory,
         manifest,

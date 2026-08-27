@@ -9,7 +9,7 @@ from pathlib import Path
 
 
 JSON_OBJECT = dict[str, object]
-FEATURE_NAMES = (
+BASE_FEATURE_NAMES = (
     "goal_dx",
     "goal_dy",
     "goal_distance",
@@ -33,6 +33,12 @@ FEATURE_NAMES = (
     "detour_x",
     "detour_y",
 )
+FEATURE_NAMES = BASE_FEATURE_NAMES
+TEMPORAL_START = BASE_FEATURE_NAMES.index("camera_occupancy")
+TEMPORAL_FEATURE_NAMES = (
+    *BASE_FEATURE_NAMES,
+    *(f"delta_{name}" for name in BASE_FEATURE_NAMES[TEMPORAL_START:]),
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -43,35 +49,49 @@ class RidgeCheckpoint:
     duration_ms: int
     training_episode_ids: tuple[str, ...]
     ridge_lambda: float
+    history_steps: int = 0
+    temporal_regularization: float = 1.0
 
     def to_dict(self) -> JSON_OBJECT:
-        return {
-            "schema_version": 1,
+        payload: JSON_OBJECT = {
+            "schema_version": 1 if self.history_steps == 0 else 2,
             "format": "synapse2action.ridge_vla",
-            "algorithm": "ridge_behavior_cloning",
-            "feature_names": list(FEATURE_NAMES),
+            "algorithm": (
+                "ridge_behavior_cloning"
+                if self.history_steps == 0
+                else "temporal_ridge_behavior_cloning"
+            ),
+            "feature_names": list(_feature_names(self.history_steps)),
             "normalization": {"mean": list(self.mean), "scale": list(self.scale)},
             "weights": [list(row) for row in self.weights],
             "duration_ms": self.duration_ms,
             "training_episode_ids": list(self.training_episode_ids),
             "ridge_lambda": self.ridge_lambda,
         }
+        if self.history_steps:
+            payload["history_steps"] = self.history_steps
+            payload["temporal_regularization"] = self.temporal_regularization
+        return payload
 
 
 @dataclass(slots=True)
 class RidgeVLABackend:
     checkpoint: RidgeCheckpoint
     request_count: int = 0
+    previous_feature: tuple[float, ...] | None = None
 
     def reset(self, task_payload: bytes) -> None:
         payload = _json_object(task_payload)
         if payload.get("schema_version") != 1 or not isinstance(payload.get("task"), dict):
             raise ValueError("invalid task for Ridge VLA baseline")
         self.request_count = 1
+        self.previous_feature = None
 
     def infer(self, observation_payload: bytes) -> bytes:
-        feature = _wire_feature(_json_object(observation_payload))
+        current = _wire_feature(_json_object(observation_payload))
+        feature = _model_feature(current, self.previous_feature, self.checkpoint.history_steps)
         velocity = _predict(self.checkpoint, feature)
+        self.previous_feature = tuple(current)
         self.request_count += 1
         return json.dumps(
             {
@@ -96,6 +116,33 @@ def train_ridge_baseline(
     checkpoint_path: Path,
     ridge_lambda: float = 0.01,
 ) -> JSON_OBJECT:
+    return _train_ridge_baseline(dataset_directory, checkpoint_path, ridge_lambda, 0)
+
+
+def train_temporal_ridge_baseline(
+    dataset_directory: Path,
+    checkpoint_path: Path,
+    ridge_lambda: float = 0.01,
+    temporal_regularization: float = 100_000.0,
+) -> JSON_OBJECT:
+    if temporal_regularization < 1 or not isfinite(temporal_regularization):
+        raise ValueError("temporal regularization must be finite and at least one")
+    return _train_ridge_baseline(
+        dataset_directory,
+        checkpoint_path,
+        ridge_lambda,
+        1,
+        temporal_regularization,
+    )
+
+
+def _train_ridge_baseline(
+    dataset_directory: Path,
+    checkpoint_path: Path,
+    ridge_lambda: float,
+    history_steps: int,
+    temporal_regularization: float = 1.0,
+) -> JSON_OBJECT:
     if ridge_lambda <= 0 or not isfinite(ridge_lambda):
         raise ValueError("ridge lambda must be positive")
     manifest = _load_manifest(dataset_directory / "manifest.json")
@@ -104,17 +151,34 @@ def train_ridge_baseline(
     if not train_samples:
         raise ValueError("Ridge VLA baseline requires training samples")
 
-    features = [_sample_feature(sample) for sample in train_samples]
+    features = _sequence_features(train_samples, history_steps)
     targets = [_single_action(sample)[:3] for sample in train_samples]
     mean, scale = _normalization(features)
     design = [[1.0, *_normalize(feature, mean, scale)] for feature in features]
     weights = tuple(
-        tuple(_ridge_solve(design, [target[axis] for target in targets], ridge_lambda))
+        tuple(
+            _ridge_solve(
+                design,
+                [target[axis] for target in targets],
+                ridge_lambda,
+                len(BASE_FEATURE_NAMES) if history_steps else len(FEATURE_NAMES),
+                temporal_regularization,
+            )
+        )
         for axis in range(3)
     )
     duration_ms = Counter(_single_action(sample)[3] for sample in train_samples).most_common(1)[0][0]
     training_episode_ids = tuple(sorted({str(sample["episode_id"]) for sample in train_samples}))
-    checkpoint = RidgeCheckpoint(mean, scale, weights, duration_ms, training_episode_ids, ridge_lambda)
+    checkpoint = RidgeCheckpoint(
+        mean,
+        scale,
+        weights,
+        duration_ms,
+        training_episode_ids,
+        ridge_lambda,
+        history_steps,
+        temporal_regularization,
+    )
     checkpoint_path.write_text(
         json.dumps(checkpoint.to_dict(), ensure_ascii=False, indent=2, sort_keys=True) + "\n",
         encoding="utf-8",
@@ -122,7 +186,9 @@ def train_ridge_baseline(
     metrics = evaluate_ridge_baseline(dataset_directory, checkpoint)
     return {
         "schema_version": 1,
-        "baseline": "ridge_behavior_cloning",
+        "baseline": (
+            "ridge_behavior_cloning" if history_steps == 0 else "temporal_ridge_behavior_cloning"
+        ),
         "checkpoint": str(checkpoint_path),
         "training_episodes": len(training_episode_ids),
         "training_samples": len(train_samples),
@@ -151,8 +217,12 @@ def evaluate_ridge_baseline(dataset_directory: Path, checkpoint: RidgeCheckpoint
     absolute_error = 0.0
     durations = 0
     matching_duration = 0
-    for sample in samples:
-        predicted = _predict(checkpoint, _sample_feature(sample))
+    for sample, feature in zip(
+        samples,
+        _sequence_features(samples, checkpoint.history_steps),
+        strict=True,
+    ):
+        predicted = _predict(checkpoint, feature)
         expected = _single_action(sample)
         absolute_error += sum(abs(predicted[index] - expected[index]) for index in range(3))
         durations += 1
@@ -169,7 +239,7 @@ def evaluate_ridge_baseline(dataset_directory: Path, checkpoint: RidgeCheckpoint
 
 def load_ridge_checkpoint(path: Path) -> RidgeCheckpoint:
     payload = json.loads(path.read_text(encoding="utf-8"))
-    expected = {
+    common = {
         "schema_version",
         "format",
         "algorithm",
@@ -180,25 +250,33 @@ def load_ridge_checkpoint(path: Path) -> RidgeCheckpoint:
         "training_episode_ids",
         "ridge_lambda",
     }
-    if not isinstance(payload, dict) or set(payload) != expected:
+    if not isinstance(payload, dict):
         raise ValueError("Ridge VLA checkpoint does not match schema")
-    if (
-        payload["schema_version"] != 1
+    history_steps = payload.get("history_steps", 0)
+    expected = common | (
+        {"history_steps", "temporal_regularization"} if history_steps else set()
+    )
+    feature_names = _feature_names(history_steps)
+    algorithm = "ridge_behavior_cloning" if history_steps == 0 else "temporal_ridge_behavior_cloning"
+    schema_version = 1 if history_steps == 0 else 2
+    if set(payload) != expected or (
+        payload["schema_version"] != schema_version
         or payload["format"] != "synapse2action.ridge_vla"
-        or payload["algorithm"] != "ridge_behavior_cloning"
-        or payload["feature_names"] != list(FEATURE_NAMES)
+        or payload["algorithm"] != algorithm
+        or payload["feature_names"] != list(feature_names)
+        or history_steps not in (0, 1)
     ):
         raise ValueError("unsupported Ridge VLA checkpoint")
     normalization = _object(payload["normalization"])
     if set(normalization) != {"mean", "scale"}:
         raise ValueError("invalid Ridge VLA normalization")
-    mean = tuple(_vector(normalization.get("mean"), len(FEATURE_NAMES)))
-    scale = tuple(_vector(normalization.get("scale"), len(FEATURE_NAMES)))
+    mean = tuple(_vector(normalization.get("mean"), len(feature_names)))
+    scale = tuple(_vector(normalization.get("scale"), len(feature_names)))
     if any(value <= 0 for value in scale):
         raise ValueError("invalid Ridge VLA scale")
     if not isinstance(payload["weights"], list) or len(payload["weights"]) != 3:
         raise ValueError("invalid Ridge VLA weights")
-    weights = tuple(tuple(_vector(row, len(FEATURE_NAMES) + 1)) for row in payload["weights"])
+    weights = tuple(tuple(_vector(row, len(feature_names) + 1)) for row in payload["weights"])
     duration = payload["duration_ms"]
     if type(duration) is not int or duration <= 0:
         raise ValueError("invalid Ridge VLA duration")
@@ -210,13 +288,42 @@ def load_ridge_checkpoint(path: Path) -> RidgeCheckpoint:
     ridge_lambda = _number(payload["ridge_lambda"])
     if ridge_lambda <= 0:
         raise ValueError("invalid Ridge VLA lambda")
-    return RidgeCheckpoint(mean, scale, weights, duration, tuple(episode_ids), ridge_lambda)
+    temporal_regularization = (
+        _number(payload["temporal_regularization"]) if history_steps else 1.0
+    )
+    if temporal_regularization < 1:
+        raise ValueError("invalid temporal Ridge regularization")
+    return RidgeCheckpoint(
+        mean,
+        scale,
+        weights,
+        duration,
+        tuple(episode_ids),
+        ridge_lambda,
+        history_steps,
+        temporal_regularization,
+    )
 
 
-def _ridge_solve(design: list[list[float]], targets: list[float], ridge_lambda: float) -> list[float]:
+def _ridge_solve(
+    design: list[list[float]],
+    targets: list[float],
+    ridge_lambda: float,
+    base_feature_count: int,
+    temporal_regularization: float,
+) -> list[float]:
     width = len(design[0])
     matrix = [
-        [sum(row[left] * row[right] for row in design) + (ridge_lambda if left == right and left else 0.0) for right in range(width)]
+        [
+            sum(row[left] * row[right] for row in design)
+            + (
+                ridge_lambda
+                * (temporal_regularization if left > base_feature_count else 1.0)
+                if left == right and left
+                else 0.0
+            )
+            for right in range(width)
+        ]
         + [sum(row[left] * target for row, target in zip(design, targets, strict=True))]
         for left in range(width)
     ]
@@ -245,6 +352,56 @@ def _sample_feature(sample: JSON_OBJECT) -> list[float]:
     state = _vector(observation.get("state"), 6)
     goal = _vector(observation.get("goal"), 3)
     return _features(state, goal, _object(observation.get("camera")), observation.get("obstacles"))
+
+
+def _sequence_features(samples: list[JSON_OBJECT], history_steps: int) -> list[list[float]]:
+    previous: dict[str, tuple[int, tuple[float, ...]]] = {}
+    features = []
+    for sample in samples:
+        episode_id = sample.get("episode_id")
+        step = sample.get("step_index")
+        if not isinstance(episode_id, str) or type(step) is not int:
+            raise ValueError("invalid Ridge VLA episode sequence")
+        prior = previous.get(episode_id)
+        if step != (prior[0] + 1 if prior else 0):
+            raise ValueError("Ridge VLA episode steps are not contiguous")
+        current = _sample_feature(sample)
+        features.append(_model_feature(current, prior[1] if prior else None, history_steps))
+        previous[episode_id] = (step, tuple(current))
+    return features
+
+
+def _model_feature(
+    current: list[float],
+    previous: tuple[float, ...] | None,
+    history_steps: int,
+) -> list[float]:
+    if len(current) != len(BASE_FEATURE_NAMES):
+        raise ValueError("Ridge VLA base feature length mismatch")
+    if history_steps == 0:
+        return current
+    if history_steps != 1:
+        raise ValueError("unsupported Ridge VLA history length")
+    prior = previous or tuple(current)
+    return [
+        *current,
+        *(
+            value - old
+            for value, old in zip(
+                current[TEMPORAL_START:],
+                prior[TEMPORAL_START:],
+                strict=True,
+            )
+        ),
+    ]
+
+
+def _feature_names(history_steps: int) -> tuple[str, ...]:
+    if history_steps == 0:
+        return FEATURE_NAMES
+    if history_steps == 1:
+        return TEMPORAL_FEATURE_NAMES
+    raise ValueError("unsupported Ridge VLA history length")
 
 
 def _wire_feature(observation: JSON_OBJECT) -> list[float]:

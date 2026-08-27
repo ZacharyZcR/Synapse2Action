@@ -7,7 +7,12 @@ from synapse2action.navigation import load_navigation_scenario
 from synapse2action.navigation_suite import run_navigation_suite
 from synapse2action.vla import run_vla_navigation_demo
 from synapse2action.vla_dataset import export_dataset
-from synapse2action.vla_ridge import RidgeVLABackend, load_ridge_checkpoint, train_ridge_baseline
+from synapse2action.vla_ridge import (
+    RidgeVLABackend,
+    load_ridge_checkpoint,
+    train_ridge_baseline,
+    train_temporal_ridge_baseline,
+)
 
 
 SCENARIOS = Path("experiments/navigation")
@@ -52,6 +57,28 @@ class RidgeVLABaselineTests(unittest.TestCase):
             train_ridge_baseline(dataset, root / "two.json")
 
             self.assertEqual((root / "one.json").read_bytes(), (root / "two.json").read_bytes())
+
+    def test_temporal_checkpoint_runs_with_resettable_observation_history(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            dataset = build_dataset(root)
+            checkpoint_path = root / "temporal-ridge.json"
+
+            metrics = train_temporal_ridge_baseline(dataset, checkpoint_path)
+            checkpoint = load_ridge_checkpoint(checkpoint_path)
+            scenario = load_navigation_scenario(SCENARIOS / "05_offset_obstacle.json")
+            backend = RidgeVLABackend(checkpoint)
+            first = run_vla_navigation_demo(backend, scenario)
+            second = run_vla_navigation_demo(backend, scenario)
+
+        self.assertEqual(metrics["baseline"], "temporal_ridge_behavior_cloning")
+        self.assertAlmostEqual(metrics["validation_velocity_mae"], 0.012672697879258805)
+        self.assertEqual(checkpoint.history_steps, 1)
+        self.assertEqual(checkpoint.temporal_regularization, 100_000.0)
+        self.assertEqual(checkpoint.to_dict()["schema_version"], 2)
+        self.assertEqual(first, second)
+        self.assertTrue(first["passed"])
+        self.assertEqual(first["control_cycles"], 53)
 
     def test_corrupt_checkpoint_is_rejected(self) -> None:
         with TemporaryDirectory() as directory:
