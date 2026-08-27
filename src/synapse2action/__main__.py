@@ -91,6 +91,8 @@ def main() -> int:
     parser.add_argument("--navigation-suite", type=Path)
     parser.add_argument("--navigation-episode-directory", type=Path)
     parser.add_argument("--robot-transport", choices=("loopback",))
+    parser.add_argument("--robot-sensor-latency-ms", type=int, default=0)
+    parser.add_argument("--robot-command-latency-ms", type=int, default=0)
     parser.add_argument("--vla-navigation-demo", action="store_true")
     parser.add_argument("--vla-base-url")
     parser.add_argument("--vla-api-key-env", default="VLA_API_KEY")
@@ -132,6 +134,10 @@ def main() -> int:
         parser.error("--navigation-episode-directory requires --navigation-suite")
     if args.robot_transport and not (args.navigation_demo or args.vla_navigation_demo):
         parser.error("--robot-transport requires a navigation demo")
+    if args.robot_sensor_latency_ms < 0 or args.robot_command_latency_ms < 0:
+        parser.error("robot transport latency must be non-negative")
+    if (args.robot_sensor_latency_ms or args.robot_command_latency_ms) and not args.robot_transport:
+        parser.error("robot transport latency requires --robot-transport")
     if bool(args.export_vla_dataset) != bool(args.vla_dataset_output):
         parser.error("--export-vla-dataset and --vla-dataset-output must be provided together")
     if args.train_vla_baseline and not args.vla_checkpoint:
@@ -197,6 +203,8 @@ def main() -> int:
             active_navigation_scenario.obstacles,
             robot_radius_m=active_navigation_scenario.robot_radius_m,
             sensor_range_m=active_navigation_scenario.sensor_range_m,
+            sensor_latency_ms=args.robot_sensor_latency_ms,
+            command_latency_ms=args.robot_command_latency_ms,
         )
         if args.robot_transport == "loopback"
         else None

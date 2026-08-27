@@ -183,6 +183,9 @@ class NavigationRobot:
     transport_receipts: list[CommandReceipt] = field(default_factory=list)
     command_sequence: int = 0
     last_execution_detail: str = ""
+    last_command_completed_at_ms: int = 0
+    sensor_available_at_ms: list[int] = field(default_factory=list)
+    navigation_duration_ms: int = 0
 
     def _active_obstacles(self, at_ms: int) -> tuple[Obstacle2D, ...]:
         return tuple(
@@ -194,14 +197,16 @@ class NavigationRobot:
 
     def observe(self, task: NavigationTask, step: int, at_ms: int) -> NavigationObservation:
         if self.transport is not None:
-            from .robot_transport import decode_sensor_frame, encode_observation_request
+            from .robot_transport import decode_sensor_packet, encode_observation_request
 
-            sensor = decode_sensor_frame(
+            packet = decode_sensor_packet(
                 self.transport.exchange(encode_observation_request(step, at_ms)),
                 step,
             )
+            sensor = packet.frame
             self.pose = sensor.pose
             self.base_state = sensor.proprioception
+            self.sensor_available_at_ms.append(packet.available_at_ms)
             observation = NavigationObservation(sensor, task, step)
             self.frames.append(observation)
             return observation
@@ -219,6 +224,7 @@ class NavigationRobot:
             self.base_state,
         )
         observation = NavigationObservation(sensor, task, step)
+        self.sensor_available_at_ms.append(at_ms)
         self.frames.append(observation)
         return observation
 
@@ -237,6 +243,7 @@ class NavigationRobot:
                 self.transport_receipts.append(receipt)
                 self.pose = receipt.pose
                 self.base_state = receipt.base_state
+                self.last_command_completed_at_ms = receipt.completed_at_ms
                 if not receipt.accepted:
                     self.last_execution_detail = receipt.detail
                     return False
@@ -244,6 +251,7 @@ class NavigationRobot:
                 continue
             seconds = command.duration_ms / 1000
             command_time_ms += command.duration_ms
+            self.last_command_completed_at_ms = command_time_ms
             next_pose = Pose2D(
                 self.pose.x + command.vx * seconds,
                 self.pose.y + command.vy * seconds,
@@ -260,8 +268,13 @@ class NavigationRobot:
             self.pose = next_pose
             self.base_state = BaseState(command.vx, command.vy, command.yaw_rate)
         self.chunks.append(chunk)
+        self.last_command_completed_at_ms = command_time_ms
         self.last_execution_detail = "action chunk completed"
         return True
+
+    def _result(self, success: bool, detail: str, elapsed_ms: int) -> ExecutionResult:
+        self.navigation_duration_ms = elapsed_ms
+        return ExecutionResult(success, detail, elapsed_ms)
 
     def _halt_base(self) -> None:
         self.base_state = BaseState()
@@ -285,23 +298,28 @@ class NavigationRobot:
         elapsed_ms = 0
         for step in range(self.max_steps + 1):
             observation = self.observe(task, step, elapsed_ms)
+            elapsed_ms = max(elapsed_ms, self.sensor_available_at_ms[-1])
             if hypot(goal.x - self.pose.x, goal.y - self.pose.y) <= self.tolerance_m:
                 self._halt_base()
-                return ExecutionResult(True, "destination reached", elapsed_ms)
+                return self._result(True, "destination reached", elapsed_ms)
             if self.stopped:
-                return ExecutionResult(False, "navigation stopped", elapsed_ms)
+                return self._result(False, "navigation stopped", elapsed_ms)
             if step == self.max_steps:
                 break
             chunk = self.policy.predict(observation)
             if not chunk.commands:
                 self._halt_base()
-                return ExecutionResult(False, "policy produced no action", elapsed_ms)
+                return self._result(False, "policy produced no action", elapsed_ms)
             if not self.execute_chunk(chunk, elapsed_ms):
                 self._halt_base()
-                return ExecutionResult(False, self.last_execution_detail, elapsed_ms)
-            elapsed_ms += sum(command.duration_ms for command in chunk.commands)
+                return self._result(
+                    False,
+                    self.last_execution_detail,
+                    self.last_command_completed_at_ms,
+                )
+            elapsed_ms = self.last_command_completed_at_ms
         self._halt_base()
-        return ExecutionResult(False, "navigation step limit exceeded", elapsed_ms)
+        return self._result(False, "navigation step limit exceeded", elapsed_ms)
 
     def stop(self) -> None:
         self.stopped = True
@@ -499,11 +517,14 @@ def run_navigation_demo(
         "transport_commands": len(robot.transport_receipts),
         "transport_observations": getattr(transport, "observation_request_count", 0),
         "transport_halts": getattr(transport, "halt_count", 0),
+        "sensor_latency_ms": getattr(transport, "sensor_latency_ms", 0),
+        "command_latency_ms": getattr(transport, "command_latency_ms", 0),
         "transport_feedback": [
             {
                 "sequence": receipt.sequence,
                 "accepted": receipt.accepted,
                 "detail": receipt.detail,
+                "started_at_ms": receipt.started_at_ms,
                 "completed_at_ms": receipt.completed_at_ms,
                 "pose": asdict(receipt.pose),
                 "base_state": asdict(receipt.base_state),
@@ -511,6 +532,7 @@ def run_navigation_demo(
             for receipt in robot.transport_receipts
         ],
         "passed": harness.state.value == "completed",
+        "navigation_duration_ms": robot.navigation_duration_ms,
         "start": asdict(start),
         "goal": asdict(goal),
         "obstacles": [asdict(obstacle) for obstacle in obstacles],
@@ -531,6 +553,7 @@ def run_navigation_demo(
             {
                 "frame_id": frame.sensor.frame_id,
                 "captured_at_ms": frame.sensor.captured_at_ms,
+                "available_at_ms": robot.sensor_available_at_ms[index],
                 "instruction": frame.task.instruction,
                 "pose": asdict(frame.pose),
                 "visible_obstacles": [obstacle.obstacle_id for obstacle in frame.obstacles],
@@ -543,7 +566,7 @@ def run_navigation_demo(
                 },
                 "proprioception": asdict(frame.sensor.proprioception),
             }
-            for frame in robot.frames
+            for index, frame in enumerate(robot.frames)
         ],
         "final_proprioception": asdict(robot.base_state),
         "final_state": harness.state.value,

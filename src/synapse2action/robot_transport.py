@@ -32,9 +32,16 @@ class CommandReceipt:
     sequence: int
     accepted: bool
     detail: str
+    started_at_ms: int
     completed_at_ms: int
     pose: Pose2D
     base_state: BaseState
+
+
+@dataclass(frozen=True, slots=True)
+class SensorPacket:
+    frame: SensorFrame
+    available_at_ms: int
 
 
 @dataclass(slots=True)
@@ -43,12 +50,18 @@ class LoopbackRobotTransport:
     obstacles: tuple[Obstacle2D, ...] = ()
     robot_radius_m: float = 0.1
     sensor_range_m: float = 3.0
+    sensor_latency_ms: int = 0
+    command_latency_ms: int = 0
     name: str = "loopback"
     stopped: bool = False
     command_request_count: int = 0
     observation_request_count: int = 0
     halt_count: int = 0
     base_state: BaseState = BaseState()
+
+    def __post_init__(self) -> None:
+        if self.sensor_latency_ms < 0 or self.command_latency_ms < 0:
+            raise ValueError("robot transport latency must be non-negative")
 
     @property
     def request_count(self) -> int:
@@ -77,10 +90,19 @@ class LoopbackRobotTransport:
             _required_int(command_payload, "duration_ms"),
         )
         self.command_request_count += 1
-        completed_at_ms = issued_at_ms + command.duration_ms
+        started_at_ms = issued_at_ms + self.command_latency_ms
+        completed_at_ms = started_at_ms + command.duration_ms
         if self.stopped:
             return _encode_receipt(
-                CommandReceipt(sequence, False, "transport is stopped", completed_at_ms, self.pose, BaseState())
+                CommandReceipt(
+                    sequence,
+                    False,
+                    "transport is stopped",
+                    started_at_ms,
+                    completed_at_ms,
+                    self.pose,
+                    BaseState(),
+                )
             )
 
         seconds = command.duration_ms / 1000
@@ -99,7 +121,15 @@ class LoopbackRobotTransport:
         if collision:
             self.base_state = BaseState()
             return _encode_receipt(
-                CommandReceipt(sequence, False, "command intersects obstacle", completed_at_ms, self.pose, BaseState())
+                CommandReceipt(
+                    sequence,
+                    False,
+                    "command intersects obstacle",
+                    started_at_ms,
+                    completed_at_ms,
+                    self.pose,
+                    BaseState(),
+                )
             )
 
         self.pose = next_pose
@@ -109,6 +139,7 @@ class LoopbackRobotTransport:
                 sequence,
                 True,
                 "command completed",
+                started_at_ms,
                 completed_at_ms,
                 self.pose,
                 self.base_state,
@@ -126,14 +157,17 @@ class LoopbackRobotTransport:
             and hypot(obstacle.x - self.pose.x, obstacle.y - self.pose.y) <= self.sensor_range_m
         )
         self.observation_request_count += 1
-        return _encode_sensor_frame(
-            SensorFrame(
-                frame_id,
-                captured_at_ms,
-                self.pose,
-                visible,
-                render_camera(self.pose, visible, self.sensor_range_m),
-                self.base_state,
+        return _encode_sensor_packet(
+            SensorPacket(
+                SensorFrame(
+                    frame_id,
+                    captured_at_ms,
+                    self.pose,
+                    visible,
+                    render_camera(self.pose, visible, self.sensor_range_m),
+                    self.base_state,
+                ),
+                captured_at_ms + self.sensor_latency_ms,
             )
         )
 
@@ -188,13 +222,14 @@ def decode_command_receipt(response: bytes, expected_sequence: int) -> CommandRe
         sequence,
         bool(payload["accepted"]),
         str(payload["detail"]),
+        _required_int(payload, "started_at_ms"),
         _required_int(payload, "completed_at_ms"),
         Pose2D(float(pose["x"]), float(pose["y"]), float(pose["yaw"])),
         BaseState(float(state["vx"]), float(state["vy"]), float(state["yaw_rate"])),
     )
 
 
-def decode_sensor_frame(response: bytes, expected_frame_id: int) -> SensorFrame:
+def decode_sensor_packet(response: bytes, expected_frame_id: int) -> SensorPacket:
     payload = json.loads(response)
     if payload.get("schema_version") != 1 or payload.get("operation") != "sensor_frame":
         raise ValueError("unsupported robot sensor envelope")
@@ -209,19 +244,26 @@ def decode_sensor_frame(response: bytes, expected_frame_id: int) -> SensorFrame:
         obstacles, list
     ):
         raise ValueError("robot sensor frame is incomplete")
-    return SensorFrame(
-        frame_id,
-        _required_int(payload, "captured_at_ms"),
-        Pose2D(float(pose["x"]), float(pose["y"]), float(pose["yaw"])),
-        tuple(_decode_obstacle(obstacle) for obstacle in obstacles),
-        CameraFrame(
-            _required_int(camera, "width"),
-            _required_int(camera, "height"),
-            str(camera["encoding"]),
-            b64decode(str(camera["data_base64"]), validate=True),
+    return SensorPacket(
+        SensorFrame(
+            frame_id,
+            _required_int(payload, "captured_at_ms"),
+            Pose2D(float(pose["x"]), float(pose["y"]), float(pose["yaw"])),
+            tuple(_decode_obstacle(obstacle) for obstacle in obstacles),
+            CameraFrame(
+                _required_int(camera, "width"),
+                _required_int(camera, "height"),
+                str(camera["encoding"]),
+                b64decode(str(camera["data_base64"]), validate=True),
+            ),
+            BaseState(float(state["vx"]), float(state["vy"]), float(state["yaw_rate"])),
         ),
-        BaseState(float(state["vx"]), float(state["vy"]), float(state["yaw_rate"])),
+        _required_int(payload, "available_at_ms"),
     )
+
+
+def decode_sensor_frame(response: bytes, expected_frame_id: int) -> SensorFrame:
+    return decode_sensor_packet(response, expected_frame_id).frame
 
 
 def _encode_receipt(receipt: CommandReceipt) -> bytes:
@@ -236,13 +278,15 @@ def _encode_receipt(receipt: CommandReceipt) -> bytes:
     ).encode("utf-8")
 
 
-def _encode_sensor_frame(frame: SensorFrame) -> bytes:
+def _encode_sensor_packet(packet: SensorPacket) -> bytes:
+    frame = packet.frame
     return json.dumps(
         {
             "schema_version": 1,
             "operation": "sensor_frame",
             "frame_id": frame.frame_id,
             "captured_at_ms": frame.captured_at_ms,
+            "available_at_ms": packet.available_at_ms,
             "pose": asdict(frame.pose),
             "obstacles": [asdict(obstacle) for obstacle in frame.obstacles],
             "camera": {

@@ -136,6 +136,49 @@ class RobotTransportTests(unittest.TestCase):
         )
         self.assertGreater(max(pose["y"] for pose in report["trajectory"]), 0.1)
 
+    def test_transport_latency_advances_closed_loop_clock(self) -> None:
+        scenario = DEFAULT_NAVIGATION_SCENARIO
+        transport = LoopbackRobotTransport(
+            scenario.start,
+            scenario.obstacles,
+            robot_radius_m=scenario.robot_radius_m,
+            sensor_range_m=scenario.sensor_range_m,
+            sensor_latency_ms=20,
+            command_latency_ms=30,
+        )
+
+        report = run_vla_navigation_demo(scenario=scenario, transport=transport)
+
+        self.assertTrue(report["passed"])
+        self.assertEqual(report["sensor_latency_ms"], 20)
+        self.assertEqual(report["command_latency_ms"], 30)
+        self.assertEqual(report["transport_commands"], 44)
+        self.assertEqual(report["transport_observations"], 45)
+        self.assertEqual(report["navigation_duration_ms"], 6620)
+        self.assertEqual(
+            report["navigation_duration_ms"],
+            report["transport_commands"] * (100 + 30)
+            + report["transport_observations"] * 20,
+        )
+        self.assertEqual(
+            [
+                (frame["captured_at_ms"], frame["available_at_ms"])
+                for frame in report["sensor_frames"][:3]
+            ],
+            [(0, 20), (150, 170), (300, 320)],
+        )
+        self.assertEqual(
+            [
+                (feedback["started_at_ms"], feedback["completed_at_ms"])
+                for feedback in report["transport_feedback"][:2]
+            ],
+            [(50, 150), (200, 300)],
+        )
+
+    def test_transport_rejects_negative_latency(self) -> None:
+        with self.assertRaisesRegex(ValueError, "latency must be non-negative"):
+            LoopbackRobotTransport(Pose2D(0.0, 0.0), sensor_latency_ms=-1)
+
     def test_transport_rejects_unknown_wire_operation(self) -> None:
         transport = LoopbackRobotTransport(Pose2D(0.0, 0.0))
 
