@@ -10,7 +10,13 @@ class TabletopTests(unittest.TestCase):
         robot = TabletopRobot(TabletopObject("red_cube", Point2D(0.4, 0.1)), {"drop_zone": destination})
         verifier = TabletopVerifier(robot, destination)
 
-        result = robot.execute(Action("pick_and_place", {"target": "red_cube", "destination": "drop_zone"}))
+        result = robot.execute(
+            Action(
+                "pick_and_place",
+                {"target": "red_cube", "destination": "drop_zone"},
+                ("approach", "grasp", "transport", "release"),
+            )
+        )
 
         self.assertTrue(verifier.verify(result))
         self.assertEqual(robot.item.position, destination)
@@ -21,11 +27,27 @@ class TabletopTests(unittest.TestCase):
         start = Point2D(0.4, 0.1)
         robot = TabletopRobot(TabletopObject("red_cube", start), {})
 
-        result = robot.execute(Action("pick_and_place", {"target": "red_cube", "destination": "missing"}))
+        result = robot.execute(
+            Action(
+                "pick_and_place",
+                {"target": "red_cube", "destination": "missing"},
+                ("approach", "grasp", "transport", "release"),
+            )
+        )
 
         self.assertFalse(result.success)
         self.assertEqual(robot.item.position, start)
         self.assertEqual(len(robot.executed), 0)
+
+    def test_robot_rejects_missing_policy_trajectory(self) -> None:
+        start = Point2D(0.4, 0.1)
+        robot = TabletopRobot(TabletopObject("red_cube", start), {"drop_zone": Point2D(0.8, 0.6)})
+
+        result = robot.execute(Action("pick_and_place", {"target": "red_cube", "destination": "drop_zone"}))
+
+        self.assertFalse(result.success)
+        self.assertEqual(result.detail, "invalid policy trajectory")
+        self.assertEqual(robot.item.position, start)
 
 
 if __name__ == "__main__":

@@ -21,8 +21,12 @@ class ScriptedPolicy:
     prepared: list[Action] = field(default_factory=list)
 
     def prepare(self, action: Action) -> Action:
-        self.prepared.append(action)
-        return action
+        steps = {
+            "pick_and_place": ("approach", "grasp", "transport", "release"),
+        }.get(action.skill, ())
+        prepared = Action(action.skill, action.arguments, steps)
+        self.prepared.append(prepared)
+        return prepared
 
 
 @dataclass(slots=True)

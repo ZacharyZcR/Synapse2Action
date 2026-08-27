@@ -12,6 +12,7 @@ class DemoTests(unittest.TestCase):
 
         self.assertTrue(report["completed"])
         self.assertEqual(report["planned_actions"], 1)
+        self.assertEqual(report["policy_steps"], ["approach", "grasp", "transport", "release"])
         self.assertEqual(report["robot_actions"], 1)
         self.assertEqual(report["final_state"], "completed")
         self.assertEqual(len(report["pipeline"]), 7)

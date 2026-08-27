@@ -205,6 +205,8 @@ The `--demo` command runs the complete hardware-free happy path: seeded noisy SS
 
 `--demo` 命令运行完整的无设备 happy path：固定 seed 的带噪 SSVEP 样本、频率意图解码、Fake Perception 与 World、Mock Planner、Scripted Policy、确定性二维桌面机器人及独立终态验证。
 
+The planner selects a typed skill; the policy expands it into `approach`, `grasp`, `transport`, and `release` steps; the robot executes only the supplied trajectory. / Planner 选择类型化技能，Policy 将其展开为 `approach`、`grasp`、`transport` 与 `release`，Robot 只执行收到的轨迹。
+
 End-to-end demo scenarios are data-driven JSON files under `experiments/demos/`; object identity, positions, destination, decoder threshold, and neural windows can be changed without editing Python. / 端到端 Demo 使用 `experiments/demos/` 下的数据驱动 JSON；无需修改 Python 即可调整对象、位置、目标区、解码阈值和神经窗口。
 
 The bundled suite covers completed pick-and-place, cancellation, and emergency-stop outcomes decoded from numeric SSVEP signals. / 内置套件覆盖从数值 SSVEP 信号解码出的抓取放置成功、取消及急停终态。
@@ -212,6 +214,18 @@ The bundled suite covers completed pick-and-place, cancellation, and emergency-s
 The `--demo-suite` command runs every scenario and emits aggregate metrics plus one JSON/HTML pair per task. / `--demo-suite` 可批量运行全部场景，输出汇总指标，并为每项任务生成一组 JSON/HTML 产物。
 
 Raw numeric EEG windows can be saved with `--record-eeg` and replayed with `--replay-eeg`; replay uses the stored samples rather than regenerating signals. / 使用 `--record-eeg` 可保存原始数值 EEG 窗口，`--replay-eeg` 会直接回放已保存样本，而不是重新生成信号。
+
+An OpenAI-compatible Chat Completions planner can replace `MockPlanner` without changing downstream components:
+
+可使用 OpenAI-compatible Chat Completions Planner 替换 `MockPlanner`，无需修改下游组件：
+
+```bash
+PYTHONPATH=src python3 -m synapse2action --demo \
+  --planner-base-url http://localhost:8000/v1 \
+  --planner-model your-model-name
+```
+
+The API key is read from `OPENAI_API_KEY` by default and is never written to reports. / API Key 默认从 `OPENAI_API_KEY` 读取，且不会写入实验报告。
 
 The bundled suite covers successful execution, cancellation, emergency stop, invented skills, simulated robot timeout, and execution without confirmation. Scenario files live in `experiments/scenarios/` and require no model, simulator, EEG device, or robot.
 

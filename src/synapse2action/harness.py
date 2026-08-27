@@ -105,7 +105,7 @@ class Harness:
         decision = self.skills.validate(action, SkillContext(self.target))
         if not decision.accepted:
             return self._transition(TaskState.FAILED, "reject_policy", decision.reason)
-        self._transition(TaskState.ARMED, "policy", action.skill)
+        self._transition(TaskState.ARMED, "policy", f"{action.skill}:{len(action.steps)}_steps")
         self._transition(TaskState.EXECUTING, "execute", action.skill)
         result = self.robot.execute(action)
         self._transition(TaskState.VERIFYING, "verify", result.detail)

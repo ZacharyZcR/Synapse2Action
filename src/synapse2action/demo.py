@@ -7,7 +7,7 @@ from typing import Any
 
 from .authorization import ChallengeStore
 from .components import MockPlanner, ScriptedPolicy
-from .contracts import Intent, IntentKind
+from .contracts import Intent, IntentKind, Planner
 from .eeg import EEGWindow, FrequencyDecoder, SyntheticSSVEPSource
 from .harness import Harness
 from .tabletop import Point2D, TabletopObject, TabletopRobot, TabletopVerifier
@@ -53,6 +53,7 @@ def acquire_demo_eeg(scenario: dict[str, Any]) -> list[EEGWindow]:
 def run_demo(
     scenario: dict[str, Any] | None = None,
     eeg_windows: list[EEGWindow] | None = None,
+    planner: Planner | None = None,
 ) -> dict[str, Any]:
     scenario = scenario or DEFAULT_SCENARIO
     item = scenario["object"]
@@ -69,8 +70,11 @@ def run_demo(
         TabletopObject(target.object_id, Point2D(target.position[0], target.position[1])),
         {destination_config["name"]: drop_zone},
     )
+    active_planner = planner or MockPlanner(
+        arguments={"target": target.object_id, "destination": destination_config["name"]}
+    )
     harness = Harness(
-        MockPlanner(arguments={"target": target.object_id, "destination": destination_config["name"]}),
+        active_planner,
         robot,
         TabletopVerifier(robot, drop_zone),
         authorizer=ChallengeStore(lifetime_ms=2_000),
@@ -110,7 +114,7 @@ def run_demo(
             "synthetic_ssvep_source",
             "frequency_decoder",
             "fake_perception",
-            "mock_planner",
+            type(active_planner).__name__,
             "scripted_policy",
             "fake_robot",
             "rule_based_verifier",
@@ -140,6 +144,7 @@ def run_demo(
             for intent in decoded
         ],
         "planned_actions": len(policy.prepared),
+        "policy_steps": list(policy.prepared[0].steps) if policy.prepared else [],
         "robot_actions": len(robot.executed),
         "tabletop_final": robot.snapshot(),
         "tabletop_frames": [

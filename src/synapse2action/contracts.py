@@ -38,6 +38,7 @@ class Intent:
 class Action:
     skill: str
     arguments: Mapping[str, Any]
+    steps: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True, slots=True)

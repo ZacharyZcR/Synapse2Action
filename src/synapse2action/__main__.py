@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from pathlib import Path
 
 from .demo import DEFAULT_SCENARIO, acquire_demo_eeg, load_demo_scenario, run_demo
@@ -9,6 +10,7 @@ from .demo_suite import run_demo_suite
 from .experiments import run_suite
 from .eeg import load_recording, save_recording
 from .monte_carlo import run_monte_carlo
+from .llm_planner import OpenAICompatiblePlanner
 from .synthetic_intent import run_intent_suite
 from .visualization import render_demo_html
 
@@ -25,6 +27,9 @@ def main() -> int:
     parser.add_argument("--artifact-directory", type=Path)
     parser.add_argument("--record-eeg", type=Path)
     parser.add_argument("--replay-eeg", type=Path)
+    parser.add_argument("--planner-base-url")
+    parser.add_argument("--planner-model")
+    parser.add_argument("--planner-api-key-env", default="OPENAI_API_KEY")
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
 
@@ -36,7 +41,17 @@ def main() -> int:
         windows = load_recording(args.replay_eeg) if args.replay_eeg else acquire_demo_eeg(active_scenario)
         if args.record_eeg:
             save_recording(args.record_eeg, windows)
-        report = run_demo(active_scenario, windows)
+        planner = None
+        if args.planner_base_url or args.planner_model:
+            if not args.planner_base_url or not args.planner_model:
+                parser.error("--planner-base-url and --planner-model must be provided together")
+            planner = OpenAICompatiblePlanner(
+                args.planner_base_url,
+                args.planner_model,
+                destination=active_scenario["destination"]["name"],
+                api_key=os.getenv(args.planner_api_key_env),
+            )
+        report = run_demo(active_scenario, windows, planner)
     elif args.monte_carlo_config:
         report = run_monte_carlo(args.monte_carlo_config)
     elif args.intent_directory:

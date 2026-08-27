@@ -50,17 +50,22 @@ class TabletopRobot:
         destination = self.destinations.get(action.arguments["destination"])
         if destination is None:
             return ExecutionResult(False, "destination not found")
+        expected_steps = ("approach", "grasp", "transport", "release")
+        if action.steps != expected_steps:
+            return ExecutionResult(False, "invalid policy trajectory")
 
         self.executed.append(action)
-        self.gripper = self.item.position
-        self._record("approach")
-        self.item.held = True
-        self._record("grasp")
-        self.gripper = destination
-        self.item.position = destination
-        self._record("transport")
-        self.item.held = False
-        self._record("release")
+        for step in action.steps:
+            if step == "approach":
+                self.gripper = self.item.position
+            elif step == "grasp":
+                self.item.held = True
+            elif step == "transport":
+                self.gripper = destination
+                self.item.position = destination
+            elif step == "release":
+                self.item.held = False
+            self._record(step)
         return ExecutionResult(True, "object placed in drop zone", duration_ms=1200)
 
     def stop(self) -> None:
