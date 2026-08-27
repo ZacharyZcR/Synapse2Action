@@ -200,6 +200,7 @@ PYTHONPATH=src python3 -m synapse2action --vla-navigation-demo --replay-vla-epis
 PYTHONPATH=src python3 -m synapse2action --export-vla-dataset artifacts/train.episode.json artifacts/validation.episode.json --vla-dataset-output artifacts/vla-dataset
 PYTHONPATH=src python3 -m synapse2action --train-vla-baseline artifacts/vla-dataset --vla-checkpoint artifacts/knn-vla.json
 PYTHONPATH=src python3 -m synapse2action --vla-navigation-demo --vla-checkpoint artifacts/knn-vla.json
+PYTHONPATH=src python3 -m synapse2action --benchmark-vla-baseline artifacts/vla-dataset --benchmark-navigation-scenarios experiments/navigation --vla-checkpoint artifacts/knn-vla.json
 PYTHONPATH=src python3 -m synapse2action --demo-html demo.html --output demo.json
 PYTHONPATH=src python3 -m synapse2action --demo-scenario experiments/demos/blue_block.json --demo-html blue-demo.html
 PYTHONPATH=src python3 -m synapse2action --demo-suite experiments/demos --artifact-directory artifacts/demo-suite --output artifacts/demo-suite.json
@@ -228,6 +229,8 @@ Use `--record-vla-episode` to persist every serialized observation/action pair, 
 Use `--export-vla-dataset` with two or more episode files to create `manifest.json`, `train.jsonl`, and `validation.jsonl`. Splitting happens at episode level before frames are expanded, so adjacent observations from one trajectory cannot leak across train and validation. / 使用 `--export-vla-dataset` 输入两个或更多 episode 文件，可生成 `manifest.json`、`train.jsonl` 与 `validation.jsonl`。系统先按 episode 划分，再展开帧，因此同一轨迹的相邻 Observation 不会泄漏到 train 和 validation 两侧。
 
 `--train-vla-baseline` trains a deterministic normalized 1-nearest-neighbor behavior-cloning baseline from `train.jsonl`, evaluates it on `validation.jsonl`, and writes a standalone checkpoint. Supplying that checkpoint to `--vla-navigation-demo` runs the learned policy through the same VLA adapter and robot loop. This is a dependency-free imitation baseline, not ACT or SmolVLA. / `--train-vla-baseline` 使用 `train.jsonl` 训练确定性的归一化 1-NN behavior-cloning 基线，在 `validation.jsonl` 上评测并写出独立 checkpoint。将 checkpoint 传给 `--vla-navigation-demo` 后，学习策略会通过同一 VLA Adapter 与机器人闭环运行。这是零依赖 imitation baseline，不是 ACT 或 SmolVLA。
+
+`--benchmark-vla-baseline` verifies that checkpoint episode IDs exactly match the train split, computes offline metrics on validation samples, maps validation episode sources back to their navigation scenarios, and reports held-out closed-loop success, goal error, and execution failure detail. / `--benchmark-vla-baseline` 会验证 checkpoint episode ID 与 train split 精确一致，在 validation 样本上计算离线指标，将 validation episode 来源映射回导航场景，并报告 held-out 闭环成功率、终点误差和执行失败原因。
 
 The planner selects a typed skill; the policy expands it into `approach`, `grasp`, `transport`, and `release` steps; the robot executes only the supplied trajectory. / Planner 选择类型化技能，Policy 将其展开为 `approach`、`grasp`、`transport` 与 `release`，Robot 只执行收到的轨迹。
 

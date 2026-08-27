@@ -102,6 +102,27 @@ def train_knn_baseline(dataset_directory: Path, checkpoint_path: Path) -> JSON_O
     }
 
 
+def evaluate_knn_baseline(dataset_directory: Path, checkpoint: KNNCheckpoint) -> JSON_OBJECT:
+    manifest = _load_manifest(dataset_directory / "manifest.json")
+    train_metadata = _object(manifest["splits"]["train"])
+    validation_metadata = _object(manifest["splits"]["validation"])
+    train_episode_ids = set(_string_list(train_metadata.get("episodes")))
+    validation_episode_ids = set(_string_list(validation_metadata.get("episodes")))
+    if set(checkpoint.training_episode_ids) != train_episode_ids:
+        raise ValueError("checkpoint training episodes do not match dataset train split")
+    if train_episode_ids & validation_episode_ids:
+        raise ValueError("dataset train and validation episodes overlap")
+    validation_samples = _load_jsonl(dataset_directory / validation_metadata["file"])
+    if {sample["episode_id"] for sample in validation_samples} != validation_episode_ids:
+        raise ValueError("validation samples do not match dataset manifest")
+    return {
+        "training_episode_ids": sorted(train_episode_ids),
+        "validation_episode_ids": sorted(validation_episode_ids),
+        "validation_samples": len(validation_samples),
+        **_evaluate(checkpoint, validation_samples),
+    }
+
+
 def load_knn_checkpoint(path: Path) -> KNNCheckpoint:
     payload = json.loads(path.read_text(encoding="utf-8"))
     expected = {
@@ -304,6 +325,12 @@ def _object(value: object) -> JSON_OBJECT:
 def _list(value: object) -> list[object]:
     if not isinstance(value, list) or not value:
         raise ValueError("KNN VLA field must be a non-empty list")
+    return value
+
+
+def _string_list(value: object) -> list[str]:
+    if not isinstance(value, list) or not all(isinstance(item, str) for item in value):
+        raise ValueError("KNN VLA field must be a string list")
     return value
 
 

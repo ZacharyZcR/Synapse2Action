@@ -20,6 +20,7 @@ from .vla import DeterministicVLABackend, VLAInferenceBackend, run_vla_navigatio
 from .vla_episode import RecordingVLABackend, ReplayVLABackend, load_episode, save_episode
 from .vla_dataset import export_dataset
 from .vla_baseline import KNNVLABackend, load_knn_checkpoint, train_knn_baseline
+from .vla_benchmark import benchmark_knn_baseline
 from .vla_http import EmbeddedVLAServer, HTTPVLABackend
 
 
@@ -61,6 +62,8 @@ def main() -> int:
     parser.add_argument("--validation-fraction", type=float, default=0.2)
     parser.add_argument("--train-vla-baseline", type=Path)
     parser.add_argument("--vla-checkpoint", type=Path)
+    parser.add_argument("--benchmark-vla-baseline", type=Path)
+    parser.add_argument("--benchmark-navigation-scenarios", type=Path)
     parser.add_argument("--demo-html", type=Path)
     parser.add_argument("--demo-scenario", type=Path)
     parser.add_argument("--demo-suite", type=Path)
@@ -82,8 +85,14 @@ def main() -> int:
         parser.error("--export-vla-dataset and --vla-dataset-output must be provided together")
     if args.train_vla_baseline and not args.vla_checkpoint:
         parser.error("--train-vla-baseline requires --vla-checkpoint")
-    if args.vla_checkpoint and not (args.train_vla_baseline or args.vla_navigation_demo):
-        parser.error("--vla-checkpoint requires training or --vla-navigation-demo")
+    if bool(args.benchmark_vla_baseline) != bool(args.benchmark_navigation_scenarios):
+        parser.error("benchmark dataset and navigation scenarios must be provided together")
+    if args.benchmark_vla_baseline and not args.vla_checkpoint:
+        parser.error("--benchmark-vla-baseline requires --vla-checkpoint")
+    if args.vla_checkpoint and not (
+        args.train_vla_baseline or args.vla_navigation_demo or args.benchmark_vla_baseline
+    ):
+        parser.error("--vla-checkpoint requires training, benchmark, or --vla-navigation-demo")
     if args.train_vla_baseline and args.vla_navigation_demo:
         parser.error("training cannot be combined with --vla-navigation-demo")
     if args.train_vla_baseline and args.export_vla_dataset:
@@ -103,7 +112,13 @@ def main() -> int:
 
     navigation_scenario = load_navigation_scenario(args.navigation_scenario) if args.navigation_scenario else None
 
-    if args.navigation_suite:
+    if args.benchmark_vla_baseline:
+        report = benchmark_knn_baseline(
+            args.benchmark_vla_baseline,
+            args.vla_checkpoint,
+            args.benchmark_navigation_scenarios,
+        )
+    elif args.navigation_suite:
         report = run_navigation_suite(args.navigation_suite, args.navigation_episode_directory)
     elif args.train_vla_baseline:
         report = train_knn_baseline(args.train_vla_baseline, args.vla_checkpoint)
