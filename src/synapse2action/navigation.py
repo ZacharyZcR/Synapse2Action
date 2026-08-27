@@ -5,11 +5,14 @@ from hashlib import sha256
 import json
 from math import hypot, isfinite
 from pathlib import Path
-from typing import Protocol
+from typing import Protocol, TYPE_CHECKING
 
 from .components import MockPlanner
 from .contracts import Action, ExecutionResult, Intent, IntentKind
 from .harness import Harness
+
+if TYPE_CHECKING:
+    from .robot_transport import CommandReceipt, RobotTransport
 
 
 @dataclass(frozen=True, slots=True)
@@ -176,6 +179,10 @@ class NavigationRobot:
     executed: list[Action] = field(default_factory=list)
     stopped: bool = False
     base_state: BaseState = field(default_factory=BaseState)
+    transport: RobotTransport | None = None
+    transport_receipts: list[CommandReceipt] = field(default_factory=list)
+    command_sequence: int = 0
+    last_execution_detail: str = ""
 
     def _active_obstacles(self, at_ms: int) -> tuple[Obstacle2D, ...]:
         return tuple(
@@ -206,6 +213,23 @@ class NavigationRobot:
     def execute_chunk(self, chunk: ActionChunk, at_ms: int) -> bool:
         command_time_ms = at_ms
         for command in chunk.commands:
+            if self.transport is not None:
+                from .robot_transport import decode_command_receipt, encode_base_command
+
+                sequence = self.command_sequence
+                self.command_sequence += 1
+                receipt = decode_command_receipt(
+                    self.transport.exchange(encode_base_command(sequence, command, command_time_ms)),
+                    sequence,
+                )
+                self.transport_receipts.append(receipt)
+                self.pose = receipt.pose
+                self.base_state = receipt.base_state
+                if not receipt.accepted:
+                    self.last_execution_detail = receipt.detail
+                    return False
+                command_time_ms = receipt.completed_at_ms
+                continue
             seconds = command.duration_ms / 1000
             command_time_ms += command.duration_ms
             next_pose = Pose2D(
@@ -219,11 +243,18 @@ class NavigationRobot:
                 for obstacle in self._active_obstacles(command_time_ms)
             ):
                 self.base_state = BaseState()
+                self.last_execution_detail = "action chunk intersects obstacle"
                 return False
             self.pose = next_pose
             self.base_state = BaseState(command.vx, command.vy, command.yaw_rate)
         self.chunks.append(chunk)
+        self.last_execution_detail = "action chunk completed"
         return True
+
+    def _halt_base(self) -> None:
+        self.base_state = BaseState()
+        if self.transport is not None:
+            self.transport.halt()
 
     def execute(self, action: Action) -> ExecutionResult:
         if self.stopped:
@@ -243,7 +274,7 @@ class NavigationRobot:
         for step in range(self.max_steps + 1):
             observation = self.observe(task, step, elapsed_ms)
             if hypot(goal.x - self.pose.x, goal.y - self.pose.y) <= self.tolerance_m:
-                self.base_state = BaseState()
+                self._halt_base()
                 return ExecutionResult(True, "destination reached", elapsed_ms)
             if self.stopped:
                 return ExecutionResult(False, "navigation stopped", elapsed_ms)
@@ -251,17 +282,20 @@ class NavigationRobot:
                 break
             chunk = self.policy.predict(observation)
             if not chunk.commands:
-                self.base_state = BaseState()
+                self._halt_base()
                 return ExecutionResult(False, "policy produced no action", elapsed_ms)
             if not self.execute_chunk(chunk, elapsed_ms):
-                return ExecutionResult(False, "action chunk intersects obstacle", elapsed_ms)
+                self._halt_base()
+                return ExecutionResult(False, self.last_execution_detail, elapsed_ms)
             elapsed_ms += sum(command.duration_ms for command in chunk.commands)
-        self.base_state = BaseState()
+        self._halt_base()
         return ExecutionResult(False, "navigation step limit exceeded", elapsed_ms)
 
     def stop(self) -> None:
         self.stopped = True
         self.base_state = BaseState()
+        if self.transport is not None:
+            self.transport.stop()
 
 
 class NavigationVerifier:
@@ -414,6 +448,7 @@ def run_navigation_demo(
     policy: NavigationPolicy | None = None,
     demo_name: str | None = None,
     scenario: NavigationScenario | None = None,
+    transport: RobotTransport | None = None,
 ) -> dict[str, object]:
     scenario = scenario or DEFAULT_NAVIGATION_SCENARIO
     start = scenario.start
@@ -429,6 +464,7 @@ def run_navigation_demo(
         robot_radius_m=scenario.robot_radius_m,
         tolerance_m=scenario.tolerance_m,
         max_steps=scenario.max_steps,
+        transport=transport,
     )
     harness = Harness(
         MockPlanner("navigate_to", {"destination": scenario.destination}),
@@ -447,6 +483,20 @@ def run_navigation_demo(
         "demo": demo_name or scenario.name,
         "scenario": scenario.name,
         "navigation_policy": type(active_policy).__name__,
+        "robot_transport": transport.name if transport is not None else "in_process",
+        "transport_commands": len(robot.transport_receipts),
+        "transport_halts": getattr(transport, "halt_count", 0),
+        "transport_feedback": [
+            {
+                "sequence": receipt.sequence,
+                "accepted": receipt.accepted,
+                "detail": receipt.detail,
+                "completed_at_ms": receipt.completed_at_ms,
+                "pose": asdict(receipt.pose),
+                "base_state": asdict(receipt.base_state),
+            }
+            for receipt in robot.transport_receipts
+        ],
         "passed": harness.state.value == "completed",
         "start": asdict(start),
         "goal": asdict(goal),

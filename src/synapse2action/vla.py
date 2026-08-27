@@ -20,6 +20,7 @@ from .navigation import (
     SensorFrame,
     run_navigation_demo,
 )
+from .robot_transport import RobotTransport
 
 
 class VLAInferenceBackend(Protocol):
@@ -146,10 +147,11 @@ def run_vla_navigation_demo(
     scenario: NavigationScenario | None = None,
     execution_horizon: int | None = None,
     temporal_ensemble_decay: float | None = None,
+    transport: RobotTransport | None = None,
 ) -> dict[str, object]:
     backend = backend or DeterministicVLABackend()
     policy = VLANavigationPolicy(backend, execution_horizon, temporal_ensemble_decay)
-    report = run_navigation_demo(policy, scenario=scenario)
+    report = run_navigation_demo(policy, scenario=scenario, transport=transport)
     report["demo"] = f"vla_adapter_{report['scenario']}"
     report["vla_backend"] = type(backend).__name__
     report["serialized_observations"] = report["control_cycles"]

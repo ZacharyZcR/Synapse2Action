@@ -12,7 +12,13 @@ from .eeg import load_recording, save_recording
 from .embedded_planner import EmbeddedPlannerServer
 from .monte_carlo import run_monte_carlo
 from .llm_planner import OpenAICompatiblePlanner
-from .navigation import NavigationScenario, load_navigation_scenario, run_navigation_demo
+from .navigation import (
+    DEFAULT_NAVIGATION_SCENARIO,
+    NavigationScenario,
+    load_navigation_scenario,
+    run_navigation_demo,
+)
+from .robot_transport import LoopbackRobotTransport, RobotTransport
 from .navigation_suite import run_navigation_suite
 from .synthetic_intent import run_intent_suite
 from .visualization import render_demo_html
@@ -38,6 +44,7 @@ def _run_vla(
     scenario: NavigationScenario | None = None,
     execution_horizon: int | None = None,
     temporal_ensemble_decay: float | None = None,
+    transport: RobotTransport | None = None,
 ) -> dict[str, object]:
     if record_path is None:
         return run_vla_navigation_demo(
@@ -45,6 +52,7 @@ def _run_vla(
             scenario,
             execution_horizon,
             temporal_ensemble_decay,
+            transport,
         )
     recorder = RecordingVLABackend(backend)
     report = run_vla_navigation_demo(
@@ -52,6 +60,7 @@ def _run_vla(
         scenario,
         execution_horizon,
         temporal_ensemble_decay,
+        transport,
     )
     episode = recorder.episode()
     save_episode(record_path, episode)
@@ -81,6 +90,7 @@ def main() -> int:
     parser.add_argument("--navigation-scenario", type=Path)
     parser.add_argument("--navigation-suite", type=Path)
     parser.add_argument("--navigation-episode-directory", type=Path)
+    parser.add_argument("--robot-transport", choices=("loopback",))
     parser.add_argument("--vla-navigation-demo", action="store_true")
     parser.add_argument("--vla-base-url")
     parser.add_argument("--vla-api-key-env", default="VLA_API_KEY")
@@ -120,6 +130,8 @@ def main() -> int:
         parser.error("--navigation-scenario requires a navigation demo")
     if args.navigation_episode_directory and not args.navigation_suite:
         parser.error("--navigation-episode-directory requires --navigation-suite")
+    if args.robot_transport and not (args.navigation_demo or args.vla_navigation_demo):
+        parser.error("--robot-transport requires a navigation demo")
     if bool(args.export_vla_dataset) != bool(args.vla_dataset_output):
         parser.error("--export-vla-dataset and --vla-dataset-output must be provided together")
     if args.train_vla_baseline and not args.vla_checkpoint:
@@ -178,6 +190,16 @@ def main() -> int:
         parser.error("VLA backend options require --vla-navigation-demo")
 
     navigation_scenario = load_navigation_scenario(args.navigation_scenario) if args.navigation_scenario else None
+    active_navigation_scenario = navigation_scenario or DEFAULT_NAVIGATION_SCENARIO
+    robot_transport = (
+        LoopbackRobotTransport(
+            active_navigation_scenario.start,
+            active_navigation_scenario.obstacles,
+            active_navigation_scenario.robot_radius_m,
+        )
+        if args.robot_transport == "loopback"
+        else None
+    )
 
     if args.cross_validate_vla_baseline:
         report = run_leave_one_scenario_out(
@@ -224,6 +246,7 @@ def main() -> int:
                     navigation_scenario,
                     args.vla_execution_horizon,
                     args.vla_temporal_ensemble_decay,
+                    robot_transport,
                 )
                 report["vla_http_requests"] = len(server.requests)
                 report["vla_http_operations"] = [request.operation for request in server.requests]
@@ -234,6 +257,7 @@ def main() -> int:
                 scenario=navigation_scenario,
                 execution_horizon=args.vla_execution_horizon,
                 temporal_ensemble_decay=args.vla_temporal_ensemble_decay,
+                transport=robot_transport,
             )
             replay.assert_complete()
             report["replayed_episode"] = str(args.replay_vla_episode)
@@ -245,6 +269,7 @@ def main() -> int:
                 navigation_scenario,
                 args.vla_execution_horizon,
                 args.vla_temporal_ensemble_decay,
+                robot_transport,
             )
         else:
             backend = (
@@ -258,9 +283,10 @@ def main() -> int:
                 navigation_scenario,
                 args.vla_execution_horizon,
                 args.vla_temporal_ensemble_decay,
+                robot_transport,
             )
     elif args.navigation_demo:
-        report = run_navigation_demo(scenario=navigation_scenario)
+        report = run_navigation_demo(scenario=navigation_scenario, transport=robot_transport)
     elif args.demo_suite:
         report = run_demo_suite(args.demo_suite, args.artifact_directory)
     elif args.demo or args.demo_html or args.demo_scenario or args.record_eeg or args.replay_eeg or args.embedded_planner:
