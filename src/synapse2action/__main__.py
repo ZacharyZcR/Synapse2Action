@@ -15,8 +15,22 @@ from .llm_planner import OpenAICompatiblePlanner
 from .navigation import run_navigation_demo
 from .synthetic_intent import run_intent_suite
 from .visualization import render_demo_html
-from .vla import run_vla_navigation_demo
+from .vla import DeterministicVLABackend, VLAInferenceBackend, run_vla_navigation_demo
+from .vla_episode import RecordingVLABackend, ReplayVLABackend, load_episode, save_episode
 from .vla_http import EmbeddedVLAServer, HTTPVLABackend
+
+
+def _run_vla(backend: VLAInferenceBackend, record_path: Path | None = None) -> dict[str, object]:
+    if record_path is None:
+        return run_vla_navigation_demo(backend)
+    recorder = RecordingVLABackend(backend)
+    report = run_vla_navigation_demo(recorder)
+    episode = recorder.episode()
+    save_episode(record_path, episode)
+    report["recorded_episode"] = str(record_path)
+    report["recorded_steps"] = len(episode.steps)
+    report["recorded_backend"] = episode.backend
+    return report
 
 
 def main() -> int:
@@ -30,6 +44,8 @@ def main() -> int:
     parser.add_argument("--vla-base-url")
     parser.add_argument("--vla-api-key-env", default="VLA_API_KEY")
     parser.add_argument("--embedded-vla", action="store_true")
+    parser.add_argument("--record-vla-episode", type=Path)
+    parser.add_argument("--replay-vla-episode", type=Path)
     parser.add_argument("--demo-html", type=Path)
     parser.add_argument("--demo-scenario", type=Path)
     parser.add_argument("--demo-suite", type=Path)
@@ -45,21 +61,32 @@ def main() -> int:
 
     if args.embedded_vla and args.vla_base_url:
         parser.error("--embedded-vla cannot be combined with --vla-base-url")
-    if (args.embedded_vla or args.vla_base_url) and not args.vla_navigation_demo:
+    if args.record_vla_episode and args.replay_vla_episode:
+        parser.error("--record-vla-episode cannot be combined with --replay-vla-episode")
+    if args.replay_vla_episode and (args.embedded_vla or args.vla_base_url):
+        parser.error("replay cannot be combined with a live VLA backend")
+    if (args.embedded_vla or args.vla_base_url or args.record_vla_episode or args.replay_vla_episode) and not args.vla_navigation_demo:
         parser.error("VLA backend options require --vla-navigation-demo")
 
     if args.vla_navigation_demo:
         if args.embedded_vla:
             with EmbeddedVLAServer() as server:
-                report = run_vla_navigation_demo(HTTPVLABackend(server.base_url))
+                report = _run_vla(HTTPVLABackend(server.base_url), args.record_vla_episode)
                 report["vla_http_requests"] = len(server.requests)
                 report["vla_http_operations"] = [request.operation for request in server.requests]
+        elif args.replay_vla_episode:
+            replay = ReplayVLABackend(load_episode(args.replay_vla_episode))
+            report = _run_vla(replay)
+            replay.assert_complete()
+            report["replayed_episode"] = str(args.replay_vla_episode)
+            report["replayed_steps"] = replay.index
         elif args.vla_base_url:
-            report = run_vla_navigation_demo(
-                HTTPVLABackend(args.vla_base_url, api_key=os.getenv(args.vla_api_key_env))
+            report = _run_vla(
+                HTTPVLABackend(args.vla_base_url, api_key=os.getenv(args.vla_api_key_env)),
+                args.record_vla_episode,
             )
         else:
-            report = run_vla_navigation_demo()
+            report = _run_vla(DeterministicVLABackend(), args.record_vla_episode)
     elif args.navigation_demo:
         report = run_navigation_demo()
     elif args.demo_suite:

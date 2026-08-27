@@ -193,6 +193,8 @@ PYTHONPATH=src python3 -m synapse2action --demo
 PYTHONPATH=src python3 -m synapse2action --navigation-demo
 PYTHONPATH=src python3 -m synapse2action --vla-navigation-demo
 PYTHONPATH=src python3 -m synapse2action --vla-navigation-demo --embedded-vla
+PYTHONPATH=src python3 -m synapse2action --vla-navigation-demo --record-vla-episode artifacts/navigation-episode.json
+PYTHONPATH=src python3 -m synapse2action --vla-navigation-demo --replay-vla-episode artifacts/navigation-episode.json
 PYTHONPATH=src python3 -m synapse2action --demo-html demo.html --output demo.json
 PYTHONPATH=src python3 -m synapse2action --demo-scenario experiments/demos/blue_block.json --demo-html blue-demo.html
 PYTHONPATH=src python3 -m synapse2action --demo-suite experiments/demos --artifact-directory artifacts/demo-suite --output artifacts/demo-suite.json
@@ -213,6 +215,8 @@ The `--demo` command runs the complete hardware-free happy path: seeded noisy SS
 `--vla-navigation-demo` runs the same dynamic scenario through the byte-level VLA adapter. Every multimodal observation is JSON-serialized with base64 camera bytes, processed by a deterministic local inference backend, and strictly decoded from model-style JSON into an `ActionChunk`. / `--vla-navigation-demo` 通过字节级 VLA Adapter 运行同一动态场景。每帧多模态 Observation 都会序列化为 JSON（相机 bytes 使用 base64），经确定性本地推理 Backend 处理，再从模型式 JSON 严格解析为 `ActionChunk`。
 
 Use `--embedded-vla` to send the same reset and inference payloads over real loopback HTTP. An external service can replace it with `--vla-base-url http://localhost:9000/v1`; the optional API key is read from `VLA_API_KEY`. / 使用 `--embedded-vla` 可让相同的 reset 与 inference payload 经过真实 loopback HTTP。外部服务可通过 `--vla-base-url http://localhost:9000/v1` 替换内置服务；可选 API Key 从 `VLA_API_KEY` 读取。
+
+Use `--record-vla-episode` to persist every serialized observation/action pair, then use `--replay-vla-episode` to reproduce the run without an inference service. Replay is step-exact: a changed task or observation fails instead of silently returning an unrelated recorded action. / 使用 `--record-vla-episode` 可持久化每一组序列化 Observation/Action，随后用 `--replay-vla-episode` 在没有推理服务时复现运行。回放要求逐步精确一致；任务或观测发生变化时会失败，不会静默返回无关的历史动作。
 
 The planner selects a typed skill; the policy expands it into `approach`, `grasp`, `transport`, and `release` steps; the robot executes only the supplied trajectory. / Planner 选择类型化技能，Policy 将其展开为 `approach`、`grasp`、`transport` 与 `release`，Robot 只执行收到的轨迹。
 
