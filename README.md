@@ -199,8 +199,10 @@ PYTHONPATH=src python3 -m synapse2action --vla-navigation-demo --record-vla-epis
 PYTHONPATH=src python3 -m synapse2action --vla-navigation-demo --replay-vla-episode artifacts/navigation-episode.json
 PYTHONPATH=src python3 -m synapse2action --export-vla-dataset artifacts/train.episode.json artifacts/validation.episode.json --vla-dataset-output artifacts/vla-dataset
 PYTHONPATH=src python3 -m synapse2action --train-vla-baseline artifacts/vla-dataset --vla-checkpoint artifacts/knn-vla.json
+PYTHONPATH=src python3 -m synapse2action --train-vla-baseline artifacts/vla-dataset --vla-baseline-algorithm ridge --vla-checkpoint artifacts/ridge-vla.json
 PYTHONPATH=src python3 -m synapse2action --vla-navigation-demo --vla-checkpoint artifacts/knn-vla.json
 PYTHONPATH=src python3 -m synapse2action --benchmark-vla-baseline artifacts/vla-dataset --benchmark-navigation-scenarios experiments/navigation --vla-checkpoint artifacts/knn-vla.json
+PYTHONPATH=src python3 -m synapse2action --benchmark-vla-baseline artifacts/vla-dataset --benchmark-navigation-scenarios experiments/navigation --vla-checkpoint artifacts/ridge-vla.json
 PYTHONPATH=src python3 -m synapse2action --demo-html demo.html --output demo.json
 PYTHONPATH=src python3 -m synapse2action --demo-scenario experiments/demos/blue_block.json --demo-html blue-demo.html
 PYTHONPATH=src python3 -m synapse2action --demo-suite experiments/demos --artifact-directory artifacts/demo-suite --output artifacts/demo-suite.json
@@ -230,7 +232,9 @@ Use `--export-vla-dataset` with two or more episode files to create `manifest.js
 
 `--train-vla-baseline` trains a deterministic normalized 1-nearest-neighbor behavior-cloning baseline from `train.jsonl`, evaluates it on `validation.jsonl`, and writes a standalone checkpoint. Supplying that checkpoint to `--vla-navigation-demo` runs the learned policy through the same VLA adapter and robot loop. This is a dependency-free imitation baseline, not ACT or SmolVLA. / `--train-vla-baseline` 使用 `train.jsonl` 训练确定性的归一化 1-NN behavior-cloning 基线，在 `validation.jsonl` 上评测并写出独立 checkpoint。将 checkpoint 传给 `--vla-navigation-demo` 后，学习策略会通过同一 VLA Adapter 与机器人闭环运行。这是零依赖 imitation baseline，不是 ACT 或 SmolVLA。
 
-`--benchmark-vla-baseline` verifies that checkpoint episode IDs exactly match the train split, computes offline metrics on validation samples, maps validation episode sources back to their navigation scenarios, and reports held-out closed-loop success, goal error, and execution failure detail. / `--benchmark-vla-baseline` 会验证 checkpoint episode ID 与 train split 精确一致，在 validation 样本上计算离线指标，将 validation episode 来源映射回导航场景，并报告 held-out 闭环成功率、终点误差和执行失败原因。
+Select `--vla-baseline-algorithm ridge` to train a continuous Ridge behavior-cloning model over relative goal geometry, base velocity, and camera occupancy/centroid features. Checkpoint format is detected automatically at inference. / 使用 `--vla-baseline-algorithm ridge` 可训练连续 Ridge behavior-cloning 模型，输入包括相对目标几何、底盘速度以及相机占用率/质心特征；推理时会自动识别 checkpoint 格式。
+
+`--benchmark-vla-baseline` automatically recognizes KNN and Ridge checkpoints, verifies that checkpoint episode IDs exactly match the train split, computes offline metrics on validation samples, maps validation episode sources back to their navigation scenarios, and reports held-out closed-loop success, goal error, and execution failure detail. Offline MAE and closed-loop success are reported separately because a smaller one-step error does not prove that a policy can recover from its own rollout distribution. / `--benchmark-vla-baseline` 会自动识别 KNN 与 Ridge checkpoint，验证 checkpoint episode ID 与 train split 精确一致，在 validation 样本上计算离线指标，将 validation episode 来源映射回导航场景，并报告 held-out 闭环成功率、终点误差和执行失败原因。离线 MAE 与闭环成功率分开报告，因为更小的单步误差不能证明策略能从自身 rollout 分布中恢复。
 
 The planner selects a typed skill; the policy expands it into `approach`, `grasp`, `transport`, and `release` steps; the robot executes only the supplied trajectory. / Planner 选择类型化技能，Policy 将其展开为 `approach`、`grasp`、`transport` 与 `release`，Robot 只执行收到的轨迹。
 

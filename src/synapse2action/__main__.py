@@ -20,7 +20,8 @@ from .vla import DeterministicVLABackend, VLAInferenceBackend, run_vla_navigatio
 from .vla_episode import RecordingVLABackend, ReplayVLABackend, load_episode, save_episode
 from .vla_dataset import export_dataset
 from .vla_baseline import KNNVLABackend, load_knn_checkpoint, train_knn_baseline
-from .vla_benchmark import benchmark_knn_baseline
+from .vla_benchmark import benchmark_vla_baseline
+from .vla_ridge import RidgeVLABackend, load_ridge_checkpoint, train_ridge_baseline
 from .vla_http import EmbeddedVLAServer, HTTPVLABackend
 
 
@@ -39,6 +40,16 @@ def _run_vla(
     report["recorded_steps"] = len(episode.steps)
     report["recorded_backend"] = episode.backend
     return report
+
+
+def _checkpoint_backend(path: Path) -> VLAInferenceBackend:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    checkpoint_format = payload.get("format") if isinstance(payload, dict) else None
+    if checkpoint_format == "synapse2action.knn_vla":
+        return KNNVLABackend(load_knn_checkpoint(path))
+    if checkpoint_format == "synapse2action.ridge_vla":
+        return RidgeVLABackend(load_ridge_checkpoint(path))
+    raise ValueError("unsupported VLA baseline checkpoint")
 
 
 def main() -> int:
@@ -61,6 +72,7 @@ def main() -> int:
     parser.add_argument("--vla-dataset-output", type=Path)
     parser.add_argument("--validation-fraction", type=float, default=0.2)
     parser.add_argument("--train-vla-baseline", type=Path)
+    parser.add_argument("--vla-baseline-algorithm", choices=("knn", "ridge"), default="knn")
     parser.add_argument("--vla-checkpoint", type=Path)
     parser.add_argument("--benchmark-vla-baseline", type=Path)
     parser.add_argument("--benchmark-navigation-scenarios", type=Path)
@@ -113,7 +125,7 @@ def main() -> int:
     navigation_scenario = load_navigation_scenario(args.navigation_scenario) if args.navigation_scenario else None
 
     if args.benchmark_vla_baseline:
-        report = benchmark_knn_baseline(
+        report = benchmark_vla_baseline(
             args.benchmark_vla_baseline,
             args.vla_checkpoint,
             args.benchmark_navigation_scenarios,
@@ -121,7 +133,11 @@ def main() -> int:
     elif args.navigation_suite:
         report = run_navigation_suite(args.navigation_suite, args.navigation_episode_directory)
     elif args.train_vla_baseline:
-        report = train_knn_baseline(args.train_vla_baseline, args.vla_checkpoint)
+        report = (
+            train_ridge_baseline(args.train_vla_baseline, args.vla_checkpoint)
+            if args.vla_baseline_algorithm == "ridge"
+            else train_knn_baseline(args.train_vla_baseline, args.vla_checkpoint)
+        )
     elif args.export_vla_dataset:
         report = export_dataset(
             args.export_vla_dataset,
@@ -152,7 +168,7 @@ def main() -> int:
             )
         else:
             backend = (
-                KNNVLABackend(load_knn_checkpoint(args.vla_checkpoint))
+                _checkpoint_backend(args.vla_checkpoint)
                 if args.vla_checkpoint
                 else DeterministicVLABackend()
             )

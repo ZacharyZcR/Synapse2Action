@@ -1,0 +1,66 @@
+import json
+from pathlib import Path
+from tempfile import TemporaryDirectory
+import unittest
+
+from synapse2action.navigation import load_navigation_scenario
+from synapse2action.navigation_suite import run_navigation_suite
+from synapse2action.vla import run_vla_navigation_demo
+from synapse2action.vla_dataset import export_dataset
+from synapse2action.vla_ridge import RidgeVLABackend, load_ridge_checkpoint, train_ridge_baseline
+
+
+SCENARIOS = Path("experiments/navigation")
+
+
+def build_dataset(root: Path) -> Path:
+    episodes = root / "episodes"
+    dataset = root / "dataset"
+    run_navigation_suite(SCENARIOS, episodes)
+    export_dataset(sorted(episodes.glob("*.episode.json")), dataset, validation_fraction=0.2)
+    return dataset
+
+
+class RidgeVLABaselineTests(unittest.TestCase):
+    def test_trained_checkpoint_evaluates_and_runs_held_out_scenario(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            dataset = build_dataset(root)
+            checkpoint_path = root / "ridge.json"
+
+            metrics = train_ridge_baseline(dataset, checkpoint_path)
+            checkpoint = load_ridge_checkpoint(checkpoint_path)
+            scenario = load_navigation_scenario(SCENARIOS / "05_offset_obstacle.json")
+            report = run_vla_navigation_demo(RidgeVLABackend(checkpoint), scenario)
+
+        self.assertEqual(metrics["training_episodes"], 4)
+        self.assertEqual(metrics["training_samples"], 163)
+        self.assertEqual(metrics["validation_episodes"], 1)
+        self.assertEqual(metrics["validation_samples"], 49)
+        self.assertAlmostEqual(metrics["validation_velocity_mae"], 0.08805076999216926)
+        self.assertEqual(metrics["validation_duration_accuracy"], 1.0)
+        self.assertTrue(report["passed"])
+        self.assertEqual(report["vla_backend"], "RidgeVLABackend")
+        self.assertEqual(report["control_cycles"], 59)
+
+    def test_checkpoint_is_deterministic(self) -> None:
+        with TemporaryDirectory() as directory:
+            root = Path(directory)
+            dataset = build_dataset(root)
+
+            train_ridge_baseline(dataset, root / "one.json")
+            train_ridge_baseline(dataset, root / "two.json")
+
+            self.assertEqual((root / "one.json").read_bytes(), (root / "two.json").read_bytes())
+
+    def test_corrupt_checkpoint_is_rejected(self) -> None:
+        with TemporaryDirectory() as directory:
+            path = Path(directory) / "bad.json"
+            path.write_text(json.dumps({"format": "synapse2action.ridge_vla"}), encoding="utf-8")
+
+            with self.assertRaises(ValueError):
+                load_ridge_checkpoint(path)
+
+
+if __name__ == "__main__":
+    unittest.main()

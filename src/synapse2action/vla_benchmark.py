@@ -3,10 +3,26 @@ from __future__ import annotations
 import json
 from math import hypot
 from pathlib import Path
+from typing import Callable
 
 from .navigation import load_navigation_scenario
-from .vla import run_vla_navigation_demo
+from .vla import VLAInferenceBackend, run_vla_navigation_demo
 from .vla_baseline import KNNVLABackend, evaluate_knn_baseline, load_knn_checkpoint
+from .vla_ridge import RidgeVLABackend, evaluate_ridge_baseline, load_ridge_checkpoint
+
+
+def benchmark_vla_baseline(
+    dataset_directory: Path,
+    checkpoint_path: Path,
+    scenario_directory: Path,
+) -> dict[str, object]:
+    payload = json.loads(checkpoint_path.read_text(encoding="utf-8"))
+    checkpoint_format = payload.get("format") if isinstance(payload, dict) else None
+    if checkpoint_format == "synapse2action.knn_vla":
+        return benchmark_knn_baseline(dataset_directory, checkpoint_path, scenario_directory)
+    if checkpoint_format == "synapse2action.ridge_vla":
+        return benchmark_ridge_baseline(dataset_directory, checkpoint_path, scenario_directory)
+    raise ValueError("unsupported VLA baseline checkpoint")
 
 
 def benchmark_knn_baseline(
@@ -16,7 +32,57 @@ def benchmark_knn_baseline(
 ) -> dict[str, object]:
     checkpoint = load_knn_checkpoint(checkpoint_path)
     offline = evaluate_knn_baseline(dataset_directory, checkpoint)
+    manifest = _manifest(dataset_directory)
+    return _closed_loop_benchmark(
+        "knn_vla_held_out_navigation",
+        checkpoint_path,
+        scenario_directory,
+        manifest,
+        offline["validation_episode_ids"],
+        len(offline["training_episode_ids"]),
+        offline,
+        lambda: KNNVLABackend(checkpoint),
+    )
+
+
+def benchmark_ridge_baseline(
+    dataset_directory: Path,
+    checkpoint_path: Path,
+    scenario_directory: Path,
+) -> dict[str, object]:
+    checkpoint = load_ridge_checkpoint(checkpoint_path)
+    offline = evaluate_ridge_baseline(dataset_directory, checkpoint)
+    manifest = _manifest(dataset_directory)
+    validation_ids = manifest["splits"]["validation"]["episodes"]
+    return _closed_loop_benchmark(
+        "ridge_vla_held_out_navigation",
+        checkpoint_path,
+        scenario_directory,
+        manifest,
+        validation_ids,
+        len(checkpoint.training_episode_ids),
+        offline,
+        lambda: RidgeVLABackend(checkpoint),
+    )
+
+
+def _manifest(dataset_directory: Path) -> dict[str, object]:
     manifest = json.loads((dataset_directory / "manifest.json").read_text(encoding="utf-8"))
+    if not isinstance(manifest, dict) or manifest.get("format") != "synapse2action.vla_dataset":
+        raise ValueError("invalid benchmark dataset manifest")
+    return manifest
+
+
+def _closed_loop_benchmark(
+    benchmark_name: str,
+    checkpoint_path: Path,
+    scenario_directory: Path,
+    manifest: dict[str, object],
+    validation_episode_ids: list[str],
+    training_episode_count: int,
+    offline: dict[str, object],
+    backend_factory: Callable[[], VLAInferenceBackend],
+) -> dict[str, object]:
     episode_metadata = {episode["episode_id"]: episode for episode in manifest["episodes"]}
     scenarios = {
         scenario.name: scenario
@@ -29,7 +95,7 @@ def benchmark_knn_baseline(
         raise ValueError("VLA benchmark contains no navigation scenarios")
 
     results = []
-    for episode_id in offline["validation_episode_ids"]:
+    for episode_id in validation_episode_ids:
         metadata = episode_metadata.get(episode_id)
         if not metadata or not isinstance(metadata.get("source"), str):
             raise ValueError("validation episode is missing source metadata")
@@ -41,7 +107,7 @@ def benchmark_knn_baseline(
         scenario = scenarios.get(scenario_name)
         if scenario is None:
             raise ValueError(f"validation scenario not found: {scenario_name}")
-        report = run_vla_navigation_demo(KNNVLABackend(checkpoint), scenario)
+        report = run_vla_navigation_demo(backend_factory(), scenario)
         final_pose = report["final_pose"]
         goal = report["goal"]
         verify_detail = next(
@@ -63,9 +129,9 @@ def benchmark_knn_baseline(
     passed = sum(result["passed"] for result in results)
     return {
         "schema_version": 1,
-        "benchmark": "knn_vla_held_out_navigation",
+        "benchmark": benchmark_name,
         "checkpoint": str(checkpoint_path),
-        "training_episodes": len(offline["training_episode_ids"]),
+        "training_episodes": training_episode_count,
         "validation_episodes": len(results),
         "validation_samples": offline["validation_samples"],
         "validation_velocity_mae": offline["validation_velocity_mae"],
