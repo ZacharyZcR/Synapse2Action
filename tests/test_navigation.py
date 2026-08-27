@@ -75,7 +75,7 @@ class NavigationTests(unittest.TestCase):
         self.assertTrue(all(frame["camera"]["encoding"] == "mono8" for frame in frames))
         self.assertTrue(all(frame["camera"]["nonzero_pixels"] == 0 for frame in frames[:6]))
         self.assertGreater(frames[6]["camera"]["nonzero_pixels"], 0)
-        self.assertTrue(any(frame["camera"]["nonzero_pixels"] == 0 for frame in frames[23:]))
+        self.assertTrue(all(frame["camera"]["nonzero_pixels"] > 0 for frame in frames[23:]))
         self.assertEqual(frames[0]["proprioception"], {"vx": 0.0, "vy": 0.0, "yaw_rate": 0.0})
         self.assertEqual(report["final_proprioception"], {"vx": 0.0, "vy": 0.0, "yaw_rate": 0.0})
 

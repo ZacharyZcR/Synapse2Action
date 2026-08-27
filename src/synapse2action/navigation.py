@@ -289,7 +289,7 @@ def _render_camera(
         relative_x = obstacle.x - pose.x
         relative_y = obstacle.y - pose.y
         column = round((relative_y / sensor_range_m + 1) * (width - 1) / 2)
-        row = round((1 - relative_x / sensor_range_m) * (height - 1))
+        row = round((1 - relative_x / sensor_range_m) * (height - 1) / 2)
         radius_px = max(1, round(obstacle.radius * min(width, height) / sensor_range_m))
         for y in range(max(0, row - radius_px), min(height, row + radius_px + 1)):
             for x in range(max(0, column - radius_px), min(width, column + radius_px + 1)):

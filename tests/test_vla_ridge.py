@@ -17,7 +17,7 @@ def build_dataset(root: Path) -> Path:
     episodes = root / "episodes"
     dataset = root / "dataset"
     run_navigation_suite(SCENARIOS, episodes)
-    export_dataset(sorted(episodes.glob("*.episode.json")), dataset, validation_fraction=0.2)
+    export_dataset(sorted(episodes.glob("*.episode.json")), dataset, validation_fraction=0.3)
     return dataset
 
 
@@ -33,15 +33,15 @@ class RidgeVLABaselineTests(unittest.TestCase):
             scenario = load_navigation_scenario(SCENARIOS / "05_offset_obstacle.json")
             report = run_vla_navigation_demo(RidgeVLABackend(checkpoint), scenario)
 
-        self.assertEqual(metrics["training_episodes"], 4)
-        self.assertEqual(metrics["training_samples"], 163)
-        self.assertEqual(metrics["validation_episodes"], 1)
-        self.assertEqual(metrics["validation_samples"], 49)
-        self.assertAlmostEqual(metrics["validation_velocity_mae"], 0.08805076999216926)
+        self.assertEqual(metrics["training_episodes"], 7)
+        self.assertEqual(metrics["training_samples"], 339)
+        self.assertEqual(metrics["validation_episodes"], 3)
+        self.assertEqual(metrics["validation_samples"], 122)
+        self.assertAlmostEqual(metrics["validation_velocity_mae"], 0.01388720503560708)
         self.assertEqual(metrics["validation_duration_accuracy"], 1.0)
         self.assertTrue(report["passed"])
         self.assertEqual(report["vla_backend"], "RidgeVLABackend")
-        self.assertEqual(report["control_cycles"], 59)
+        self.assertEqual(report["control_cycles"], 54)
 
     def test_checkpoint_is_deterministic(self) -> None:
         with TemporaryDirectory() as directory:

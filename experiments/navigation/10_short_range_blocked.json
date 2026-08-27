@@ -1,0 +1,13 @@
+{
+  "name": "short_range_blocked",
+  "destination": "far_dock",
+  "start": {"x": 0.0, "y": 0.0, "yaw": 0.0},
+  "goal": {"x": 2.4, "y": 0.0, "yaw": 0.0},
+  "obstacles": [
+    {"obstacle_id": "case", "x": 1.2, "y": 0.0, "radius": 0.2, "active_from_ms": 0, "active_until_ms": null}
+  ],
+  "sensor_range_m": 1.25,
+  "robot_radius_m": 0.1,
+  "tolerance_m": 0.05,
+  "max_steps": 450
+}

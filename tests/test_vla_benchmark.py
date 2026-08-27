@@ -18,31 +18,31 @@ def build_benchmark(root: Path) -> tuple[Path, Path]:
     dataset = root / "dataset"
     checkpoint = root / "knn.json"
     run_navigation_suite(SCENARIOS, episodes)
-    export_dataset(sorted(episodes.glob("*.episode.json")), dataset, validation_fraction=0.2)
+    export_dataset(sorted(episodes.glob("*.episode.json")), dataset, validation_fraction=0.3)
     train_knn_baseline(dataset, checkpoint)
     return dataset, checkpoint
 
 
 class VLABenchmarkTests(unittest.TestCase):
-    def test_held_out_benchmark_exposes_closed_loop_failure(self) -> None:
+    def test_knn_benchmark_exposes_multi_scenario_closed_loop_failures(self) -> None:
         with TemporaryDirectory() as directory:
             dataset, checkpoint = build_benchmark(Path(directory))
 
             report = benchmark_knn_baseline(dataset, checkpoint, SCENARIOS)
 
-        self.assertEqual(report["training_episodes"], 4)
-        self.assertEqual(report["validation_episodes"], 1)
-        self.assertEqual(report["validation_samples"], 49)
-        self.assertGreater(report["validation_velocity_mae"], 0.1)
+        self.assertEqual(report["training_episodes"], 7)
+        self.assertEqual(report["validation_episodes"], 3)
+        self.assertEqual(report["validation_samples"], 122)
+        self.assertAlmostEqual(report["validation_velocity_mae"], 0.04909137177373667)
         self.assertEqual(report["validation_duration_accuracy"], 1.0)
-        self.assertEqual(report["closed_loop_passed"], 0)
-        self.assertEqual(report["closed_loop_failed"], 1)
-        self.assertEqual(report["closed_loop_success_rate"], 0.0)
-        self.assertEqual(report["failed"], 1)
-        result = report["results"][0]
-        self.assertEqual(result["scenario"], "offset_obstacle")
-        self.assertEqual(result["execution_detail"], "action chunk intersects obstacle")
-        self.assertGreater(result["goal_error_m"], 1.0)
+        self.assertEqual(report["closed_loop_passed"], 1)
+        self.assertEqual(report["closed_loop_failed"], 2)
+        self.assertEqual(report["closed_loop_success_rate"], 1 / 3)
+        self.assertEqual(report["failed"], 2)
+        self.assertEqual(
+            {result["scenario"] for result in report["results"] if not result["passed"]},
+            {"offset_obstacle", "clear_short"},
+        )
 
     def test_benchmark_is_deterministic(self) -> None:
         with TemporaryDirectory() as directory:
@@ -63,13 +63,16 @@ class VLABenchmarkTests(unittest.TestCase):
             knn = benchmark_vla_baseline(dataset, knn_checkpoint, SCENARIOS)
             ridge = benchmark_vla_baseline(dataset, ridge_checkpoint, SCENARIOS)
 
-        self.assertEqual(knn["closed_loop_success_rate"], 0.0)
+        self.assertEqual(knn["closed_loop_success_rate"], 1 / 3)
         self.assertEqual(ridge["benchmark"], "ridge_vla_held_out_navigation")
         self.assertEqual(ridge["closed_loop_success_rate"], 1.0)
         self.assertEqual(ridge["failed"], 0)
         self.assertLess(ridge["validation_velocity_mae"], knn["validation_velocity_mae"])
-        self.assertEqual(ridge["results"][0]["scenario"], "offset_obstacle")
-        self.assertTrue(ridge["results"][0]["passed"])
+        self.assertEqual(
+            {result["scenario"] for result in ridge["results"]},
+            {"offset_obstacle", "center_crate_late", "clear_short"},
+        )
+        self.assertTrue(all(result["passed"] for result in ridge["results"]))
 
     def test_benchmark_rejects_checkpoint_from_different_split(self) -> None:
         with TemporaryDirectory() as directory:

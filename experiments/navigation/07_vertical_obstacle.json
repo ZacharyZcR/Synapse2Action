@@ -1,0 +1,13 @@
+{
+  "name": "vertical_obstacle",
+  "destination": "upper_bay",
+  "start": {"x": 0.0, "y": -1.0, "yaw": 0.0},
+  "goal": {"x": 0.0, "y": 1.5, "yaw": 0.0},
+  "obstacles": [
+    {"obstacle_id": "barrel", "x": 0.0, "y": 0.1, "radius": 0.22, "active_from_ms": 0, "active_until_ms": null}
+  ],
+  "sensor_range_m": 3.0,
+  "robot_radius_m": 0.1,
+  "tolerance_m": 0.05,
+  "max_steps": 450
+}

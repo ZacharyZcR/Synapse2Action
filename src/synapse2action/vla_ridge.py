@@ -25,6 +25,7 @@ FEATURE_NAMES = (
     "occupancy_x_centroid_y",
     "obstacle_relative_x",
     "obstacle_relative_y",
+    "obstacle_radius",
     "obstacle_along_goal",
     "obstacle_cross_goal",
     "obstacle_cross_squared",
@@ -243,7 +244,7 @@ def _sample_feature(sample: JSON_OBJECT) -> list[float]:
     observation = _object(sample.get("observation"))
     state = _vector(observation.get("state"), 6)
     goal = _vector(observation.get("goal"), 3)
-    return _features(state, goal, _object(observation.get("camera")))
+    return _features(state, goal, _object(observation.get("camera")), observation.get("obstacles"))
 
 
 def _wire_feature(observation: JSON_OBJECT) -> list[float]:
@@ -256,20 +257,25 @@ def _wire_feature(observation: JSON_OBJECT) -> list[float]:
         *(_number(proprioception.get(name)) for name in ("vx", "vy", "yaw_rate")),
     ]
     goal_values = [_number(goal.get(name)) for name in ("x", "y", "yaw")]
-    return _features(state, goal_values, _object(sensor.get("camera")))
+    return _features(state, goal_values, _object(sensor.get("camera")), sensor.get("obstacles"))
 
 
-def _features(state: list[float], goal: list[float], camera: JSON_OBJECT) -> list[float]:
+def _features(
+    state: list[float],
+    goal: list[float],
+    camera: JSON_OBJECT,
+    obstacle_values: object,
+) -> list[float]:
     dx = goal[0] - state[0]
     dy = goal[1] - state[1]
     distance = hypot(dx, dy)
     unit_x, unit_y = (dx / distance, dy / distance) if distance else (0.0, 0.0)
     occupancy, centroid_x, centroid_y = _camera_features(camera)
-    obstacle_x = (1 - centroid_y) / 2 if occupancy else 0.0
-    obstacle_y = centroid_x if occupancy else 0.0
+    obstacle_x, obstacle_y, obstacle_radius = _blocking_obstacle(state, goal, obstacle_values)
     along = obstacle_x * unit_x + obstacle_y * unit_y
     cross = unit_x * obstacle_y - unit_y * obstacle_x
-    blocking = occupancy * max(0.0, along) / (abs(cross) + 0.1)
+    blocking = float(obstacle_radius > 0)
+    detour_offset = obstacle_radius + 0.2
     return [
         dx,
         dy,
@@ -286,13 +292,46 @@ def _features(state: list[float], goal: list[float], camera: JSON_OBJECT) -> lis
         occupancy * centroid_y,
         obstacle_x,
         obstacle_y,
+        obstacle_radius,
         along,
         cross,
         cross * cross,
         blocking,
-        -unit_y * blocking,
-        unit_x * blocking,
+        obstacle_x - unit_y * detour_offset if blocking else 0.0,
+        obstacle_y + unit_x * detour_offset if blocking else 0.0,
     ]
+
+
+def _blocking_obstacle(
+    state: list[float],
+    goal: list[float],
+    value: object,
+) -> tuple[float, float, float]:
+    if not isinstance(value, list):
+        raise ValueError("invalid obstacles for Ridge VLA")
+    goal_x = goal[0] - state[0]
+    goal_y = goal[1] - state[1]
+    length_squared = goal_x * goal_x + goal_y * goal_y
+    blocking = []
+    for item in value:
+        obstacle = _object(item)
+        relative_x = _number(obstacle.get("x")) - state[0]
+        relative_y = _number(obstacle.get("y")) - state[1]
+        radius = _number(obstacle.get("radius"))
+        progress = (
+            max(0.0, min(1.0, (relative_x * goal_x + relative_y * goal_y) / length_squared))
+            if length_squared
+            else 0.0
+        )
+        nearest_x = progress * goal_x
+        nearest_y = progress * goal_y
+        distance = hypot(relative_x - nearest_x, relative_y - nearest_y)
+        if 0 < progress < 1 and distance < radius + 0.1:
+            blocking.append((progress, relative_x, relative_y, radius))
+    if not blocking:
+        return 0.0, 0.0, 0.0
+    _, relative_x, relative_y, radius = min(blocking)
+    return relative_x, relative_y, radius
 
 
 def _camera_features(camera: JSON_OBJECT) -> tuple[float, float, float]:

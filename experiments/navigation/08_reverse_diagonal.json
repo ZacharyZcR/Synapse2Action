@@ -1,0 +1,13 @@
+{
+  "name": "reverse_diagonal",
+  "destination": "return_zone",
+  "start": {"x": 2.0, "y": 0.7, "yaw": 0.0},
+  "goal": {"x": -0.2, "y": -0.4, "yaw": 0.0},
+  "obstacles": [
+    {"obstacle_id": "stand", "x": 0.9, "y": 0.15, "radius": 0.2, "active_from_ms": 0, "active_until_ms": null}
+  ],
+  "sensor_range_m": 3.0,
+  "robot_radius_m": 0.1,
+  "tolerance_m": 0.05,
+  "max_steps": 450
+}

@@ -18,11 +18,11 @@ class NavigationSuiteTests(unittest.TestCase):
             episode_paths = sorted(episode_directory.glob("*.episode.json"))
             episodes = [load_episode(path) for path in episode_paths]
 
-        self.assertEqual(report["scenario_count"], 5)
-        self.assertEqual(report["passed"], 5)
+        self.assertEqual(report["scenario_count"], 10)
+        self.assertEqual(report["passed"], 10)
         self.assertEqual(report["failed"], 0)
-        self.assertEqual(report["recorded_episodes"], 5)
-        self.assertEqual(len(episode_paths), 5)
+        self.assertEqual(report["recorded_episodes"], 10)
+        self.assertEqual(len(episode_paths), 10)
         self.assertEqual(sum(len(episode.steps) for episode in episodes), report["total_control_cycles"])
         instructions = {episode.task["task"]["instruction"] for episode in episodes}
         self.assertGreater(len(instructions), 1)

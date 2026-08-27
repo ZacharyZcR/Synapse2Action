@@ -50,6 +50,16 @@ class VLADatasetTests(unittest.TestCase):
         self.assertEqual(len(sample["observation"]["goal"]), 3)
         self.assertEqual(len(sample["action"][0]), 4)
         self.assertEqual(sample["observation"]["camera"]["encoding"], "mono8")
+        self.assertIn("obstacles", sample["observation"])
+        obstacle = next(
+            obstacle
+            for dataset_sample in train
+            for obstacle in dataset_sample["observation"]["obstacles"]
+        )
+        self.assertEqual(
+            set(obstacle),
+            {"obstacle_id", "x", "y", "radius"},
+        )
 
     def test_export_is_deterministic_regardless_of_input_order(self) -> None:
         first = recorded_episode()

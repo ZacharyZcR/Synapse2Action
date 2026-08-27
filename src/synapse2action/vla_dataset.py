@@ -58,6 +58,7 @@ def export_dataset(
         "features": {
             "instruction": "string",
             "camera": {"encoding": "mono8", "storage": "base64"},
+            "obstacles": ["x", "y", "radius"],
             "state": ["x", "y", "yaw", "vx", "vy", "yaw_rate"],
             "goal": ["x", "y", "yaw"],
             "action": ["vx", "vy", "yaw_rate", "duration_ms"],
@@ -120,6 +121,7 @@ def _episode_samples(episode_id: str, split: str, episode: VLAEpisode) -> list[J
         if set(proprioception) != {"vx", "vy", "yaw_rate"}:
             raise ValueError("invalid VLA episode proprioception")
         camera = _camera(sensor.get("camera"))
+        obstacles = _obstacles(sensor.get("obstacles"))
         commands = _commands(action)
         samples.append(
             {
@@ -132,6 +134,7 @@ def _episode_samples(episode_id: str, split: str, episode: VLAEpisode) -> list[J
                     "frame_id": sensor.get("frame_id"),
                     "timestamp_ms": sensor.get("captured_at_ms"),
                     "camera": camera,
+                    "obstacles": obstacles,
                     "state": [
                         *pose,
                         *(_number(proprioception.get(name)) for name in ("vx", "vy", "yaw_rate")),
@@ -142,6 +145,29 @@ def _episode_samples(episode_id: str, split: str, episode: VLAEpisode) -> list[J
             }
         )
     return samples
+
+
+def _obstacles(value: object) -> list[JSON_OBJECT]:
+    if not isinstance(value, list):
+        raise ValueError("invalid VLA dataset obstacles")
+    obstacles = []
+    expected = {"obstacle_id", "x", "y", "radius", "active_from_ms", "active_until_ms"}
+    for item in value:
+        obstacle = _object(item)
+        if set(obstacle) != expected or not isinstance(obstacle["obstacle_id"], str):
+            raise ValueError("invalid VLA dataset obstacle")
+        radius = _number(obstacle["radius"])
+        if radius <= 0:
+            raise ValueError("invalid VLA dataset obstacle radius")
+        obstacles.append(
+            {
+                "obstacle_id": obstacle["obstacle_id"],
+                "x": _number(obstacle["x"]),
+                "y": _number(obstacle["y"]),
+                "radius": radius,
+            }
+        )
+    return obstacles
 
 
 def _camera(value: object) -> JSON_OBJECT:
