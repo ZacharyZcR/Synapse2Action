@@ -206,7 +206,7 @@ The `--demo` command runs the complete hardware-free happy path: seeded noisy SS
 
 `--demo` 命令运行完整的无设备 happy path：固定 seed 的带噪 SSVEP 样本、频率意图解码、Fake Perception 与 World、Mock Planner、Scripted Policy、确定性二维桌面机器人及独立终态验证。
 
-`--navigation-demo` runs a confirmed A-to-B task as a real closed loop: every cycle observes the current pose, asks a replaceable navigation policy for a short velocity action chunk, applies that chunk through the robot adapter, and independently verifies arrival. / `--navigation-demo` 将确认后的 A 到 B 任务作为真实闭环运行：每个周期读取当前位姿，由可替换 Navigation Policy 生成短时速度 Action Chunk，经 Robot Adapter 执行，并独立验证是否到达。
+`--navigation-demo` runs a confirmed A-to-B task as a real closed loop: every cycle observes the current pose and locally perceived obstacles, asks a replaceable navigation policy for a short velocity action chunk, applies that chunk through the robot adapter, and independently verifies arrival. The deterministic baseline routes around a crate placed directly on the path and reports every observed pose. / `--navigation-demo` 将确认后的 A 到 B 任务作为真实闭环运行：每个周期读取当前位姿与局部感知障碍物，由可替换 Navigation Policy 生成短时速度 Action Chunk，经 Robot Adapter 执行，并独立验证是否到达。确定性基线会绕过路径正中的箱体，并报告每一帧观测位姿。
 
 The planner selects a typed skill; the policy expands it into `approach`, `grasp`, `transport`, and `release` steps; the robot executes only the supplied trajectory. / Planner 选择类型化技能，Policy 将其展开为 `approach`、`grasp`、`transport` 与 `release`，Robot 只执行收到的轨迹。
 

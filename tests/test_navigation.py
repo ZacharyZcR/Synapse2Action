@@ -5,11 +5,23 @@ from synapse2action.components import MockPlanner
 from synapse2action.contracts import Intent, IntentKind, TaskState
 from synapse2action.harness import Harness
 from synapse2action.navigation import (
+    ActionChunk,
+    BaseVelocity,
     NavigationRobot,
     NavigationVerifier,
+    NavigationObservation,
+    Obstacle2D,
     Pose2D,
     run_navigation_demo,
 )
+
+
+class BlindStraightPolicy:
+    def reset(self, instruction: str, goal: Pose2D) -> None:
+        pass
+
+    def predict(self, instruction: str, observation: NavigationObservation) -> ActionChunk:
+        return ActionChunk((BaseVelocity(0.5, 0.0, 0.0, 100),))
 
 
 class NavigationTests(unittest.TestCase):
@@ -50,6 +62,28 @@ class NavigationTests(unittest.TestCase):
         self.assertTrue(report["passed"])
         self.assertEqual(report["final_state"], "completed")
         self.assertGreater(report["control_cycles"], 1)
+        self.assertGreater(report["observed_obstacle_frames"], 1)
+        self.assertGreater(max(pose["y"] for pose in report["trajectory"]), 0.3)
+
+    def test_robot_rejects_policy_chunk_that_hits_obstacle(self) -> None:
+        goal = Pose2D(2.0, 0.0)
+        robot = NavigationRobot(
+            Pose2D(0.0, 0.0),
+            {"point_b": goal},
+            policy=BlindStraightPolicy(),
+            obstacles=(Obstacle2D("crate", 1.0, 0.0, 0.25),),
+        )
+        harness = Harness(
+            MockPlanner("navigate_to", {"destination": "point_b"}),
+            robot,
+            NavigationVerifier(robot, goal),
+        )
+
+        harness.handle(Intent(IntentKind.SELECT, "point_b"))
+        state = harness.handle(Intent(IntentKind.CONFIRM))
+
+        self.assertEqual(state, TaskState.FAILED)
+        self.assertLess(robot.pose.x, 1.0)
 
 
 if __name__ == "__main__":
