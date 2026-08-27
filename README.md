@@ -59,33 +59,33 @@ The project follows a hardware-free-first strategy. Every external component beg
 
 ### Phase 0 — Contracts and Safety Kernel / 阶段 0：契约与安全内核
 
-- [ ] Adopt Python 3.12 as the primary implementation language. / 确定 Python 3.12 为主要实现语言。
+- [x] Adopt Python 3.12 as the primary implementation language. / 确定 Python 3.12 为主要实现语言。
 - [ ] Define versioned schemas for intent, world state, plan, skill, action, and result. / 定义意图、世界状态、计划、技能、动作与结果的版本化 Schema。
 - [ ] Define replaceable interfaces for `IntentSource`, `Planner`, `Policy`, `Robot`, and `Verifier`. / 为五类核心组件定义可替换接口。
-- [ ] Implement the explicit task states: idle, target selected, awaiting confirmation, armed, executing, verifying, completed, failed, cancelled, and emergency stopped. / 实现完整的显式任务状态机。
-- [ ] Specify invariants: no execution without confirmation, stop preempts every state, invalid model output never reaches a robot, and uncertainty defaults to no action. / 定义未确认不得执行、停止可抢占任意状态、非法模型输出不得到达机器人、不确定时默认不动作等不变量。
-- [ ] Define structured trace records and replay semantics. / 定义结构化执行轨迹与重放语义。
+- [x] Implement the explicit task states: idle, target selected, awaiting confirmation, armed, executing, verifying, completed, failed, cancelled, and emergency stopped. / 实现完整的显式任务状态机。
+- [x] Specify invariants: no execution without confirmation, stop preempts every state, invalid model output never reaches a robot, and uncertainty defaults to no action. / 定义未确认不得执行、停止可抢占任意状态、非法模型输出不得到达机器人、不确定时默认不动作等不变量。
+- [x] Define structured trace records and replay semantics. / 定义结构化执行轨迹与重放语义。
 
 **Exit criterion / 完成标准:** the contracts, state transitions, and safety properties are testable without models, simulators, EEG devices, or robots. / 无需模型、仿真器、EEG 设备或机器人，即可测试全部契约、状态迁移和安全性质。
 
 ### Phase 1 — Deterministic Hardware-Free Core / 阶段 1：确定性无设备核心
 
 - [ ] Implement scripted and keyboard intent sources for select, confirm, cancel, and stop. / 实现选择、确认、取消和停止的脚本与键盘意图源。
-- [ ] Implement `MockPlanner`, `ScriptedPolicy`, `FakeRobot`, and `RuleBasedVerifier`. / 实现四个确定性替身组件。
-- [ ] Build a typed skill registry with argument validation, preconditions, timeouts, and success conditions. / 建立包含参数校验、前置条件、超时和成功条件的类型化技能注册表。
-- [ ] Add scenario files for success, rejection, cancellation, timeout, malformed plans, and emergency stop. / 为成功、拒绝、取消、超时、非法计划和急停建立场景文件。
+- [x] Implement `MockPlanner`, `ScriptedPolicy`, `FakeRobot`, and `RuleBasedVerifier`. / 实现四个确定性替身组件。
+- [x] Build a typed skill registry with argument validation, preconditions, timeouts, and success conditions. / 建立包含参数校验、前置条件、超时和成功条件的类型化技能注册表。
+- [x] Add scenario files for success, rejection, cancellation, timeout, malformed plans, and emergency stop. / 为成功、拒绝、取消、超时、非法计划和急停建立场景文件。
 - [ ] Add property-based tests for illegal state transitions and adversarial inputs. / 为非法状态迁移和对抗输入加入性质测试。
-- [ ] Provide one-command scenario execution and deterministic replay. / 提供单命令场景执行与确定性重放。
+- [x] Provide one-command scenario execution and deterministic replay. / 提供单命令场景执行与确定性重放。
 
 **Exit criterion / 完成标准:** all safety tests pass on CPU, and the same scenario produces the same trace on every run. / 全部安全测试可在 CPU 上通过，同一场景每次生成一致轨迹。
 
 ### Phase 2 — LLM Planning Behind the Harness / 阶段 2：Harness 约束下的大模型规划
 
-- [ ] Define one OpenAI-compatible planner adapter instead of model-specific business logic. / 定义统一的 OpenAI-compatible Planner Adapter，避免在业务逻辑中绑定模型。
+- [x] Define one OpenAI-compatible planner adapter instead of model-specific business logic. / 定义统一的 OpenAI-compatible Planner Adapter，避免在业务逻辑中绑定模型。
 - [ ] Integrate DeepSeek-V4-Flash-0731 as the initial cloud planner. / 首先接入 DeepSeek-V4-Flash-0731 云端规划器。
 - [ ] Integrate Qwen3.8-27B as the local planner option. / 接入 Qwen3.8-27B 本地规划器。
 - [ ] Add GLM-5.3-Flash as an optional multimodal planner and verifier. / 将 GLM-5.3-Flash 作为可选多模态规划器与验证器。
-- [ ] Reject unknown skills, invalid arguments, stale object references, and plans that bypass confirmation. / 拒绝未知技能、非法参数、过期目标引用及绕过确认的计划。
+- [x] Reject unknown skills, invalid arguments, stale object references, and plans that bypass confirmation. / 拒绝未知技能、非法参数、过期目标引用及绕过确认的计划。
 - [ ] Benchmark schema compliance, invented-skill rate, dangerous-action refusal, latency, and recovery after provider failure. / 评测 Schema 遵循、虚构技能、危险动作拒绝、延迟与服务故障恢复。
 
 **Exit criterion / 完成标准:** a real LLM can replace `MockPlanner` without changing the Harness, and no malformed plan can reach the policy or robot layers. / 真实 LLM 可在不修改 Harness 的情况下替换 MockPlanner，任何非法计划均无法进入策略或机器人层。
@@ -226,6 +226,14 @@ PYTHONPATH=src python3 -m synapse2action --demo \
 ```
 
 The API key is read from `OPENAI_API_KEY` by default and is never written to reports. / API Key 默认从 `OPENAI_API_KEY` 读取，且不会写入实验报告。
+
+To verify the actual HTTP boundary without an external model, run the temporary loopback-only compatible server. It starts on an ephemeral port and shuts down before the command exits:
+
+无需外部模型时，可用临时 loopback-only 兼容服务验证真实 HTTP 边界。服务使用临时端口，并在命令结束前关闭：
+
+```bash
+PYTHONPATH=src python3 -m synapse2action --demo --embedded-planner
+```
 
 The bundled suite covers successful execution, cancellation, emergency stop, invented skills, simulated robot timeout, and execution without confirmation. Scenario files live in `experiments/scenarios/` and require no model, simulator, EEG device, or robot.
 

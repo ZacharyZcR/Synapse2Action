@@ -9,6 +9,7 @@ from .demo import DEFAULT_SCENARIO, acquire_demo_eeg, load_demo_scenario, run_de
 from .demo_suite import run_demo_suite
 from .experiments import run_suite
 from .eeg import load_recording, save_recording
+from .embedded_planner import EmbeddedPlannerServer
 from .monte_carlo import run_monte_carlo
 from .llm_planner import OpenAICompatiblePlanner
 from .synthetic_intent import run_intent_suite
@@ -30,18 +31,21 @@ def main() -> int:
     parser.add_argument("--planner-base-url")
     parser.add_argument("--planner-model")
     parser.add_argument("--planner-api-key-env", default="OPENAI_API_KEY")
+    parser.add_argument("--embedded-planner", action="store_true")
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
 
     if args.demo_suite:
         report = run_demo_suite(args.demo_suite, args.artifact_directory)
-    elif args.demo or args.demo_html or args.demo_scenario or args.record_eeg or args.replay_eeg:
+    elif args.demo or args.demo_html or args.demo_scenario or args.record_eeg or args.replay_eeg or args.embedded_planner:
         scenario = load_demo_scenario(args.demo_scenario) if args.demo_scenario else None
         active_scenario = scenario or DEFAULT_SCENARIO
         windows = load_recording(args.replay_eeg) if args.replay_eeg else acquire_demo_eeg(active_scenario)
         if args.record_eeg:
             save_recording(args.record_eeg, windows)
         planner = None
+        if args.embedded_planner and (args.planner_base_url or args.planner_model):
+            parser.error("--embedded-planner cannot be combined with external planner options")
         if args.planner_base_url or args.planner_model:
             if not args.planner_base_url or not args.planner_model:
                 parser.error("--planner-base-url and --planner-model must be provided together")
@@ -51,7 +55,15 @@ def main() -> int:
                 destination=active_scenario["destination"]["name"],
                 api_key=os.getenv(args.planner_api_key_env),
             )
-        report = run_demo(active_scenario, windows, planner)
+        if args.embedded_planner:
+            with EmbeddedPlannerServer(
+                active_scenario["object"]["object_id"], active_scenario["destination"]["name"]
+            ) as server:
+                planner = OpenAICompatiblePlanner(server.base_url, "embedded-planner")
+                report = run_demo(active_scenario, windows, planner)
+                report["planner_http_requests"] = len(server.requests)
+        else:
+            report = run_demo(active_scenario, windows, planner)
     elif args.monte_carlo_config:
         report = run_monte_carlo(args.monte_carlo_config)
     elif args.intent_directory:
