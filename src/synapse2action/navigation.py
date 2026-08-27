@@ -307,12 +307,15 @@ def _detour_waypoint(start: Pose2D, goal: Pose2D, obstacle: Obstacle2D, clearanc
     return Pose2D(obstacle.x - dy / length * offset, obstacle.y + dx / length * offset)
 
 
-def run_navigation_demo() -> dict[str, object]:
+def run_navigation_demo(
+    policy: NavigationPolicy | None = None,
+    demo_name: str = "dynamic_obstacle_navigation_a_to_b",
+) -> dict[str, object]:
     start = Pose2D(0.0, 0.0)
     goal = Pose2D(2.0, 0.0)
     obstacles = (Obstacle2D("crate", 1.0, 0.0, 0.25, active_from_ms=600),)
-    policy = ScriptedNavigationPolicy()
-    robot = NavigationRobot(start, {"point_b": goal}, policy=policy, obstacles=obstacles)
+    active_policy = policy or ScriptedNavigationPolicy()
+    robot = NavigationRobot(start, {"point_b": goal}, policy=active_policy, obstacles=obstacles)
     harness = Harness(
         MockPlanner("navigate_to", {"destination": "point_b"}),
         robot,
@@ -322,7 +325,8 @@ def run_navigation_demo() -> dict[str, object]:
     harness.handle(Intent(IntentKind.CONFIRM))
     return {
         "schema_version": 3,
-        "demo": "dynamic_obstacle_navigation_a_to_b",
+        "demo": demo_name,
+        "navigation_policy": type(active_policy).__name__,
         "passed": harness.state.value == "completed",
         "start": asdict(start),
         "goal": asdict(goal),
@@ -331,7 +335,8 @@ def run_navigation_demo() -> dict[str, object]:
         "control_cycles": len(robot.chunks),
         "observations": len(robot.frames),
         "observed_obstacle_frames": sum(bool(frame.obstacles) for frame in robot.frames),
-        "replan_count": policy.replan_count,
+        "replan_count": getattr(active_policy, "replan_count", 0),
+        "policy_requests": getattr(active_policy, "request_count", 0),
         "trajectory": [asdict(frame.pose) for frame in robot.frames],
         "sensor_frames": [
             {

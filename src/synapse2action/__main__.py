@@ -15,6 +15,7 @@ from .llm_planner import OpenAICompatiblePlanner
 from .navigation import run_navigation_demo
 from .synthetic_intent import run_intent_suite
 from .visualization import render_demo_html
+from .vla import run_vla_navigation_demo
 
 
 def main() -> int:
@@ -24,6 +25,7 @@ def main() -> int:
     parser.add_argument("--monte-carlo-config", type=Path)
     parser.add_argument("--demo", action="store_true")
     parser.add_argument("--navigation-demo", action="store_true")
+    parser.add_argument("--vla-navigation-demo", action="store_true")
     parser.add_argument("--demo-html", type=Path)
     parser.add_argument("--demo-scenario", type=Path)
     parser.add_argument("--demo-suite", type=Path)
@@ -37,7 +39,9 @@ def main() -> int:
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
 
-    if args.navigation_demo:
+    if args.vla_navigation_demo:
+        report = run_vla_navigation_demo()
+    elif args.navigation_demo:
         report = run_navigation_demo()
     elif args.demo_suite:
         report = run_demo_suite(args.demo_suite, args.artifact_directory)
