@@ -1,0 +1,9 @@
+{
+  "name": "wrong skill argument type is rejected",
+  "planner_arguments": {"target": "red_cube", "destination": 42},
+  "intents": [
+    {"kind": "select", "target": "red_cube"},
+    {"kind": "confirm"}
+  ],
+  "expect": {"final_state": "failed", "action_count": 0}
+}

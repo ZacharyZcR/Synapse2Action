@@ -1,7 +1,7 @@
 import unittest
 
 from synapse2action.components import FakeRobot, MockPlanner, RuleBasedVerifier
-from synapse2action.contracts import Intent, IntentKind, TaskState
+from synapse2action.contracts import ExecutionResult, Intent, IntentKind, TaskState
 from synapse2action.harness import Harness, InvalidTransition
 
 
@@ -69,6 +69,16 @@ class HarnessTests(unittest.TestCase):
 
         self.assertEqual(state, TaskState.FAILED)
         self.assertEqual(robot.executed, [])
+
+    def test_timeout_stops_robot(self) -> None:
+        robot = FakeRobot(result=ExecutionResult(True, "late", 5001))
+        harness = Harness(MockPlanner(), robot, RuleBasedVerifier())
+        harness.handle(Intent(IntentKind.SELECT, "red_cube"))
+
+        state = harness.handle(Intent(IntentKind.CONFIRM))
+
+        self.assertEqual(state, TaskState.FAILED)
+        self.assertTrue(robot.stopped)
 
 
 if __name__ == "__main__":

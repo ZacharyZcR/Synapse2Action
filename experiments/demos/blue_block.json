@@ -1,0 +1,18 @@
+{
+  "name": "blue_block_pick_and_place",
+  "expected_final_state": "completed",
+  "decoder_threshold": 0.55,
+  "eeg_seed": 84,
+  "object": {
+    "object_id": "blue_block",
+    "revision": 4,
+    "observed_at_ms": 0,
+    "position": [0.2, 0.5, 0.15],
+    "color": "#2563eb"
+  },
+  "destination": {"name": "drop_zone", "position": [0.75, 0.2]},
+  "neural_windows": [
+    {"at_ms": 100, "label": "select", "signal_amplitude": 0.9, "noise_std": 0.2},
+    {"at_ms": 900, "label": "confirm", "signal_amplitude": 0.9, "noise_std": 0.2}
+  ]
+}

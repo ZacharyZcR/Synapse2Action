@@ -60,3 +60,19 @@ virtual clock until a real integration layer is introduced.
 An optional deterministic challenge binds confirmation to a target, target revision, and expiry time. Challenges are single-use and reject expiry, replay, unknown tokens, and world-state revision drift. The token is a reproducible experiment identifier, not a cryptographic secret. This mechanism prevents stale or mismatched confirmation; it does not prove that a decoded EEG confirmation was intentional.
 
 可选的确定性 challenge 将确认绑定到目标、目标版本和有效期。Challenge 只能消费一次，并拒绝过期、重放、未知 token 与世界状态版本漂移。该 token 是可复现实验标识，不是密码学秘密。它能阻止过期或错位确认，但不能证明 EEG 解码出的确认确实来自用户意图。
+
+## Fake world / 虚拟世界状态
+
+The fake world stores object identity, revision, observation time, position, occupancy, and reachability. The Harness validates the selected snapshot again immediately before confirmation. Movement, removal, occupancy changes, and stale observations therefore produce no robot action.
+
+Fake World 保存对象身份、版本、观测时间、位置、占用和可达性。Harness 会在确认前重新校验所选快照，因此物体移动、消失、占用变化和观测过期均不会产生机器人动作。
+
+## Typed skill registry / 类型化技能注册表
+
+Every executable skill declares its exact argument schema, deterministic timeout, risk level, precondition, and success condition. Unknown skills, missing or extra arguments, wrong types, target substitution, and over-budget completion are rejected or failed without trusting planner or robot self-reporting.
+
+每个可执行技能声明精确参数 Schema、确定性超时、风险等级、前置条件和成功条件。未知技能、参数缺失或多余、类型错误、目标偷换以及超预算完成均会被拒绝或判定失败，不信任 Planner 或 Robot 的自报结果。
+
+The current synchronous fake robot reports virtual duration after execution; an over-budget result triggers `stop`. This validates policy and trace semantics, but real timeout preemption still requires an asynchronous executor and virtual clock.
+
+当前同步 Fake Robot 在执行返回后报告虚拟耗时，超预算会触发 `stop`。这能验证策略与轨迹语义，但真实超时抢占仍需要异步执行器和虚拟时钟。

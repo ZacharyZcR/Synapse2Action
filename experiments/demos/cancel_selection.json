@@ -1,0 +1,18 @@
+{
+  "name": "cancel_selected_object",
+  "expected_final_state": "cancelled",
+  "decoder_threshold": 0.55,
+  "eeg_seed": 126,
+  "object": {
+    "object_id": "cancel_selection",
+    "revision": 1,
+    "observed_at_ms": 0,
+    "position": [0.35, 0.25, 0.2],
+    "color": "#a16207"
+  },
+  "destination": {"name": "drop_zone", "position": [0.8, 0.6]},
+  "neural_windows": [
+    {"at_ms": 0, "label": "select", "signal_amplitude": 1.0, "noise_std": 0.15},
+    {"at_ms": 800, "label": "cancel", "signal_amplitude": 1.0, "noise_std": 0.15}
+  ]
+}

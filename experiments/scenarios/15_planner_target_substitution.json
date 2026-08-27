@@ -1,0 +1,9 @@
+{
+  "name": "planner cannot substitute selected target",
+  "planner_arguments": {"target": "blue_cube", "destination": "drop_zone"},
+  "intents": [
+    {"kind": "select", "target": "red_cube"},
+    {"kind": "confirm"}
+  ],
+  "expect": {"final_state": "failed", "action_count": 0}
+}

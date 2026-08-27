@@ -189,11 +189,29 @@ Run all hardware-free experiment scenarios and print a deterministic JSON report
 运行全部无设备实验场景，并输出确定性的 JSON 报告：
 
 ```bash
+PYTHONPATH=src python3 -m synapse2action --demo
+PYTHONPATH=src python3 -m synapse2action --demo-html demo.html --output demo.json
+PYTHONPATH=src python3 -m synapse2action --demo-scenario experiments/demos/blue_block.json --demo-html blue-demo.html
+PYTHONPATH=src python3 -m synapse2action --demo-suite experiments/demos --artifact-directory artifacts/demo-suite --output artifacts/demo-suite.json
+PYTHONPATH=src python3 -m synapse2action --demo-scenario experiments/demos/red_cube.json --record-eeg artifacts/red-cube-eeg.json --output artifacts/recorded-run.json
+PYTHONPATH=src python3 -m synapse2action --demo-scenario experiments/demos/red_cube.json --replay-eeg artifacts/red-cube-eeg.json --output artifacts/replayed-run.json
 PYTHONPATH=src python3 -m synapse2action
 PYTHONPATH=src python3 -m synapse2action --output report.json
 PYTHONPATH=src python3 -m synapse2action --intent-directory experiments/intent_streams
 PYTHONPATH=src python3 -m synapse2action --monte-carlo-config experiments/monte_carlo/false_activation.json
 ```
+
+The `--demo` command runs the complete hardware-free happy path: seeded noisy SSVEP samples, frequency-based intent decoding, fake perception and world state, mock planning, scripted policy, a deterministic 2D tabletop robot, and independent final-state verification.
+
+`--demo` 命令运行完整的无设备 happy path：固定 seed 的带噪 SSVEP 样本、频率意图解码、Fake Perception 与 World、Mock Planner、Scripted Policy、确定性二维桌面机器人及独立终态验证。
+
+End-to-end demo scenarios are data-driven JSON files under `experiments/demos/`; object identity, positions, destination, decoder threshold, and neural windows can be changed without editing Python. / 端到端 Demo 使用 `experiments/demos/` 下的数据驱动 JSON；无需修改 Python 即可调整对象、位置、目标区、解码阈值和神经窗口。
+
+The bundled suite covers completed pick-and-place, cancellation, and emergency-stop outcomes decoded from numeric SSVEP signals. / 内置套件覆盖从数值 SSVEP 信号解码出的抓取放置成功、取消及急停终态。
+
+The `--demo-suite` command runs every scenario and emits aggregate metrics plus one JSON/HTML pair per task. / `--demo-suite` 可批量运行全部场景，输出汇总指标，并为每项任务生成一组 JSON/HTML 产物。
+
+Raw numeric EEG windows can be saved with `--record-eeg` and replayed with `--replay-eeg`; replay uses the stored samples rather than regenerating signals. / 使用 `--record-eeg` 可保存原始数值 EEG 窗口，`--replay-eeg` 会直接回放已保存样本，而不是重新生成信号。
 
 The bundled suite covers successful execution, cancellation, emergency stop, invented skills, simulated robot timeout, and execution without confirmation. Scenario files live in `experiments/scenarios/` and require no model, simulator, EEG device, or robot.
 

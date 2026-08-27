@@ -9,6 +9,7 @@ from .authorization import ChallengeStore
 from .components import FakeRobot, MockPlanner, RuleBasedVerifier
 from .contracts import ExecutionResult, Intent, IntentKind, TaskState
 from .harness import Harness
+from .world import FakeWorld, WorldObject
 
 
 @dataclass(frozen=True, slots=True)
@@ -29,20 +30,51 @@ def run_scenario(path: Path) -> ExperimentResult:
         result=ExecutionResult(
             robot_config.get("success", True),
             robot_config.get("detail", "simulated action completed"),
+            robot_config.get("duration_ms", 0),
         )
     )
     authorization = scenario.get("authorization")
     authorizer = ChallengeStore(authorization.get("lifetime_ms", 3_000)) if authorization else None
+    world_config = scenario.get("world")
+    world = None
+    if world_config:
+        objects = [
+            WorldObject(
+                item["object_id"],
+                item["revision"],
+                item["observed_at_ms"],
+                tuple(item["position"]),
+                item.get("occupied", False),
+                item.get("reachable", True),
+            )
+            for item in world_config["objects"]
+        ]
+        world = FakeWorld(objects, world_config.get("max_age_ms", 1_000))
     harness = Harness(
-        MockPlanner(scenario.get("planner_skill", "pick_and_place")),
+        MockPlanner(scenario.get("planner_skill", "pick_and_place"), scenario.get("planner_arguments")),
         robot,
         RuleBasedVerifier(),
         authorizer=authorizer,
+        world=world,
     )
     error = None
 
     try:
         for item in scenario["intents"]:
+            if "world_update" in item:
+                update = item["world_update"]
+                if update["op"] == "move":
+                    assert world is not None
+                    world.move(update["target"], tuple(update["position"]), update["at_ms"])
+                elif update["op"] == "occupy":
+                    assert world is not None
+                    world.set_occupied(update["target"], True, update["at_ms"])
+                elif update["op"] == "remove":
+                    assert world is not None
+                    world.remove(update["target"])
+                else:
+                    raise ValueError(f"unknown world operation: {update['op']}")
+                continue
             harness.handle(
                 Intent(
                     IntentKind(item["kind"]),

@@ -1,0 +1,9 @@
+{
+  "name": "skill exceeding deterministic budget fails",
+  "robot": {"success": true, "detail": "late completion", "duration_ms": 5001},
+  "intents": [
+    {"kind": "select", "target": "red_cube"},
+    {"kind": "confirm"}
+  ],
+  "expect": {"final_state": "failed", "action_count": 1, "stopped": true}
+}

@@ -1,0 +1,13 @@
+{
+  "name": "moved target is rejected before execution",
+  "world": {
+    "max_age_ms": 1000,
+    "objects": [{"object_id": "red_cube", "revision": 7, "observed_at_ms": 0, "position": [0, 0, 0]}]
+  },
+  "intents": [
+    {"kind": "select", "target": "red_cube", "target_revision": 7, "at_ms": 0},
+    {"world_update": {"op": "move", "target": "red_cube", "position": [1, 0, 0], "at_ms": 200}},
+    {"kind": "confirm", "at_ms": 500}
+  ],
+  "expect": {"final_state": "awaiting_confirmation", "action_count": 0}
+}

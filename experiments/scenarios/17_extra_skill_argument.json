@@ -1,0 +1,9 @@
+{
+  "name": "extra skill argument is rejected",
+  "planner_arguments": {"target": "red_cube", "destination": "drop_zone", "force": 999},
+  "intents": [
+    {"kind": "select", "target": "red_cube"},
+    {"kind": "confirm"}
+  ],
+  "expect": {"final_state": "failed", "action_count": 0}
+}

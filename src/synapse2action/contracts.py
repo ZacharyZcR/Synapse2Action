@@ -44,6 +44,7 @@ class Action:
 class ExecutionResult:
     success: bool
     detail: str
+    duration_ms: int = 0
 
 
 @dataclass(frozen=True, slots=True)
@@ -56,6 +57,10 @@ class TraceRecord:
 
 class Planner(Protocol):
     def plan(self, target: str) -> Action: ...
+
+
+class Policy(Protocol):
+    def prepare(self, action: Action) -> Action: ...
 
 
 class Robot(Protocol):
