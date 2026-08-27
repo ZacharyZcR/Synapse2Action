@@ -1,11 +1,20 @@
 from __future__ import annotations
 
+from base64 import b64decode, b64encode
 from dataclasses import asdict, dataclass
 import json
 from math import hypot
 from typing import Protocol
 
-from .navigation import BaseState, BaseVelocity, Obstacle2D, Pose2D
+from .navigation import (
+    BaseState,
+    BaseVelocity,
+    CameraFrame,
+    Obstacle2D,
+    Pose2D,
+    SensorFrame,
+    render_camera,
+)
 
 
 class RobotTransport(Protocol):
@@ -33,16 +42,29 @@ class LoopbackRobotTransport:
     pose: Pose2D
     obstacles: tuple[Obstacle2D, ...] = ()
     robot_radius_m: float = 0.1
+    sensor_range_m: float = 3.0
     name: str = "loopback"
     stopped: bool = False
-    request_count: int = 0
+    command_request_count: int = 0
+    observation_request_count: int = 0
     halt_count: int = 0
     base_state: BaseState = BaseState()
 
+    @property
+    def request_count(self) -> int:
+        return self.command_request_count + self.observation_request_count
+
     def exchange(self, request: bytes) -> bytes:
         payload = json.loads(request)
-        if payload.get("schema_version") != 1 or payload.get("operation") != "base_velocity":
+        if payload.get("schema_version") != 1:
             raise ValueError("unsupported robot command envelope")
+        if payload.get("operation") == "observe":
+            return self._observe(payload)
+        if payload.get("operation") != "base_velocity":
+            raise ValueError("unsupported robot command envelope")
+        return self._execute(payload)
+
+    def _execute(self, payload: dict[str, object]) -> bytes:
         sequence = _required_int(payload, "sequence")
         issued_at_ms = _required_int(payload, "issued_at_ms")
         command_payload = payload.get("command")
@@ -54,7 +76,7 @@ class LoopbackRobotTransport:
             float(command_payload["yaw_rate"]),
             _required_int(command_payload, "duration_ms"),
         )
-        self.request_count += 1
+        self.command_request_count += 1
         completed_at_ms = issued_at_ms + command.duration_ms
         if self.stopped:
             return _encode_receipt(
@@ -93,6 +115,28 @@ class LoopbackRobotTransport:
             )
         )
 
+    def _observe(self, payload: dict[str, object]) -> bytes:
+        frame_id = _required_int(payload, "frame_id")
+        captured_at_ms = _required_int(payload, "captured_at_ms")
+        visible = tuple(
+            obstacle
+            for obstacle in self.obstacles
+            if obstacle.active_from_ms <= captured_at_ms
+            and (obstacle.active_until_ms is None or captured_at_ms < obstacle.active_until_ms)
+            and hypot(obstacle.x - self.pose.x, obstacle.y - self.pose.y) <= self.sensor_range_m
+        )
+        self.observation_request_count += 1
+        return _encode_sensor_frame(
+            SensorFrame(
+                frame_id,
+                captured_at_ms,
+                self.pose,
+                visible,
+                render_camera(self.pose, visible, self.sensor_range_m),
+                self.base_state,
+            )
+        )
+
     def halt(self) -> None:
         self.halt_count += 1
         self.base_state = BaseState()
@@ -110,6 +154,19 @@ def encode_base_command(sequence: int, command: BaseVelocity, issued_at_ms: int)
             "sequence": sequence,
             "issued_at_ms": issued_at_ms,
             "command": asdict(command),
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+
+
+def encode_observation_request(frame_id: int, captured_at_ms: int) -> bytes:
+    return json.dumps(
+        {
+            "schema_version": 1,
+            "operation": "observe",
+            "frame_id": frame_id,
+            "captured_at_ms": captured_at_ms,
         },
         sort_keys=True,
         separators=(",", ":"),
@@ -137,6 +194,36 @@ def decode_command_receipt(response: bytes, expected_sequence: int) -> CommandRe
     )
 
 
+def decode_sensor_frame(response: bytes, expected_frame_id: int) -> SensorFrame:
+    payload = json.loads(response)
+    if payload.get("schema_version") != 1 or payload.get("operation") != "sensor_frame":
+        raise ValueError("unsupported robot sensor envelope")
+    frame_id = _required_int(payload, "frame_id")
+    if frame_id != expected_frame_id:
+        raise ValueError("robot sensor frame mismatch")
+    pose = payload["pose"]
+    camera = payload["camera"]
+    state = payload["proprioception"]
+    obstacles = payload["obstacles"]
+    if not all(isinstance(value, dict) for value in (pose, camera, state)) or not isinstance(
+        obstacles, list
+    ):
+        raise ValueError("robot sensor frame is incomplete")
+    return SensorFrame(
+        frame_id,
+        _required_int(payload, "captured_at_ms"),
+        Pose2D(float(pose["x"]), float(pose["y"]), float(pose["yaw"])),
+        tuple(_decode_obstacle(obstacle) for obstacle in obstacles),
+        CameraFrame(
+            _required_int(camera, "width"),
+            _required_int(camera, "height"),
+            str(camera["encoding"]),
+            b64decode(str(camera["data_base64"]), validate=True),
+        ),
+        BaseState(float(state["vx"]), float(state["vy"]), float(state["yaw_rate"])),
+    )
+
+
 def _encode_receipt(receipt: CommandReceipt) -> bytes:
     return json.dumps(
         {
@@ -147,6 +234,42 @@ def _encode_receipt(receipt: CommandReceipt) -> bytes:
         sort_keys=True,
         separators=(",", ":"),
     ).encode("utf-8")
+
+
+def _encode_sensor_frame(frame: SensorFrame) -> bytes:
+    return json.dumps(
+        {
+            "schema_version": 1,
+            "operation": "sensor_frame",
+            "frame_id": frame.frame_id,
+            "captured_at_ms": frame.captured_at_ms,
+            "pose": asdict(frame.pose),
+            "obstacles": [asdict(obstacle) for obstacle in frame.obstacles],
+            "camera": {
+                "width": frame.camera.width,
+                "height": frame.camera.height,
+                "encoding": frame.camera.encoding,
+                "data_base64": b64encode(frame.camera.data).decode("ascii"),
+            },
+            "proprioception": asdict(frame.proprioception),
+        },
+        sort_keys=True,
+        separators=(",", ":"),
+    ).encode("utf-8")
+
+
+def _decode_obstacle(payload: object) -> Obstacle2D:
+    if not isinstance(payload, dict):
+        raise ValueError("robot sensor obstacle is invalid")
+    active_until = payload["active_until_ms"]
+    return Obstacle2D(
+        str(payload["obstacle_id"]),
+        float(payload["x"]),
+        float(payload["y"]),
+        float(payload["radius"]),
+        _required_int(payload, "active_from_ms"),
+        None if active_until is None else _required_int(payload, "active_until_ms"),
+    )
 
 
 def _required_int(payload: dict[str, object], key: str) -> int:

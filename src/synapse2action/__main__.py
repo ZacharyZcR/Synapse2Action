@@ -195,7 +195,8 @@ def main() -> int:
         LoopbackRobotTransport(
             active_navigation_scenario.start,
             active_navigation_scenario.obstacles,
-            active_navigation_scenario.robot_radius_m,
+            robot_radius_m=active_navigation_scenario.robot_radius_m,
+            sensor_range_m=active_navigation_scenario.sensor_range_m,
         )
         if args.robot_transport == "loopback"
         else None

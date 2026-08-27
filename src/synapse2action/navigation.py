@@ -193,6 +193,18 @@ class NavigationRobot:
         )
 
     def observe(self, task: NavigationTask, step: int, at_ms: int) -> NavigationObservation:
+        if self.transport is not None:
+            from .robot_transport import decode_sensor_frame, encode_observation_request
+
+            sensor = decode_sensor_frame(
+                self.transport.exchange(encode_observation_request(step, at_ms)),
+                step,
+            )
+            self.pose = sensor.pose
+            self.base_state = sensor.proprioception
+            observation = NavigationObservation(sensor, task, step)
+            self.frames.append(observation)
+            return observation
         visible = tuple(
             obstacle
             for obstacle in self._active_obstacles(at_ms)
@@ -203,7 +215,7 @@ class NavigationRobot:
             at_ms,
             self.pose,
             visible,
-            _render_camera(self.pose, visible, self.sensor_range_m),
+            render_camera(self.pose, visible, self.sensor_range_m),
             self.base_state,
         )
         observation = NavigationObservation(sensor, task, step)
@@ -311,7 +323,7 @@ class NavigationVerifier:
         ) <= self.tolerance_m and self.robot.base_state == BaseState()
 
 
-def _render_camera(
+def render_camera(
     pose: Pose2D,
     obstacles: tuple[Obstacle2D, ...],
     sensor_range_m: float,
@@ -485,6 +497,7 @@ def run_navigation_demo(
         "navigation_policy": type(active_policy).__name__,
         "robot_transport": transport.name if transport is not None else "in_process",
         "transport_commands": len(robot.transport_receipts),
+        "transport_observations": getattr(transport, "observation_request_count", 0),
         "transport_halts": getattr(transport, "halt_count", 0),
         "transport_feedback": [
             {
