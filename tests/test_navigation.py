@@ -10,6 +10,7 @@ from synapse2action.navigation import (
     NavigationRobot,
     NavigationVerifier,
     NavigationObservation,
+    NavigationTask,
     Obstacle2D,
     Pose2D,
     run_navigation_demo,
@@ -17,10 +18,10 @@ from synapse2action.navigation import (
 
 
 class BlindStraightPolicy:
-    def reset(self, instruction: str, goal: Pose2D) -> None:
+    def reset(self, task: NavigationTask) -> None:
         pass
 
-    def predict(self, instruction: str, observation: NavigationObservation) -> ActionChunk:
+    def predict(self, observation: NavigationObservation) -> ActionChunk:
         return ActionChunk((BaseVelocity(0.5, 0.0, 0.0, 100),))
 
 
@@ -70,6 +71,13 @@ class NavigationTests(unittest.TestCase):
         self.assertTrue(all(not frame["visible_obstacles"] for frame in frames if frame["captured_at_ms"] < 600))
         self.assertTrue(all(frame["visible_obstacles"] == ["crate"] for frame in frames if frame["captured_at_ms"] >= 600))
         self.assertEqual([frame["captured_at_ms"] for frame in frames], list(range(0, len(frames) * 100, 100)))
+        self.assertTrue(all(frame["instruction"] == "navigate to point_b" for frame in frames))
+        self.assertTrue(all(frame["camera"]["encoding"] == "mono8" for frame in frames))
+        self.assertTrue(all(frame["camera"]["nonzero_pixels"] == 0 for frame in frames[:6]))
+        self.assertGreater(frames[6]["camera"]["nonzero_pixels"], 0)
+        self.assertTrue(any(frame["camera"]["nonzero_pixels"] == 0 for frame in frames[23:]))
+        self.assertEqual(frames[0]["proprioception"], {"vx": 0.0, "vy": 0.0, "yaw_rate": 0.0})
+        self.assertEqual(report["final_proprioception"], {"vx": 0.0, "vy": 0.0, "yaw_rate": 0.0})
 
     def test_robot_rejects_policy_chunk_that_hits_obstacle(self) -> None:
         goal = Pose2D(2.0, 0.0)
@@ -90,6 +98,7 @@ class NavigationTests(unittest.TestCase):
 
         self.assertEqual(state, TaskState.FAILED)
         self.assertLess(robot.pose.x, 1.0)
+        self.assertEqual(robot.base_state.vx, 0.0)
 
 
 if __name__ == "__main__":

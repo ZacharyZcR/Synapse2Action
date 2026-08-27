@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import asdict, dataclass, field
+from hashlib import sha256
 from math import hypot
 from typing import Protocol
 
@@ -27,17 +28,40 @@ class Obstacle2D:
 
 
 @dataclass(frozen=True, slots=True)
+class CameraFrame:
+    width: int
+    height: int
+    encoding: str
+    data: bytes
+
+
+@dataclass(frozen=True, slots=True)
+class BaseState:
+    vx: float = 0.0
+    vy: float = 0.0
+    yaw_rate: float = 0.0
+
+
+@dataclass(frozen=True, slots=True)
 class SensorFrame:
     frame_id: int
     captured_at_ms: int
     pose: Pose2D
     obstacles: tuple[Obstacle2D, ...]
+    camera: CameraFrame
+    proprioception: BaseState
+
+
+@dataclass(frozen=True, slots=True)
+class NavigationTask:
+    instruction: str
+    goal: Pose2D
 
 
 @dataclass(frozen=True, slots=True)
 class NavigationObservation:
     sensor: SensorFrame
-    goal: Pose2D
+    task: NavigationTask
     step: int
 
     @property
@@ -47,6 +71,10 @@ class NavigationObservation:
     @property
     def obstacles(self) -> tuple[Obstacle2D, ...]:
         return self.sensor.obstacles
+
+    @property
+    def goal(self) -> Pose2D:
+        return self.task.goal
 
 
 @dataclass(frozen=True, slots=True)
@@ -63,9 +91,9 @@ class ActionChunk:
 
 
 class NavigationPolicy(Protocol):
-    def reset(self, instruction: str, goal: Pose2D) -> None: ...
+    def reset(self, task: NavigationTask) -> None: ...
 
-    def predict(self, instruction: str, observation: NavigationObservation) -> ActionChunk: ...
+    def predict(self, observation: NavigationObservation) -> ActionChunk: ...
 
 
 @dataclass(slots=True)
@@ -77,13 +105,12 @@ class ScriptedNavigationPolicy:
     waypoint: Pose2D | None = None
     replan_count: int = 0
 
-    def reset(self, instruction: str, goal: Pose2D) -> None:
-        del instruction, goal
+    def reset(self, task: NavigationTask) -> None:
+        del task
         self.waypoint = None
         self.replan_count = 0
 
-    def predict(self, instruction: str, observation: NavigationObservation) -> ActionChunk:
-        del instruction
+    def predict(self, observation: NavigationObservation) -> ActionChunk:
         if self.waypoint and _distance(observation.pose, self.waypoint) <= self.waypoint_tolerance_m:
             self.waypoint = None
         if self.waypoint is None:
@@ -124,6 +151,7 @@ class NavigationRobot:
     chunks: list[ActionChunk] = field(default_factory=list)
     executed: list[Action] = field(default_factory=list)
     stopped: bool = False
+    base_state: BaseState = field(default_factory=BaseState)
 
     def _active_obstacles(self, at_ms: int) -> tuple[Obstacle2D, ...]:
         return tuple(
@@ -133,14 +161,21 @@ class NavigationRobot:
             and (obstacle.active_until_ms is None or at_ms < obstacle.active_until_ms)
         )
 
-    def observe(self, goal: Pose2D, step: int, at_ms: int) -> NavigationObservation:
+    def observe(self, task: NavigationTask, step: int, at_ms: int) -> NavigationObservation:
         visible = tuple(
             obstacle
             for obstacle in self._active_obstacles(at_ms)
             if hypot(obstacle.x - self.pose.x, obstacle.y - self.pose.y) <= self.sensor_range_m
         )
-        sensor = SensorFrame(step, at_ms, self.pose, visible)
-        observation = NavigationObservation(sensor, goal, step)
+        sensor = SensorFrame(
+            step,
+            at_ms,
+            self.pose,
+            visible,
+            _render_camera(self.pose, visible, self.sensor_range_m),
+            self.base_state,
+        )
+        observation = NavigationObservation(sensor, task, step)
         self.frames.append(observation)
         return observation
 
@@ -159,8 +194,10 @@ class NavigationRobot:
                 < obstacle.radius + self.robot_radius_m
                 for obstacle in self._active_obstacles(command_time_ms)
             ):
+                self.base_state = BaseState()
                 return False
             self.pose = next_pose
+            self.base_state = BaseState(command.vx, command.vy, command.yaw_rate)
         self.chunks.append(chunk)
         return True
 
@@ -176,27 +213,31 @@ class NavigationRobot:
             return ExecutionResult(False, "destination not found")
 
         self.executed.append(action)
-        instruction = f"navigate to {action.arguments['destination']}"
-        self.policy.reset(instruction, goal)
+        task = NavigationTask(f"navigate to {action.arguments['destination']}", goal)
+        self.policy.reset(task)
         elapsed_ms = 0
         for step in range(self.max_steps + 1):
-            observation = self.observe(goal, step, elapsed_ms)
+            observation = self.observe(task, step, elapsed_ms)
             if hypot(goal.x - self.pose.x, goal.y - self.pose.y) <= self.tolerance_m:
+                self.base_state = BaseState()
                 return ExecutionResult(True, "destination reached", elapsed_ms)
             if self.stopped:
                 return ExecutionResult(False, "navigation stopped", elapsed_ms)
             if step == self.max_steps:
                 break
-            chunk = self.policy.predict(instruction, observation)
+            chunk = self.policy.predict(observation)
             if not chunk.commands:
+                self.base_state = BaseState()
                 return ExecutionResult(False, "policy produced no action", elapsed_ms)
             if not self.execute_chunk(chunk, elapsed_ms):
                 return ExecutionResult(False, "action chunk intersects obstacle", elapsed_ms)
             elapsed_ms += sum(command.duration_ms for command in chunk.commands)
+        self.base_state = BaseState()
         return ExecutionResult(False, "navigation step limit exceeded", elapsed_ms)
 
     def stop(self) -> None:
         self.stopped = True
+        self.base_state = BaseState()
 
 
 class NavigationVerifier:
@@ -209,7 +250,28 @@ class NavigationVerifier:
         return result.success and hypot(
             self.goal.x - self.robot.pose.x,
             self.goal.y - self.robot.pose.y,
-        ) <= self.tolerance_m
+        ) <= self.tolerance_m and self.robot.base_state == BaseState()
+
+
+def _render_camera(
+    pose: Pose2D,
+    obstacles: tuple[Obstacle2D, ...],
+    sensor_range_m: float,
+    width: int = 32,
+    height: int = 24,
+) -> CameraFrame:
+    pixels = bytearray(width * height)
+    for obstacle in obstacles:
+        relative_x = obstacle.x - pose.x
+        relative_y = obstacle.y - pose.y
+        column = round((relative_y / sensor_range_m + 1) * (width - 1) / 2)
+        row = round((1 - relative_x / sensor_range_m) * (height - 1))
+        radius_px = max(1, round(obstacle.radius * min(width, height) / sensor_range_m))
+        for y in range(max(0, row - radius_px), min(height, row + radius_px + 1)):
+            for x in range(max(0, column - radius_px), min(width, column + radius_px + 1)):
+                if (x - column) ** 2 + (y - row) ** 2 <= radius_px**2:
+                    pixels[y * width + x] = 255
+    return CameraFrame(width, height, "mono8", bytes(pixels))
 
 
 def _distance(first: Pose2D, second: Pose2D) -> float:
@@ -259,7 +321,7 @@ def run_navigation_demo() -> dict[str, object]:
     harness.handle(Intent(IntentKind.SELECT, "point_b"))
     harness.handle(Intent(IntentKind.CONFIRM))
     return {
-        "schema_version": 2,
+        "schema_version": 3,
         "demo": "dynamic_obstacle_navigation_a_to_b",
         "passed": harness.state.value == "completed",
         "start": asdict(start),
@@ -275,11 +337,21 @@ def run_navigation_demo() -> dict[str, object]:
             {
                 "frame_id": frame.sensor.frame_id,
                 "captured_at_ms": frame.sensor.captured_at_ms,
+                "instruction": frame.task.instruction,
                 "pose": asdict(frame.pose),
                 "visible_obstacles": [obstacle.obstacle_id for obstacle in frame.obstacles],
+                "camera": {
+                    "width": frame.sensor.camera.width,
+                    "height": frame.sensor.camera.height,
+                    "encoding": frame.sensor.camera.encoding,
+                    "sha256": sha256(frame.sensor.camera.data).hexdigest(),
+                    "nonzero_pixels": sum(pixel != 0 for pixel in frame.sensor.camera.data),
+                },
+                "proprioception": asdict(frame.sensor.proprioception),
             }
             for frame in robot.frames
         ],
+        "final_proprioception": asdict(robot.base_state),
         "final_state": harness.state.value,
         "trace": [
             {"sequence": record.sequence, "event": record.event, "state": record.state.value, "detail": record.detail}
