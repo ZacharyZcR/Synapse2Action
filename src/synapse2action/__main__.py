@@ -18,6 +18,7 @@ from .visualization import render_demo_html
 from .vla import DeterministicVLABackend, VLAInferenceBackend, run_vla_navigation_demo
 from .vla_episode import RecordingVLABackend, ReplayVLABackend, load_episode, save_episode
 from .vla_dataset import export_dataset
+from .vla_baseline import KNNVLABackend, load_knn_checkpoint, train_knn_baseline
 from .vla_http import EmbeddedVLAServer, HTTPVLABackend
 
 
@@ -50,6 +51,8 @@ def main() -> int:
     parser.add_argument("--export-vla-dataset", type=Path, nargs="+")
     parser.add_argument("--vla-dataset-output", type=Path)
     parser.add_argument("--validation-fraction", type=float, default=0.2)
+    parser.add_argument("--train-vla-baseline", type=Path)
+    parser.add_argument("--vla-checkpoint", type=Path)
     parser.add_argument("--demo-html", type=Path)
     parser.add_argument("--demo-scenario", type=Path)
     parser.add_argument("--demo-suite", type=Path)
@@ -65,6 +68,18 @@ def main() -> int:
 
     if bool(args.export_vla_dataset) != bool(args.vla_dataset_output):
         parser.error("--export-vla-dataset and --vla-dataset-output must be provided together")
+    if args.train_vla_baseline and not args.vla_checkpoint:
+        parser.error("--train-vla-baseline requires --vla-checkpoint")
+    if args.vla_checkpoint and not (args.train_vla_baseline or args.vla_navigation_demo):
+        parser.error("--vla-checkpoint requires training or --vla-navigation-demo")
+    if args.train_vla_baseline and args.vla_navigation_demo:
+        parser.error("training cannot be combined with --vla-navigation-demo")
+    if args.train_vla_baseline and args.export_vla_dataset:
+        parser.error("training cannot be combined with dataset export")
+    if args.vla_checkpoint and args.vla_navigation_demo and (
+        args.embedded_vla or args.vla_base_url or args.replay_vla_episode
+    ):
+        parser.error("checkpoint navigation cannot be combined with another VLA backend")
     if args.embedded_vla and args.vla_base_url:
         parser.error("--embedded-vla cannot be combined with --vla-base-url")
     if args.record_vla_episode and args.replay_vla_episode:
@@ -74,7 +89,9 @@ def main() -> int:
     if (args.embedded_vla or args.vla_base_url or args.record_vla_episode or args.replay_vla_episode) and not args.vla_navigation_demo:
         parser.error("VLA backend options require --vla-navigation-demo")
 
-    if args.export_vla_dataset:
+    if args.train_vla_baseline:
+        report = train_knn_baseline(args.train_vla_baseline, args.vla_checkpoint)
+    elif args.export_vla_dataset:
         report = export_dataset(
             args.export_vla_dataset,
             args.vla_dataset_output,
@@ -98,7 +115,12 @@ def main() -> int:
                 args.record_vla_episode,
             )
         else:
-            report = _run_vla(DeterministicVLABackend(), args.record_vla_episode)
+            backend = (
+                KNNVLABackend(load_knn_checkpoint(args.vla_checkpoint))
+                if args.vla_checkpoint
+                else DeterministicVLABackend()
+            )
+            report = _run_vla(backend, args.record_vla_episode)
     elif args.navigation_demo:
         report = run_navigation_demo()
     elif args.demo_suite:

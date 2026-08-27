@@ -104,7 +104,7 @@ The project follows a hardware-free-first strategy. Every external component beg
 ### Phase 4 — VLA Policy Integration / 阶段 4：VLA 策略集成
 
 - [ ] Define a common `Policy` adapter for scripted skills, ACT, SmolVLA, and future VLA models. / 为固定技能、ACT、SmolVLA 与后续 VLA 定义统一 Policy Adapter。
-- [ ] Establish ACT or another deterministic imitation-learning baseline before VLA. / 在 VLA 前建立 ACT 或其他可控模仿学习基线。
+- [x] Establish ACT or another deterministic imitation-learning baseline before VLA. / 在 VLA 前建立 ACT 或其他可控模仿学习基线。
 - [ ] Integrate LeRobot data, training, inference, and checkpoint metadata. / 集成 LeRobot 数据、训练、推理与检查点元数据。
 - [ ] Integrate SmolVLA as the first language-conditioned action policy. / 以 SmolVLA 作为首个语言条件动作策略。
 - [ ] Validate action chunks against workspace, joint, velocity, acceleration, and duration limits. / 对动作块执行空间、关节、速度、加速度与持续时间校验。
@@ -196,6 +196,8 @@ PYTHONPATH=src python3 -m synapse2action --vla-navigation-demo --embedded-vla
 PYTHONPATH=src python3 -m synapse2action --vla-navigation-demo --record-vla-episode artifacts/navigation-episode.json
 PYTHONPATH=src python3 -m synapse2action --vla-navigation-demo --replay-vla-episode artifacts/navigation-episode.json
 PYTHONPATH=src python3 -m synapse2action --export-vla-dataset artifacts/train.episode.json artifacts/validation.episode.json --vla-dataset-output artifacts/vla-dataset
+PYTHONPATH=src python3 -m synapse2action --train-vla-baseline artifacts/vla-dataset --vla-checkpoint artifacts/knn-vla.json
+PYTHONPATH=src python3 -m synapse2action --vla-navigation-demo --vla-checkpoint artifacts/knn-vla.json
 PYTHONPATH=src python3 -m synapse2action --demo-html demo.html --output demo.json
 PYTHONPATH=src python3 -m synapse2action --demo-scenario experiments/demos/blue_block.json --demo-html blue-demo.html
 PYTHONPATH=src python3 -m synapse2action --demo-suite experiments/demos --artifact-directory artifacts/demo-suite --output artifacts/demo-suite.json
@@ -220,6 +222,8 @@ Use `--embedded-vla` to send the same reset and inference payloads over real loo
 Use `--record-vla-episode` to persist every serialized observation/action pair, then use `--replay-vla-episode` to reproduce the run without an inference service. Replay is step-exact: a changed task or observation fails instead of silently returning an unrelated recorded action. / 使用 `--record-vla-episode` 可持久化每一组序列化 Observation/Action，随后用 `--replay-vla-episode` 在没有推理服务时复现运行。回放要求逐步精确一致；任务或观测发生变化时会失败，不会静默返回无关的历史动作。
 
 Use `--export-vla-dataset` with two or more episode files to create `manifest.json`, `train.jsonl`, and `validation.jsonl`. Splitting happens at episode level before frames are expanded, so adjacent observations from one trajectory cannot leak across train and validation. / 使用 `--export-vla-dataset` 输入两个或更多 episode 文件，可生成 `manifest.json`、`train.jsonl` 与 `validation.jsonl`。系统先按 episode 划分，再展开帧，因此同一轨迹的相邻 Observation 不会泄漏到 train 和 validation 两侧。
+
+`--train-vla-baseline` trains a deterministic normalized 1-nearest-neighbor behavior-cloning baseline from `train.jsonl`, evaluates it on `validation.jsonl`, and writes a standalone checkpoint. Supplying that checkpoint to `--vla-navigation-demo` runs the learned policy through the same VLA adapter and robot loop. This is a dependency-free imitation baseline, not ACT or SmolVLA. / `--train-vla-baseline` 使用 `train.jsonl` 训练确定性的归一化 1-NN behavior-cloning 基线，在 `validation.jsonl` 上评测并写出独立 checkpoint。将 checkpoint 传给 `--vla-navigation-demo` 后，学习策略会通过同一 VLA Adapter 与机器人闭环运行。这是零依赖 imitation baseline，不是 ACT 或 SmolVLA。
 
 The planner selects a typed skill; the policy expands it into `approach`, `grasp`, `transport`, and `release` steps; the robot executes only the supplied trajectory. / Planner 选择类型化技能，Policy 将其展开为 `approach`、`grasp`、`transport` 与 `release`，Robot 只执行收到的轨迹。
 
