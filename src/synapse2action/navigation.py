@@ -335,8 +335,9 @@ def run_navigation_demo(
         "control_cycles": len(robot.chunks),
         "observations": len(robot.frames),
         "observed_obstacle_frames": sum(bool(frame.obstacles) for frame in robot.frames),
-        "replan_count": getattr(active_policy, "replan_count", 0),
+        "replan_count": getattr(active_policy, "replan_count", None),
         "policy_requests": getattr(active_policy, "request_count", 0),
+        "policy_backend_requests": getattr(active_policy, "backend_request_count", None),
         "trajectory": [asdict(frame.pose) for frame in robot.frames],
         "sensor_frames": [
             {

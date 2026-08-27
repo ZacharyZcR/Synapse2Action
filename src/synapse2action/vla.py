@@ -34,8 +34,12 @@ class VLANavigationPolicy:
     request_count: int = 0
 
     @property
-    def replan_count(self) -> int:
-        return getattr(self.backend, "replan_count", 0)
+    def replan_count(self) -> int | None:
+        return getattr(self.backend, "replan_count", None)
+
+    @property
+    def backend_request_count(self) -> int | None:
+        return getattr(self.backend, "request_count", None)
 
     def reset(self, task: NavigationTask) -> None:
         self.task = task
@@ -80,11 +84,11 @@ class DeterministicVLABackend:
         )
 
 
-def run_vla_navigation_demo() -> dict[str, object]:
-    backend = DeterministicVLABackend()
+def run_vla_navigation_demo(backend: VLAInferenceBackend | None = None) -> dict[str, object]:
+    backend = backend or DeterministicVLABackend()
     report = run_navigation_demo(VLANavigationPolicy(backend), "vla_adapter_dynamic_navigation_a_to_b")
     report["vla_backend"] = type(backend).__name__
-    report["serialized_observations"] = len(backend.requests)
+    report["serialized_observations"] = report["control_cycles"]
     return report
 
 

@@ -16,6 +16,7 @@ from .navigation import run_navigation_demo
 from .synthetic_intent import run_intent_suite
 from .visualization import render_demo_html
 from .vla import run_vla_navigation_demo
+from .vla_http import EmbeddedVLAServer, HTTPVLABackend
 
 
 def main() -> int:
@@ -26,6 +27,9 @@ def main() -> int:
     parser.add_argument("--demo", action="store_true")
     parser.add_argument("--navigation-demo", action="store_true")
     parser.add_argument("--vla-navigation-demo", action="store_true")
+    parser.add_argument("--vla-base-url")
+    parser.add_argument("--vla-api-key-env", default="VLA_API_KEY")
+    parser.add_argument("--embedded-vla", action="store_true")
     parser.add_argument("--demo-html", type=Path)
     parser.add_argument("--demo-scenario", type=Path)
     parser.add_argument("--demo-suite", type=Path)
@@ -39,8 +43,23 @@ def main() -> int:
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
 
+    if args.embedded_vla and args.vla_base_url:
+        parser.error("--embedded-vla cannot be combined with --vla-base-url")
+    if (args.embedded_vla or args.vla_base_url) and not args.vla_navigation_demo:
+        parser.error("VLA backend options require --vla-navigation-demo")
+
     if args.vla_navigation_demo:
-        report = run_vla_navigation_demo()
+        if args.embedded_vla:
+            with EmbeddedVLAServer() as server:
+                report = run_vla_navigation_demo(HTTPVLABackend(server.base_url))
+                report["vla_http_requests"] = len(server.requests)
+                report["vla_http_operations"] = [request.operation for request in server.requests]
+        elif args.vla_base_url:
+            report = run_vla_navigation_demo(
+                HTTPVLABackend(args.vla_base_url, api_key=os.getenv(args.vla_api_key_env))
+            )
+        else:
+            report = run_vla_navigation_demo()
     elif args.navigation_demo:
         report = run_navigation_demo()
     elif args.demo_suite:

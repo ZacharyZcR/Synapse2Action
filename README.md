@@ -192,6 +192,7 @@ Run all hardware-free experiment scenarios and print a deterministic JSON report
 PYTHONPATH=src python3 -m synapse2action --demo
 PYTHONPATH=src python3 -m synapse2action --navigation-demo
 PYTHONPATH=src python3 -m synapse2action --vla-navigation-demo
+PYTHONPATH=src python3 -m synapse2action --vla-navigation-demo --embedded-vla
 PYTHONPATH=src python3 -m synapse2action --demo-html demo.html --output demo.json
 PYTHONPATH=src python3 -m synapse2action --demo-scenario experiments/demos/blue_block.json --demo-html blue-demo.html
 PYTHONPATH=src python3 -m synapse2action --demo-suite experiments/demos --artifact-directory artifacts/demo-suite --output artifacts/demo-suite.json
@@ -210,6 +211,8 @@ The `--demo` command runs the complete hardware-free happy path: seeded noisy SS
 `--navigation-demo` runs a confirmed A-to-B task as a real closed loop. A policy observation combines the task instruction with a timestamped `SensorFrame` containing a deterministic `mono8` camera raster, base proprioception, pose, and locally perceived obstacles. The policy turns the latest multimodal observation into a short velocity action chunk, the robot adapter applies it, and an independent verifier checks both arrival and stopped base state. The scenario begins on a clear path, introduces a crate after 600 ms, and proves that the policy replans from new observations instead of following a frozen startup trajectory. / `--navigation-demo` 将确认后的 A 到 B 任务作为真实闭环运行。Policy Observation 将任务文本与带时间戳的 `SensorFrame` 组合；帧内包含确定性 `mono8` 相机栅格、底盘 proprioception、位姿和局部障碍物。Policy 将最新多模态观测转换成短时速度 Action Chunk，经 Robot Adapter 执行，独立 Verifier 同时检查到达和底盘停止状态。场景开始时道路畅通，在 600ms 后出现箱体，用于证明策略会依据新观测重规划，而不是执行启动时冻结的轨迹。
 
 `--vla-navigation-demo` runs the same dynamic scenario through the byte-level VLA adapter. Every multimodal observation is JSON-serialized with base64 camera bytes, processed by a deterministic local inference backend, and strictly decoded from model-style JSON into an `ActionChunk`. / `--vla-navigation-demo` 通过字节级 VLA Adapter 运行同一动态场景。每帧多模态 Observation 都会序列化为 JSON（相机 bytes 使用 base64），经确定性本地推理 Backend 处理，再从模型式 JSON 严格解析为 `ActionChunk`。
+
+Use `--embedded-vla` to send the same reset and inference payloads over real loopback HTTP. An external service can replace it with `--vla-base-url http://localhost:9000/v1`; the optional API key is read from `VLA_API_KEY`. / 使用 `--embedded-vla` 可让相同的 reset 与 inference payload 经过真实 loopback HTTP。外部服务可通过 `--vla-base-url http://localhost:9000/v1` 替换内置服务；可选 API Key 从 `VLA_API_KEY` 读取。
 
 The planner selects a typed skill; the policy expands it into `approach`, `grasp`, `transport`, and `release` steps; the robot executes only the supplied trajectory. / Planner 选择类型化技能，Policy 将其展开为 `approach`、`grasp`、`transport` 与 `release`，Robot 只执行收到的轨迹。
 
