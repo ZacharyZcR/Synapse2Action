@@ -22,14 +22,31 @@ class Obstacle2D:
     x: float
     y: float
     radius: float
+    active_from_ms: int = 0
+    active_until_ms: int | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class SensorFrame:
+    frame_id: int
+    captured_at_ms: int
+    pose: Pose2D
+    obstacles: tuple[Obstacle2D, ...]
 
 
 @dataclass(frozen=True, slots=True)
 class NavigationObservation:
-    pose: Pose2D
+    sensor: SensorFrame
     goal: Pose2D
     step: int
-    obstacles: tuple[Obstacle2D, ...] = ()
+
+    @property
+    def pose(self) -> Pose2D:
+        return self.sensor.pose
+
+    @property
+    def obstacles(self) -> tuple[Obstacle2D, ...]:
+        return self.sensor.obstacles
 
 
 @dataclass(frozen=True, slots=True)
@@ -58,10 +75,12 @@ class ScriptedNavigationPolicy:
     clearance_m: float = 0.2
     waypoint_tolerance_m: float = 0.05
     waypoint: Pose2D | None = None
+    replan_count: int = 0
 
     def reset(self, instruction: str, goal: Pose2D) -> None:
         del instruction, goal
         self.waypoint = None
+        self.replan_count = 0
 
     def predict(self, instruction: str, observation: NavigationObservation) -> ActionChunk:
         del instruction
@@ -71,6 +90,7 @@ class ScriptedNavigationPolicy:
             obstacle = _first_blocking_obstacle(observation)
             if obstacle:
                 self.waypoint = _detour_waypoint(observation.pose, observation.goal, obstacle, self.clearance_m)
+                self.replan_count += 1
         target = self.waypoint or observation.goal
         dx = target.x - observation.pose.x
         dy = target.y - observation.pose.y
@@ -105,19 +125,30 @@ class NavigationRobot:
     executed: list[Action] = field(default_factory=list)
     stopped: bool = False
 
-    def observe(self, goal: Pose2D, step: int) -> NavigationObservation:
-        visible = tuple(
+    def _active_obstacles(self, at_ms: int) -> tuple[Obstacle2D, ...]:
+        return tuple(
             obstacle
             for obstacle in self.obstacles
+            if obstacle.active_from_ms <= at_ms
+            and (obstacle.active_until_ms is None or at_ms < obstacle.active_until_ms)
+        )
+
+    def observe(self, goal: Pose2D, step: int, at_ms: int) -> NavigationObservation:
+        visible = tuple(
+            obstacle
+            for obstacle in self._active_obstacles(at_ms)
             if hypot(obstacle.x - self.pose.x, obstacle.y - self.pose.y) <= self.sensor_range_m
         )
-        observation = NavigationObservation(self.pose, goal, step, visible)
+        sensor = SensorFrame(step, at_ms, self.pose, visible)
+        observation = NavigationObservation(sensor, goal, step)
         self.frames.append(observation)
         return observation
 
-    def execute_chunk(self, chunk: ActionChunk) -> bool:
+    def execute_chunk(self, chunk: ActionChunk, at_ms: int) -> bool:
+        command_time_ms = at_ms
         for command in chunk.commands:
             seconds = command.duration_ms / 1000
+            command_time_ms += command.duration_ms
             next_pose = Pose2D(
                 self.pose.x + command.vx * seconds,
                 self.pose.y + command.vy * seconds,
@@ -126,7 +157,7 @@ class NavigationRobot:
             if any(
                 hypot(next_pose.x - obstacle.x, next_pose.y - obstacle.y)
                 < obstacle.radius + self.robot_radius_m
-                for obstacle in self.obstacles
+                for obstacle in self._active_obstacles(command_time_ms)
             ):
                 return False
             self.pose = next_pose
@@ -149,7 +180,7 @@ class NavigationRobot:
         self.policy.reset(instruction, goal)
         elapsed_ms = 0
         for step in range(self.max_steps + 1):
-            observation = self.observe(goal, step)
+            observation = self.observe(goal, step, elapsed_ms)
             if hypot(goal.x - self.pose.x, goal.y - self.pose.y) <= self.tolerance_m:
                 return ExecutionResult(True, "destination reached", elapsed_ms)
             if self.stopped:
@@ -159,7 +190,7 @@ class NavigationRobot:
             chunk = self.policy.predict(instruction, observation)
             if not chunk.commands:
                 return ExecutionResult(False, "policy produced no action", elapsed_ms)
-            if not self.execute_chunk(chunk):
+            if not self.execute_chunk(chunk, elapsed_ms):
                 return ExecutionResult(False, "action chunk intersects obstacle", elapsed_ms)
             elapsed_ms += sum(command.duration_ms for command in chunk.commands)
         return ExecutionResult(False, "navigation step limit exceeded", elapsed_ms)
@@ -217,8 +248,9 @@ def _detour_waypoint(start: Pose2D, goal: Pose2D, obstacle: Obstacle2D, clearanc
 def run_navigation_demo() -> dict[str, object]:
     start = Pose2D(0.0, 0.0)
     goal = Pose2D(2.0, 0.0)
-    obstacles = (Obstacle2D("crate", 1.0, 0.0, 0.25),)
-    robot = NavigationRobot(start, {"point_b": goal}, obstacles=obstacles)
+    obstacles = (Obstacle2D("crate", 1.0, 0.0, 0.25, active_from_ms=600),)
+    policy = ScriptedNavigationPolicy()
+    robot = NavigationRobot(start, {"point_b": goal}, policy=policy, obstacles=obstacles)
     harness = Harness(
         MockPlanner("navigate_to", {"destination": "point_b"}),
         robot,
@@ -227,8 +259,8 @@ def run_navigation_demo() -> dict[str, object]:
     harness.handle(Intent(IntentKind.SELECT, "point_b"))
     harness.handle(Intent(IntentKind.CONFIRM))
     return {
-        "schema_version": 1,
-        "demo": "closed_loop_navigation_a_to_b",
+        "schema_version": 2,
+        "demo": "dynamic_obstacle_navigation_a_to_b",
         "passed": harness.state.value == "completed",
         "start": asdict(start),
         "goal": asdict(goal),
@@ -237,7 +269,17 @@ def run_navigation_demo() -> dict[str, object]:
         "control_cycles": len(robot.chunks),
         "observations": len(robot.frames),
         "observed_obstacle_frames": sum(bool(frame.obstacles) for frame in robot.frames),
+        "replan_count": policy.replan_count,
         "trajectory": [asdict(frame.pose) for frame in robot.frames],
+        "sensor_frames": [
+            {
+                "frame_id": frame.sensor.frame_id,
+                "captured_at_ms": frame.sensor.captured_at_ms,
+                "pose": asdict(frame.pose),
+                "visible_obstacles": [obstacle.obstacle_id for obstacle in frame.obstacles],
+            }
+            for frame in robot.frames
+        ],
         "final_state": harness.state.value,
         "trace": [
             {"sequence": record.sequence, "event": record.event, "state": record.state.value, "detail": record.detail}
