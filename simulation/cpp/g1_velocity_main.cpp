@@ -3,6 +3,7 @@
 #include "Types.h"
 #include "isaaclab/envs/mdp/observations/observations.h"
 #include "unitree/dds_wrapper/robots/go2/go2_sub.h"
+#include <spdlog/spdlog.h>
 
 #include <algorithm>
 #include <cmath>
@@ -29,12 +30,34 @@ REGISTER_OBSERVATION(sim_velocity_commands)
         const char* value = std::getenv("S2A_MAX_SPEED_MPS");
         return value == nullptr ? 0.3f : std::stof(value);
     }();
+    static const bool avoid_obstacle = std::getenv("S2A_OBSTACLE_X_M") != nullptr;
+    static const float obstacle_x = avoid_obstacle ? std::stof(std::getenv("S2A_OBSTACLE_X_M")) : 0.0f;
+    static const float obstacle_y = avoid_obstacle ? std::stof(std::getenv("S2A_OBSTACLE_Y_M")) : 0.0f;
+    static const float obstacle_radius = avoid_obstacle ? std::stof(std::getenv("S2A_OBSTACLE_RADIUS_M")) : 0.0f;
+    static int waypoint_stage = avoid_obstacle ? 0 : 2;
+    static bool replan_logged = false;
     if (target_value == nullptr || odometry->isTimeout()) {
         return std::vector<float>{0.0f, 0.0f, 0.0f};
     }
     std::lock_guard<std::mutex> lock(odometry->mutex_);
-    const float world_x = target_x - odometry->msg_.position()[0];
-    const float world_y = target_y - odometry->msg_.position()[1];
+    const float position_x = odometry->msg_.position()[0];
+    const float position_y = odometry->msg_.position()[1];
+    const float waypoint_x = waypoint_stage == 0 ? 0.0f : obstacle_x + obstacle_radius + 0.20f;
+    const float waypoint_y = obstacle_y + obstacle_radius + 0.45f;
+    if (waypoint_stage < 2 && !replan_logged) {
+        spdlog::info("Navigation replan: two-waypoint detour");
+        replan_logged = true;
+    }
+    if (waypoint_stage < 2 && std::hypot(waypoint_x - position_x, waypoint_y - position_y) <= 0.08f) {
+        ++waypoint_stage;
+        spdlog::info("Navigation waypoint {} reached", waypoint_stage);
+    }
+    const float active_target_x = waypoint_stage < 2
+        ? (waypoint_stage == 0 ? 0.0f : obstacle_x + obstacle_radius + 0.20f)
+        : target_x;
+    const float active_target_y = waypoint_stage < 2 ? waypoint_y : target_y;
+    const float world_x = active_target_x - position_x;
+    const float world_y = active_target_y - position_y;
     const float distance = std::hypot(world_x, world_y);
     const float yaw = odometry->msg_.imu_state().rpy()[2];
     const float body_x = std::cos(yaw) * world_x + std::sin(yaw) * world_y;

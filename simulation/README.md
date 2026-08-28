@@ -36,6 +36,18 @@ slows inside the approach region and commands zero within 5 cm. In addition to
 balance checks, acceptance requires position error within 10 cm, yaw error
 within 0.15 rad, and low final translational/angular velocity.
 
+Run the collision-obstacle and waypoint replanning scenario:
+
+```bash
+./simulation/run_unitree_headless.sh obstacle 0.9 0.0 0.0
+```
+
+The runner adds a real MuJoCo collision box on the direct path. The controller
+creates two detour waypoints from the measured pose, resumes the final goal
+after reaching them, and records both waypoint events. Acceptance requires
+physical clearance from the box, visible lateral deviation, final goal
+convergence, and a stopped upright robot.
+
 On an Ubuntu machine with a working Python development toolchain, prepare the
 official sources and Python dependencies:
 

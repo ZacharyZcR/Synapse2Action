@@ -29,6 +29,9 @@ def main() -> None:
     parser.add_argument("--target-x", type=float, default=0.0)
     parser.add_argument("--target-y", type=float, default=0.0)
     parser.add_argument("--target-yaw", type=float, default=0.0)
+    parser.add_argument("--obstacle-x", type=float, default=0.0)
+    parser.add_argument("--obstacle-y", type=float, default=0.0)
+    parser.add_argument("--obstacle-radius", type=float, default=0.0)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     if args.interface != "lo" and not args.container_network:
@@ -40,6 +43,16 @@ def main() -> None:
 
     simulator_dir = args.unitree_mujoco / "simulate_python"
     scene = args.unitree_mujoco / "unitree_robots" / "g1" / "scene.xml"
+    if args.obstacle_radius > 0:
+        obstacle_geom = (
+            f'<geom name="s2a_obstacle" type="box" '
+            f'pos="{args.obstacle_x} {args.obstacle_y} 0.25" '
+            f'size="{args.obstacle_radius} {args.obstacle_radius} 0.25" '
+            'rgba="0.8 0.15 0.1 1"/>\n'
+        )
+        scene_text = scene.read_text().replace("</worldbody>", obstacle_geom + "</worldbody>", 1)
+        scene = scene.with_name("scene_s2a_obstacle.xml")
+        scene.write_text(scene_text)
     sys.path.insert(0, str(simulator_dir))
     sys.modules["config"] = SimpleNamespace(ROBOT="g1")
     from unitree_sdk2py_bridge import UnitreeSdk2Bridge
@@ -98,12 +111,20 @@ def main() -> None:
     steps = 0
     minimum_base_height = float(data.qpos[2])
     maximum_base_height = float(data.qpos[2])
+    minimum_obstacle_center_distance = float("inf")
+    maximum_abs_lateral_position = abs(float(data.qpos[1]))
     while monotonic() - started < args.duration_seconds:
         mujoco.mj_step(model, data)
         publish_odometry()
         steps += 1
         minimum_base_height = min(minimum_base_height, float(data.qpos[2]))
         maximum_base_height = max(maximum_base_height, float(data.qpos[2]))
+        maximum_abs_lateral_position = max(maximum_abs_lateral_position, abs(float(data.qpos[1])))
+        if args.obstacle_radius > 0:
+            minimum_obstacle_center_distance = min(
+                minimum_obstacle_center_distance,
+                hypot(float(data.qpos[0]) - args.obstacle_x, float(data.qpos[1]) - args.obstacle_y),
+            )
         next_step += model.opt.timestep
         remaining = next_step - monotonic()
         if remaining > 0:
@@ -131,6 +152,12 @@ def main() -> None:
         "final_yaw_error_rad": yaw_error,
         "final_base_linear_velocity_xyz_mps": [float(value) for value in data.qvel[:3]],
         "final_yaw_rate_rad_s": float(data.qvel[5]),
+        "obstacle_position_xy_m": [args.obstacle_x, args.obstacle_y],
+        "obstacle_radius_m": args.obstacle_radius,
+        "minimum_obstacle_center_distance_m": (
+            minimum_obstacle_center_distance if args.obstacle_radius > 0 else None
+        ),
+        "maximum_abs_lateral_position_m": maximum_abs_lateral_position,
         "minimum_base_height_m": minimum_base_height,
         "maximum_base_height_m": maximum_base_height,
         "physics_started_after_lowcmd": first_command.is_set(),

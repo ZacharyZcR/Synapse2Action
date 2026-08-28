@@ -4,19 +4,36 @@ set -euo pipefail
 project_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 report_dir="${project_dir}/reports/simulation"
 simulator_image="synapse2action-unitree:locked-v2"
-controller_image="synapse2action-unitree-controller:locked-v6"
+controller_image="synapse2action-unitree-controller:locked-v9"
 scenario="${1:-balance}"
-if [[ "${scenario}" != "balance" && "${scenario}" != "locomotion" ]]; then
-  echo "usage: $0 [balance|locomotion [target-x-m target-y-m target-yaw-rad]]" >&2
+if [[ "${scenario}" != "balance" && "${scenario}" != "locomotion" && "${scenario}" != "obstacle" ]]; then
+  echo "usage: $0 [balance|locomotion|obstacle [target-x-m target-y-m target-yaw-rad]]" >&2
   exit 2
 fi
 target_x="0.0"
 target_y="0.0"
 target_yaw="0.0"
-if [[ "${scenario}" == "locomotion" ]]; then
+duration_seconds="14"
+controller_obstacle_args=()
+simulator_obstacle_args=()
+if [[ "${scenario}" == "locomotion" || "${scenario}" == "obstacle" ]]; then
   target_x="${2:-0.8}"
   target_y="${3:-0.0}"
   target_yaw="${4:-0.0}"
+fi
+if [[ "${scenario}" == "obstacle" ]]; then
+  target_x="${2:-0.9}"
+  duration_seconds="30"
+  controller_obstacle_args=(
+    --env S2A_OBSTACLE_X_M=0.45
+    --env S2A_OBSTACLE_Y_M=0.0
+    --env S2A_OBSTACLE_RADIUS_M=0.12
+  )
+  simulator_obstacle_args=(
+    --obstacle-x 0.45
+    --obstacle-y 0.0
+    --obstacle-radius 0.12
+  )
 fi
 run_id="$$"
 network="synapse2action-unitree-${run_id}"
@@ -55,6 +72,7 @@ docker run --detach \
   --env S2A_TARGET_Y_M="${target_y}" \
   --env S2A_TARGET_YAW_RAD="${target_yaw}" \
   --env S2A_MAX_SPEED_MPS="0.3" \
+  "${controller_obstacle_args[@]}" \
   "${controller_image}" \
   ./build/g1_ctrl -n eth0 >/dev/null
 docker run --detach \
@@ -73,7 +91,8 @@ docker run --detach \
     --target-x "${target_x}" \
     --target-y "${target_y}" \
     --target-yaw "${target_yaw}" \
-    --duration-seconds 14 \
+    "${simulator_obstacle_args[@]}" \
+    --duration-seconds "${duration_seconds}" \
     --output /workspace/reports/simulation/g1-mujoco.json >/dev/null
 
 simulator_exit="$(docker wait "${simulator}")"
