@@ -1,0 +1,17 @@
+FROM python:3.12.13-slim-bookworm
+
+RUN apt-get update && apt-get install -y --no-install-recommends curl \
+    && curl -fsSL "https://github.com/sccn/liblsl/releases/download/v1.17.7/liblsl-1.17.7-jammy_amd64.tar.gz" -o /tmp/liblsl.tgz \
+    && echo "a73dfca12aaffe65d22599032fa6ba683e9a54e2f8e4212cfdb05d5854b86bec  /tmp/liblsl.tgz" | sha256sum -c - \
+    && tar -xzf /tmp/liblsl.tgz --strip-components=1 -C /usr/local \
+    && ldconfig \
+    && rm -f /tmp/liblsl.tgz \
+    && apt-get purge -y --auto-remove curl \
+    && rm -rf /var/lib/apt/lists/*
+RUN python -m pip install --no-cache-dir \
+    "brainflow==5.19.0" \
+    "numpy==2.2.6" \
+    "pylsl==1.17.6" \
+    "setuptools==80.9.0"
+
+WORKDIR /workspace/current

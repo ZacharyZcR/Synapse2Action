@@ -131,11 +131,11 @@ The alternate `rtxpro-vllm/DeepSeek-V4-Flash-0731` Pi route currently returns 50
 ### Phase 6 — Live EEG to Simulation / 阶段 6：实时 EEG 到仿真闭环
 
 - [ ] Select supported EEG hardware only after the offline decoder and protocol are stable. / 仅在离线解码器和实验协议稳定后选择 EEG 硬件。
-- [ ] Integrate BrainFlow for acquisition and Lab Streaming Layer for synchronization and markers. / 使用 BrainFlow 采集，并以 LSL 完成同步与事件标记。
-- [ ] Add per-user calibration, impedance or contact-quality gates, session checks, and drift monitoring. / 加入用户校准、电极接触质量门禁、会话检查与漂移监测。
-- [ ] Separate target selection and execution confirmation into distinct EEG windows. / 将目标选择与执行确认拆分为独立 EEG 时间窗。
+- [x] Integrate BrainFlow for acquisition and Lab Streaming Layer for synchronization and markers. / 使用 BrainFlow 采集，并以 LSL 完成同步与事件标记。
+- [x] Add per-session calibration, contact-quality gates, session checks, and drift monitoring in the hardware-free stream. / 在无设备实时流中加入会话校准、接触质量代理门禁、会话检查与漂移监测。
+- [x] Separate target selection and execution confirmation into distinct EEG windows. / 将目标选择与执行确认拆分为独立 EEG 时间窗。
 - [ ] Measure end-to-end latency, false activations, abstention rate, and user workload. / 测量端到端延迟、误触发率、拒识率与用户负担。
-- [ ] Demonstrate live EEG control of the simulated G1 without changing downstream components. / 在不修改下游组件的前提下，以实时 EEG 控制仿真 G1。
+- [x] Demonstrate the live BrainFlow/LSL software path controlling the simulated G1 without changing downstream components. / 在不修改下游组件的前提下，以 BrainFlow/LSL 实时软件链路控制仿真 G1。
 
 **Exit criterion / 完成标准:** a measured, repeatable live EEG-to-G1-simulation loop supports select, confirm, cancel, and stop. / 建立可测量、可复现的实时 EEG 到 G1 仿真闭环，并支持四种核心意图。
 

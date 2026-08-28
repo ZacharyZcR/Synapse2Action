@@ -156,6 +156,25 @@ The runner refuses an unaccepted EEG benchmark or a decoded sequence other
 than select followed by confirm. The simulated robot still uses the independent
 physical object, lift, drop-zone, and standing acceptance checks.
 
+## Hardware-free live EEG stream
+
+Run a real BrainFlow and Lab Streaming Layer acquisition/synchronization path
+without an EEG headset:
+
+```bash
+./simulation/run_live_eeg_unitree.sh
+```
+
+The pinned x86-64 container runs BrainFlow 5.19.0's Synthetic Board and official
+liblsl/pylsl streams under Docker emulation on ARM hosts. Separate EEG and
+marker outlets are resolved by inlets, all samples retain monotonic LSL
+timestamps, and select and confirm occupy distinct windows. A same-session
+signal/noise calibration derives the confidence threshold; sample completeness,
+flat-channel checks, amplitude drift, latency, abstention, and false activation
+are reported. Accepted selection and confirmation then enter the unchanged
+Harness and SDK2/MuJoCo G1 task. This validates the software boundary only;
+human workload and physical electrode impedance remain hardware-study metrics.
+
 On an Ubuntu machine with a working Python development toolchain, prepare the
 official sources and Python dependencies:
 
