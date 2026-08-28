@@ -4,6 +4,7 @@ import unittest
 from synapse2action.vla_chunk import (
     G1ActionChunk,
     G1ActionChunkPlayer,
+    G1ChunkCoordinator,
     G1ChunkRuntimeMetrics,
     SmolVLAChunkClient,
     parse_g1_action_chunk,
@@ -77,6 +78,24 @@ class VLAChunkTests(unittest.TestCase):
         self.assertFalse(report["accepted"])
         self.assertFalse(report["checks"]["latency_within_chunk_coverage"])
         self.assertEqual(report["stale_fallbacks"], 1)
+
+    def test_coordinator_keeps_one_ordered_request_in_flight(self) -> None:
+        class Client:
+            def infer(self, **request: object) -> G1ActionChunk:
+                sequence = int(request["sequence"])
+                return G1ActionChunk("run", sequence, ((float(sequence),) * 29,), 1.0, 2.0)
+
+        coordinator = G1ChunkCoordinator(Client(), session_id="run", task="pick")
+        images = {name: b"image" for name in ("camera1", "camera2", "camera3")}
+        self.assertTrue(coordinator.request([0.0] * 29, images))
+        self.assertFalse(coordinator.request([0.0] * 29, images))
+        first = coordinator.poll(timeout_s=1)
+        self.assertEqual(first.sequence, 0)
+        self.assertTrue(coordinator.request([0.0] * 29, images))
+        second = coordinator.poll(timeout_s=1)
+        self.assertEqual(second.sequence, 1)
+        self.assertEqual(coordinator.metrics.report()["chunks_received"], 2)
+        coordinator.close()
 
 
 if __name__ == "__main__":

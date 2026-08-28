@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from base64 import b64encode
+from concurrent.futures import Future, ThreadPoolExecutor, TimeoutError as FutureTimeout
 from dataclasses import dataclass
 import json
 from math import isfinite
@@ -155,3 +156,52 @@ class G1ChunkRuntimeMetrics:
             "minimum_chunk_coverage_ms": min(coverage, default=None),
             "stale_fallbacks": self.stale_fallbacks,
         }
+
+
+class G1ChunkCoordinator:
+    """Keep model HTTP inference off the simulator stepping thread."""
+
+    def __init__(self, client: SmolVLAChunkClient, *, session_id: str, task: str) -> None:
+        self.client = client
+        self.session_id = session_id
+        self.task = task
+        self.metrics = G1ChunkRuntimeMetrics()
+        self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="smolvla-chunk")
+        self._future: Future[G1ActionChunk] | None = None
+        self._next_sequence = 0
+
+    @property
+    def in_flight(self) -> bool:
+        return self._future is not None
+
+    def request(self, state: Sequence[float], images: Mapping[str, bytes]) -> bool:
+        if self._future is not None:
+            return False
+        state_snapshot = tuple(float(value) for value in state)
+        image_snapshot = {name: bytes(value) for name, value in images.items()}
+        self._future = self._executor.submit(
+            self.client.infer,
+            session_id=self.session_id,
+            sequence=self._next_sequence,
+            task=self.task,
+            state=state_snapshot,
+            images=image_snapshot,
+        )
+        return True
+
+    def poll(self, *, timeout_s: float = 0.0) -> G1ActionChunk | None:
+        if self._future is None:
+            return None
+        try:
+            chunk = self._future.result(timeout=timeout_s)
+        except FutureTimeout:
+            return None
+        finally:
+            if self._future is not None and self._future.done():
+                self._future = None
+        self._next_sequence += 1
+        self.metrics.record_chunk(chunk)
+        return chunk
+
+    def close(self) -> None:
+        self._executor.shutdown(wait=True, cancel_futures=True)
