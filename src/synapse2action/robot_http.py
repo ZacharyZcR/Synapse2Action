@@ -100,6 +100,8 @@ class RobotHTTPRequest:
 @dataclass(slots=True)
 class EmbeddedRobotServer:
     bridge: RobotTransport
+    host: str = "127.0.0.1"
+    requested_port: int = 0
     requests: list[RobotHTTPRequest] = field(default_factory=list, init=False)
     _server: ThreadingHTTPServer = field(init=False, repr=False)
     _thread: threading.Thread = field(init=False, repr=False)
@@ -107,7 +109,7 @@ class EmbeddedRobotServer:
     _started: bool = field(default=False, init=False, repr=False)
 
     def __post_init__(self) -> None:
-        self._server = ThreadingHTTPServer(("127.0.0.1", 0), self._handler())
+        self._server = ThreadingHTTPServer((self.host, self.requested_port), self._handler())
         self._server.daemon_threads = True
         self._ready = threading.Event()
         self._thread = threading.Thread(
