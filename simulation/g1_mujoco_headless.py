@@ -11,7 +11,9 @@ from types import SimpleNamespace
 import mujoco
 
 from synapse2action.unitree_g1 import G1_FIX_STAND_POSITION_RAD
-from unitree_sdk2py.core.channel import ChannelFactoryInitialize, ChannelSubscriber
+from unitree_sdk2py.core.channel import ChannelFactoryInitialize, ChannelPublisher, ChannelSubscriber
+from unitree_sdk2py.idl.default import unitree_go_msg_dds__SportModeState_
+from unitree_sdk2py.idl.unitree_go.msg.dds_ import SportModeState_
 from unitree_sdk2py.idl.unitree_hg.msg.dds_ import LowCmd_
 
 
@@ -23,6 +25,7 @@ def main() -> None:
     parser.add_argument("--container-network", action="store_true")
     parser.add_argument("--duration-seconds", type=float, default=8.0)
     parser.add_argument("--command-preroll-seconds", type=float, default=0.5)
+    parser.add_argument("--target-x", type=float, default=0.0)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     if args.interface != "lo" and not args.container_network:
@@ -48,6 +51,19 @@ def main() -> None:
     ChannelFactoryInitialize(args.domain_id, args.interface)
     bridge = UnitreeSdk2Bridge(model, data)
     bridge.low_state.mode_machine = 5
+    odometry = unitree_go_msg_dds__SportModeState_()
+    odometry_publisher = ChannelPublisher("rt/sportmodestate", SportModeState_)
+    odometry_publisher.Init()
+    odometry_frames = 0
+
+    def publish_odometry() -> None:
+        nonlocal odometry_frames
+        odometry.position = [float(value) for value in data.qpos[:3]]
+        odometry.velocity = [float(value) for value in data.qvel[:3]]
+        odometry.body_height = float(data.qpos[2])
+        odometry_publisher.Write(odometry)
+        odometry_frames += 1
+
     first_command = Event()
     command_count = 0
 
@@ -58,9 +74,16 @@ def main() -> None:
 
     command_probe = ChannelSubscriber("rt/lowcmd", LowCmd_)
     command_probe.Init(record_command, 10)
-    if not first_command.wait(5.0):
+    command_deadline = monotonic() + 5.0
+    while not first_command.is_set() and monotonic() < command_deadline:
+        publish_odometry()
+        sleep(0.002)
+    if not first_command.is_set():
         raise TimeoutError("no SDK2 LowCmd received before physics start")
-    sleep(args.command_preroll_seconds)
+    preroll_deadline = monotonic() + args.command_preroll_seconds
+    while monotonic() < preroll_deadline:
+        publish_odometry()
+        sleep(0.002)
 
     started = monotonic()
     next_step = started
@@ -69,6 +92,7 @@ def main() -> None:
     maximum_base_height = float(data.qpos[2])
     while monotonic() - started < args.duration_seconds:
         mujoco.mj_step(model, data)
+        publish_odometry()
         steps += 1
         minimum_base_height = min(minimum_base_height, float(data.qpos[2]))
         maximum_base_height = max(maximum_base_height, float(data.qpos[2]))
@@ -88,12 +112,15 @@ def main() -> None:
         "initial_base_position_xyz_m": initial_base_position,
         "final_base_position_xyz_m": [float(value) for value in data.qpos[:3]],
         "forward_displacement_m": float(data.qpos[0]) - initial_base_position[0],
+        "target_position_x_m": args.target_x,
+        "final_target_error_m": args.target_x - float(data.qpos[0]),
         "final_base_linear_velocity_xyz_mps": [float(value) for value in data.qvel[:3]],
         "minimum_base_height_m": minimum_base_height,
         "maximum_base_height_m": maximum_base_height,
         "physics_started_after_lowcmd": first_command.is_set(),
         "lowcmd_frames_before_physics": command_count,
         "command_preroll_seconds": args.command_preroll_seconds,
+        "odometry_frames_published": odometry_frames,
         "external_support": False,
         "unsupported_seconds": float(data.time),
         "base_quaternion_wxyz": [float(value) for value in data.qpos[3:7]],

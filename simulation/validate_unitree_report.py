@@ -30,6 +30,7 @@ def main() -> None:
         "g1_29dof": simulator.get("model") == "g1_29dof" and simulator.get("motor_count") == 29,
         "physics_command_barrier": simulator.get("physics_started_after_lowcmd") is True,
         "controller_prerolled": int(simulator.get("lowcmd_frames_before_physics", 0)) >= 100,
+        "odometry_feedback_published": int(simulator.get("odometry_frames_published", 0)) >= 1000,
         "simulation_advanced": float(simulator.get("simulated_seconds", 0)) >= 13.9,
         "no_external_support": simulator.get("external_support") is False,
         "unsupported_standing": float(simulator.get("unsupported_seconds", 0)) >= 13.9,
@@ -39,7 +40,7 @@ def main() -> None:
     }
     if args.scenario == "locomotion":
         final_velocity = simulator.get("final_base_linear_velocity_xyz_mps", [])
-        checks["forward_locomotion"] = float(simulator.get("forward_displacement_m", 0)) >= 0.5
+        checks["closed_loop_goal_reached"] = abs(float(simulator.get("final_target_error_m", 99))) <= 0.1
         checks["stopped_after_locomotion"] = (
             isinstance(final_velocity, list)
             and len(final_velocity) == 3
