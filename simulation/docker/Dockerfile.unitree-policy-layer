@@ -1,0 +1,7 @@
+FROM synapse2action-unitree:locked
+
+ARG UNITREE_RL_LAB_COMMIT=4960b84732b0c2ec593dccbfe963fda1bcd7b1e3
+
+RUN python3 -m pip install --break-system-packages onnxruntime==1.22.0 \
+    && git clone https://github.com/unitreerobotics/unitree_rl_lab.git /opt/unitree/unitree_rl_lab \
+    && git -C /opt/unitree/unitree_rl_lab checkout --detach "${UNITREE_RL_LAB_COMMIT}"

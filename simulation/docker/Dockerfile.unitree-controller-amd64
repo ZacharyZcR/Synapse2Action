@@ -1,0 +1,33 @@
+FROM ubuntu:24.04
+
+ARG DEBIAN_FRONTEND=noninteractive
+ARG UNITREE_SDK2_COMMIT=9754cd153af3da471b0fe5f3aa535e426fb11db3
+ARG UNITREE_RL_LAB_COMMIT=4960b84732b0c2ec593dccbfe963fda1bcd7b1e3
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential ca-certificates cmake git libboost-program-options-dev libeigen3-dev \
+    libfmt-dev libspdlog-dev libyaml-cpp-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /opt/unitree
+RUN git clone https://github.com/unitreerobotics/unitree_sdk2.git \
+    && git -C unitree_sdk2 checkout --detach "${UNITREE_SDK2_COMMIT}" \
+    && cmake -S unitree_sdk2 -B unitree_sdk2/build \
+       -DCMAKE_BUILD_TYPE=Release \
+       -DCMAKE_INSTALL_PREFIX=/usr/local \
+       -DBUILD_EXAMPLES=OFF \
+    && cmake --build unitree_sdk2/build --target install -j2
+RUN ldconfig
+RUN git clone https://github.com/unitreerobotics/unitree_rl_lab.git \
+    && git -C unitree_rl_lab checkout --detach "${UNITREE_RL_LAB_COMMIT}"
+
+COPY simulation/cpp/g1_velocity_main.cpp \
+    /opt/unitree/unitree_rl_lab/deploy/robots/g1_29dof/main.cpp
+RUN cmake \
+      -S unitree_rl_lab/deploy/robots/g1_29dof \
+      -B unitree_rl_lab/deploy/robots/g1_29dof/build \
+      -DCMAKE_BUILD_TYPE=Release \
+    && cmake --build unitree_rl_lab/deploy/robots/g1_29dof/build -j2
+
+WORKDIR /opt/unitree/unitree_rl_lab/deploy/robots/g1_29dof
+CMD ["./build/g1_ctrl", "-n", "eth0"]

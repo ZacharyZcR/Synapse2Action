@@ -1,0 +1,32 @@
+FROM ubuntu:24.04
+
+ARG DEBIAN_FRONTEND=noninteractive
+ARG CYCLONEDDS_COMMIT=5041f3560c088c99e5088b2b8520b69169621196
+ARG UNITREE_SDK2_COMMIT=65691c8a8bc53b98d3976dba4dbf9d5d20b2e7f5
+ARG UNITREE_MUJOCO_COMMIT=4134cb5dc7ff1ba7f484deda48b5274b58694519
+ARG UNITREE_RL_LAB_COMMIT=4960b84732b0c2ec593dccbfe963fda1bcd7b1e3
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    build-essential cmake git python3-dev python3-pip libgl1 libglib2.0-0 \
+    && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /opt/unitree
+RUN git clone https://github.com/eclipse-cyclonedds/cyclonedds.git \
+    && git -C cyclonedds checkout --detach "${CYCLONEDDS_COMMIT}" \
+    && cmake -S cyclonedds -B cyclonedds/build -DCMAKE_INSTALL_PREFIX=/opt/unitree/cyclonedds/install \
+    && cmake --build cyclonedds/build --target install -j2
+RUN git clone https://github.com/unitreerobotics/unitree_sdk2_python.git \
+    && git -C unitree_sdk2_python checkout --detach "${UNITREE_SDK2_COMMIT}" \
+    && CYCLONEDDS_HOME=/opt/unitree/cyclonedds/install \
+       python3 -m pip install --break-system-packages -e unitree_sdk2_python
+RUN git clone https://github.com/unitreerobotics/unitree_mujoco.git \
+    && git -C unitree_mujoco checkout --detach "${UNITREE_MUJOCO_COMMIT}" \
+    && python3 -m pip install --break-system-packages mujoco==3.3.7 pygame==2.6.1 onnxruntime==1.22.0
+RUN git clone https://github.com/unitreerobotics/unitree_rl_lab.git \
+    && git -C unitree_rl_lab checkout --detach "${UNITREE_RL_LAB_COMMIT}"
+
+WORKDIR /workspace
+COPY pyproject.toml README.md ./
+COPY src ./src
+COPY simulation ./simulation
+ENV PYTHONPATH=/workspace/src

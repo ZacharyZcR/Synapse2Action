@@ -1,0 +1,23 @@
+{
+  "schema_version": 1,
+  "cyclonedds": {
+    "commit": "5041f3560c088c99e5088b2b8520b69169621196",
+    "repository": "https://github.com/eclipse-cyclonedds/cyclonedds.git"
+  },
+  "unitree_mujoco": {
+    "commit": "4134cb5dc7ff1ba7f484deda48b5274b58694519",
+    "repository": "https://github.com/unitreerobotics/unitree_mujoco.git"
+  },
+  "unitree_rl_lab": {
+    "commit": "4960b84732b0c2ec593dccbfe963fda1bcd7b1e3",
+    "repository": "https://github.com/unitreerobotics/unitree_rl_lab.git"
+  },
+  "unitree_sdk2_python": {
+    "commit": "65691c8a8bc53b98d3976dba4dbf9d5d20b2e7f5",
+    "repository": "https://github.com/unitreerobotics/unitree_sdk2_python.git"
+  },
+  "unitree_sdk2": {
+    "commit": "9754cd153af3da471b0fe5f3aa535e426fb11db3",
+    "repository": "https://github.com/unitreerobotics/unitree_sdk2.git"
+  }
+}

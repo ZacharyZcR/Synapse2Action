@@ -4,3 +4,5 @@ __pycache__/
 .venv/
 dist/
 artifacts/
+simulation/vendor/
+reports/simulation/
