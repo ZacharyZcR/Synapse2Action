@@ -34,6 +34,18 @@ class SmolVLAAssetsTests(unittest.TestCase):
         self.assertIn('action.shape == (29,)', source)
         self.assertIn('sum(key.startswith("observation.images.")', source)
 
+    def test_g1_dataset_converter_supports_multiple_episodes(self) -> None:
+        source = (ROOT / "simulation" / "convert_g1_episode_to_lerobot.py").read_text()
+        self.assertIn('nargs="+"', source)
+        self.assertIn('"episode_count": reopened.meta.total_episodes == episode_count', source)
+        self.assertIn("for episode, episode_frames in zip(episodes, frame_counts, strict=True)", source)
+
+    def test_g1_offline_gate_reports_manipulation_joint_error(self) -> None:
+        source = (ROOT / "simulation" / "evaluate_smolvla_g1_offline.py").read_text()
+        self.assertIn("ARM_WAIST_JOINTS", source)
+        self.assertIn('"arm_waist_mse"', source)
+        self.assertIn("policy.config.chunk_size", source)
+
 
 if __name__ == "__main__":
     unittest.main()

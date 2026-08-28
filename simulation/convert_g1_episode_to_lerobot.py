@@ -26,14 +26,20 @@ def wait_for_local_metadata(root: Path, timeout: float = 10.0) -> None:
     raise FileNotFoundError(f"dataset metadata did not become visible: {missing}")
 
 
-def validate_dataset(root: Path, repo_id: str, frame_count: int, task: str) -> dict[str, object]:
+def validate_dataset(
+    root: Path,
+    repo_id: str,
+    frame_count: int,
+    episode_count: int,
+    tasks: set[str],
+) -> dict[str, object]:
     wait_for_local_metadata(root)
     reopened = LeRobotDataset(repo_id, root=root)
     first = reopened[0]
     last = reopened[len(reopened) - 1]
     checks = {
-        "frame_count": len(reopened) == frame_count == 140,
-        "one_episode": reopened.meta.total_episodes == 1,
+        "frame_count": len(reopened) == frame_count,
+        "episode_count": reopened.meta.total_episodes == episode_count,
         "fps": reopened.fps == 10,
         "state_shape": tuple(first["observation.state"].shape) == (29,),
         "action_shape": tuple(last["action"].shape) == (29,),
@@ -41,7 +47,7 @@ def validate_dataset(root: Path, repo_id: str, frame_count: int, task: str) -> d
             tuple(first[f"observation.images.camera{index}"].shape) == (3, 256, 256)
             for index in (1, 2, 3)
         ),
-        "task": first["task"] == task,
+        "tasks": first["task"] in tasks and last["task"] in tasks,
     }
     return {
         "accepted": all(checks.values()),
@@ -54,7 +60,7 @@ def validate_dataset(root: Path, repo_id: str, frame_count: int, task: str) -> d
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Convert a recorded SDK2 G1 episode to LeRobotDataset v3")
-    parser.add_argument("episode", type=Path)
+    parser.add_argument("episodes", type=Path, nargs="+")
     parser.add_argument("output", type=Path)
     parser.add_argument("--repo-id", default="synapse2action/g1-pick-place-sim")
     parser.add_argument("--report", type=Path, required=True)
@@ -63,21 +69,23 @@ def main() -> None:
     if args.output.exists() and not args.validate_only:
         raise FileExistsError(f"dataset output already exists: {args.output}")
 
-    episode = np.load(args.episode)
-    frame_count = len(episode["timestamp"])
-    expected = {
-        "observation_state": (frame_count, 29),
-        "action": (frame_count, 29),
-        "images_camera1": (frame_count, 256, 256, 3),
-        "images_camera2": (frame_count, 256, 256, 3),
-        "images_camera3": (frame_count, 256, 256, 3),
-    }
-    for key, shape in expected.items():
-        if episode[key].shape != shape:
-            raise ValueError(f"{key} has shape {episode[key].shape}, expected {shape}")
-    task = str(episode["task"].item())
+    episodes = [np.load(path) for path in args.episodes]
+    frame_counts = [len(episode["timestamp"]) for episode in episodes]
+    tasks = {str(episode["task"].item()) for episode in episodes}
+    for path, episode, frame_count in zip(args.episodes, episodes, frame_counts, strict=True):
+        expected = {
+            "observation_state": (frame_count, 29),
+            "action": (frame_count, 29),
+            "images_camera1": (frame_count, 256, 256, 3),
+            "images_camera2": (frame_count, 256, 256, 3),
+            "images_camera3": (frame_count, 256, 256, 3),
+        }
+        for key, shape in expected.items():
+            if episode[key].shape != shape:
+                raise ValueError(f"{path}: {key} has shape {episode[key].shape}, expected {shape}")
+    frame_count = sum(frame_counts)
     if args.validate_only:
-        report = validate_dataset(args.output, args.repo_id, frame_count, task)
+        report = validate_dataset(args.output, args.repo_id, frame_count, len(episodes), tasks)
         args.report.parent.mkdir(parents=True, exist_ok=True)
         args.report.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
         print(json.dumps(report, sort_keys=True))
@@ -99,17 +107,19 @@ def main() -> None:
         use_videos=False,
         image_writer_threads=4,
     )
-    for index in range(frame_count):
-        dataset.add_frame({
-            "observation.state": episode["observation_state"][index],
-            "observation.images.camera1": episode["images_camera1"][index],
-            "observation.images.camera2": episode["images_camera2"][index],
-            "observation.images.camera3": episode["images_camera3"][index],
-            "action": episode["action"][index],
-            "task": task,
-        })
-    dataset.save_episode()
-    report = validate_dataset(args.output, args.repo_id, frame_count, task)
+    for episode, episode_frames in zip(episodes, frame_counts, strict=True):
+        task = str(episode["task"].item())
+        for index in range(episode_frames):
+            dataset.add_frame({
+                "observation.state": episode["observation_state"][index],
+                "observation.images.camera1": episode["images_camera1"][index],
+                "observation.images.camera2": episode["images_camera2"][index],
+                "observation.images.camera3": episode["images_camera3"][index],
+                "action": episode["action"][index],
+                "task": task,
+            })
+        dataset.save_episode()
+    report = validate_dataset(args.output, args.repo_id, frame_count, len(episodes), tasks)
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
     print(json.dumps(report, sort_keys=True))

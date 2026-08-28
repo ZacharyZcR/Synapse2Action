@@ -127,6 +127,25 @@ The one-step default proves dataset loading, feature inference, forward and
 backward passes, local checkpoint saving, and checkpoint inference without
 publishing to the Hub. It is not a task-quality claim. A useful manipulation
 policy requires varied training episodes and held-out closed-loop evaluation.
+The converter accepts one or more recorded `.npz` episodes before the output
+path, so scene variations can remain separate LeRobot episodes instead of being
+concatenated into one leaking trajectory. Evaluate a trained checkpoint against
+a recorded episode with:
+
+```bash
+docker run --rm \
+  --volume "$PWD:/workspace/current:ro" \
+  --volume "$PWD/reports:/workspace/reports" \
+  synapse2action-smolvla:0.6.1 \
+  python simulation/evaluate_smolvla_g1_offline.py \
+  /workspace/reports/training/smolvla-g1/checkpoints/last/pretrained_model \
+  /workspace/reports/simulation/g1-pick-place-episode.npz \
+  --report /workspace/reports/training/smolvla-g1-offline.json
+```
+
+The report separates full 29-DOF error from the waist and shoulder/elbow joints
+that manipulation controls. Passing checkpoint-shape validation alone is not a
+closed-loop task-quality result.
 
 ## Public offline SSVEP gate
 
