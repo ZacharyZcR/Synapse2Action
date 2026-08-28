@@ -30,13 +30,14 @@ class VLAChunkTests(unittest.TestCase):
         def open_request(request: object, *, timeout: float) -> Response:
             payload = json.loads(request.data)
             self.assertEqual(set(payload["images"]), {"camera1", "camera2", "camera3"})
+            self.assertEqual(payload["image_encoding"], "rgb8-256x256")
             self.assertEqual(timeout, 30.0)
             return Response({"session_id": "run", "sequence": 3, "actions": [[0.0] * 29] * 50, "inference_ms": 12.5})
 
         client = SmolVLAChunkClient("http://policy", opener=open_request)
         result = client.infer(
             session_id="run", sequence=3, task="pick", state=[0.0] * 29,
-            images={name: b"image" for name in ("camera1", "camera2", "camera3")},
+            images={name: bytes(256 * 256 * 3) for name in ("camera1", "camera2", "camera3")},
         )
         self.assertEqual(len(result.actions), 50)
 
@@ -86,7 +87,7 @@ class VLAChunkTests(unittest.TestCase):
                 return G1ActionChunk("run", sequence, ((float(sequence),) * 29,), 1.0, 2.0)
 
         coordinator = G1ChunkCoordinator(Client(), session_id="run", task="pick")
-        images = {name: b"image" for name in ("camera1", "camera2", "camera3")}
+        images = {name: bytes(256 * 256 * 3) for name in ("camera1", "camera2", "camera3")}
         self.assertTrue(coordinator.request([0.0] * 29, images))
         self.assertFalse(coordinator.request([0.0] * 29, images))
         first = coordinator.poll(timeout_s=1)

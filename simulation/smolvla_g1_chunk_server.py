@@ -2,14 +2,12 @@ from __future__ import annotations
 
 import argparse
 from base64 import b64decode
-from io import BytesIO
 import json
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from time import monotonic
 
 import numpy as np
-from PIL import Image
 import torch
 
 from lerobot.policies import make_pre_post_processors
@@ -29,8 +27,10 @@ class ChunkService:
 
     def infer(self, payload: dict[str, object]) -> dict[str, object]:
         state = np.asarray(payload["state"], dtype=np.float32)
+        if payload.get("image_encoding") != "rgb8-256x256":
+            raise ValueError("unsupported image encoding")
         images = {
-            f"observation.images.{name}": np.asarray(Image.open(BytesIO(b64decode(encoded))).convert("RGB"))
+            f"observation.images.{name}": np.frombuffer(b64decode(encoded), dtype=np.uint8).reshape(256, 256, 3)
             for name, encoded in payload["images"].items()
         }
         observation = prepare_observation_for_inference(

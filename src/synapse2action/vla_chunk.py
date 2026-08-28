@@ -44,11 +44,14 @@ class SmolVLAChunkClient:
     ) -> G1ActionChunk:
         if len(state) != G1_MOTOR_COUNT or set(images) != {"camera1", "camera2", "camera3"}:
             raise ValueError("G1 chunk request requires 29 state values and camera1/camera2/camera3")
+        if any(len(image) != 256 * 256 * 3 for image in images.values()):
+            raise ValueError("G1 camera images must be 256x256 rgb8 frames")
         payload = json.dumps({
             "session_id": session_id,
             "sequence": sequence,
             "task": task,
             "state": [float(value) for value in state],
+            "image_encoding": "rgb8-256x256",
             "images": {name: b64encode(value).decode("ascii") for name, value in images.items()},
         }).encode()
         request = Request(

@@ -70,6 +70,8 @@ def make_g1_vla_bridge(base_bridge: type) -> type:
             self._vla_chunks = G1ActionChunkPlayer()
             self._vla_lock = Lock()
             self.vla_overlay_frames = 0
+            self.vla_stale_fallbacks = 0
+            self._vla_was_active = False
             super().__init__(*args, **kwargs)
 
         def set_vla_action(self, action_rad: Sequence[float]) -> None:
@@ -98,6 +100,9 @@ def make_g1_vla_bridge(base_bridge: type) -> type:
         def LowCmdHandler(self, message: object) -> None:  # noqa: N802 - official SDK callback name
             with self._vla_lock:
                 action = self._vla_action or self._vla_chunks.current()
+                if action is None and self._vla_was_active and self._vla_chunks.chunk is not None:
+                    self.vla_stale_fallbacks += 1
+                self._vla_was_active = action is not None
                 if action is None:
                     return super().LowCmdHandler(message)
                 rl_command = tuple(float(message.motor_cmd[i].q) for i in range(self.num_motor))

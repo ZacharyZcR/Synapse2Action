@@ -66,6 +66,13 @@ class SmolVLAAssetsTests(unittest.TestCase):
         self.assertIn("HF_HUB_OFFLINE=1", runner)
         self.assertIn("simulation/vendor/huggingface", runner)
 
+    def test_pick_place_simulator_connects_online_chunks_to_bridge(self) -> None:
+        source = (ROOT / "simulation" / "g1_mujoco_pick_place.py").read_text()
+        self.assertIn("G1ChunkCoordinator", source)
+        self.assertIn("make_g1_vla_bridge", source)
+        self.assertIn("bridge.set_vla_chunk", source)
+        self.assertIn('report["vla_runtime"]', source)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -12,7 +12,9 @@ from types import SimpleNamespace
 import mujoco
 import numpy as np
 
+from synapse2action.g1_vla import make_g1_vla_bridge
 from synapse2action.unitree_g1 import G1_FIX_STAND_POSITION_RAD
+from synapse2action.vla_chunk import G1ChunkCoordinator, SmolVLAChunkClient
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize, ChannelSubscriber
 from unitree_sdk2py.idl.unitree_hg.msg.dds_ import LowCmd_
 
@@ -33,6 +35,7 @@ def main() -> None:
     parser.add_argument("--domain-id", type=int, default=1)
     parser.add_argument("--interface", default="lo")
     parser.add_argument("--duration-seconds", type=float, default=14.0)
+    parser.add_argument("--vla-endpoint")
     parser.add_argument("--episode-output", type=Path)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
@@ -72,8 +75,21 @@ def main() -> None:
     data.qpos[7 : 7 + len(G1_FIX_STAND_POSITION_RAD)] = G1_FIX_STAND_POSITION_RAD
     mujoco.mj_forward(model, data)
     ChannelFactoryInitialize(args.domain_id, args.interface)
-    bridge = UnitreeSdk2Bridge(model, data)
+    bridge_class = make_g1_vla_bridge(UnitreeSdk2Bridge) if args.vla_endpoint else UnitreeSdk2Bridge
+    bridge = bridge_class(model, data)
     bridge.low_state.mode_machine = 5
+    coordinator = None
+    online_renderers = None
+    if args.vla_endpoint:
+        coordinator = G1ChunkCoordinator(
+            SmolVLAChunkClient(args.vla_endpoint),
+            session_id="g1-pick-place",
+            task="pick the red block and place it in the green tray",
+        )
+        online_renderers = {
+            name: mujoco.Renderer(model, height=256, width=256)
+            for name in ("camera1", "camera2", "camera3")
+        }
 
     first_command = Event()
     command_count = 0
@@ -122,6 +138,16 @@ def main() -> None:
     while monotonic() - started < args.duration_seconds:
         mujoco.mj_step(model, data)
         steps += 1
+        if coordinator is not None:
+            chunk = coordinator.poll()
+            if chunk is not None:
+                bridge.set_vla_chunk(chunk)
+            if bridge.needs_vla_chunk() and not coordinator.in_flight:
+                images = {}
+                for name, renderer in online_renderers.items():
+                    renderer.update_scene(data, camera=name)
+                    images[name] = renderer.render().tobytes()
+                coordinator.request(data.qpos[7:36], images)
         minimum_base_height = min(minimum_base_height, float(data.qpos[2]))
         maximum_item_height = max(maximum_item_height, float(data.xpos[item, 2]))
         maximum_left_hand_height = max(maximum_left_hand_height, float(data.xpos[left, 2]))
@@ -139,7 +165,8 @@ def main() -> None:
             data.eq_active[weld] = 1
             grasped = True
             grasped_at_seconds = float(data.time)
-        if grasped and not released and data.time > 13.0:
+        release_time = 13.0 if grasped_at_seconds is None else max(13.0, grasped_at_seconds + 8.0)
+        if grasped and not released and data.time > release_time:
             data.eq_active[weld] = 0
             released = True
             released_at_seconds = float(data.time)
@@ -157,6 +184,13 @@ def main() -> None:
         if remaining > 0:
             sleep(remaining)
 
+    if coordinator is not None:
+        coordinator.close()
+        final_chunk = coordinator.poll()
+        if final_chunk is not None:
+            bridge.set_vla_chunk(final_chunk)
+        for _ in range(bridge.vla_stale_fallbacks):
+            coordinator.metrics.record_stale_fallback()
     final_item = data.xpos[item].copy()
     drop_zone_delta = final_item[:2] - np.asarray((0.32, 0.12))
     report = {
@@ -187,6 +221,9 @@ def main() -> None:
         "final_left_hand_object_distance_m": float(np.linalg.norm(data.xpos[left] - final_item)),
         "external_support": False,
     }
+    if coordinator is not None:
+        report["vla_overlay_frames"] = bridge.vla_overlay_frames
+        report["vla_runtime"] = coordinator.metrics.report()
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
     if args.episode_output:
