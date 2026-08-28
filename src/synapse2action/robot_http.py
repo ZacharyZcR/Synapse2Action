@@ -8,7 +8,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from typing import Callable
 from urllib.parse import urlsplit
 
-from .robot_transport import LoopbackRobotTransport
+from .robot_transport import RobotTransport
 
 
 HTTPTransport = Callable[[str, dict[str, str], bytes, float], bytes]
@@ -99,7 +99,7 @@ class RobotHTTPRequest:
 
 @dataclass(slots=True)
 class EmbeddedRobotServer:
-    bridge: LoopbackRobotTransport
+    bridge: RobotTransport
     requests: list[RobotHTTPRequest] = field(default_factory=list, init=False)
     _server: ThreadingHTTPServer = field(init=False, repr=False)
     _thread: threading.Thread = field(init=False, repr=False)

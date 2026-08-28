@@ -20,6 +20,7 @@ from .navigation import (
 )
 from .robot_http import EmbeddedRobotServer, HTTPRobotTransport
 from .robot_transport import LoopbackRobotTransport, RobotTransport
+from .ros2_bridge import LoopbackROS2Runtime, ROS2RobotTransport
 from .navigation_suite import run_navigation_suite
 from .synthetic_intent import run_intent_suite
 from .visualization import render_demo_html
@@ -91,7 +92,10 @@ def main() -> int:
     parser.add_argument("--navigation-scenario", type=Path)
     parser.add_argument("--navigation-suite", type=Path)
     parser.add_argument("--navigation-episode-directory", type=Path)
-    parser.add_argument("--robot-transport", choices=("loopback", "embedded-http", "http"))
+    parser.add_argument(
+        "--robot-transport",
+        choices=("loopback", "embedded-http", "embedded-ros2-http", "http"),
+    )
     parser.add_argument("--robot-base-url")
     parser.add_argument("--robot-api-key-env", default="ROBOT_API_KEY")
     parser.add_argument("--robot-sensor-latency-ms", type=int, default=0)
@@ -215,13 +219,18 @@ def main() -> int:
             sensor_latency_ms=args.robot_sensor_latency_ms,
             command_latency_ms=args.robot_command_latency_ms,
         )
-        if args.robot_transport in {"loopback", "embedded-http"}
+        if args.robot_transport in {"loopback", "embedded-http", "embedded-ros2-http"}
         else None
     )
     robot_server = None
+    ros2_runtime = None
     robot_transport: RobotTransport | None = loopback_robot
-    if args.robot_transport == "embedded-http":
-        robot_server = EmbeddedRobotServer(loopback_robot)
+    if args.robot_transport in {"embedded-http", "embedded-ros2-http"}:
+        robot_bridge: RobotTransport = loopback_robot
+        if args.robot_transport == "embedded-ros2-http":
+            ros2_runtime = LoopbackROS2Runtime(loopback_robot)
+            robot_bridge = ROS2RobotTransport(ros2_runtime)
+        robot_server = EmbeddedRobotServer(robot_bridge)
         robot_server.start()
         robot_transport = HTTPRobotTransport(
             robot_server.base_url,
@@ -358,6 +367,11 @@ def main() -> int:
     if robot_server is not None:
         report["robot_http_requests"] = len(robot_server.requests)
         report["robot_http_operations"] = [request.operation for request in robot_server.requests]
+    if ros2_runtime is not None:
+        report["robot_bridge"] = "ros2"
+        report["ros2_twist_messages"] = len(ros2_runtime.published_twists)
+        report["ros2_zero_twists"] = ros2_runtime.zero_twist_count
+        report["ros2_emergency_stops"] = ros2_runtime.emergency_stop_count
     if isinstance(robot_transport, HTTPRobotTransport):
         robot_transport.close()
     if robot_server is not None:

@@ -44,6 +44,19 @@ class SensorPacket:
     available_at_ms: int
 
 
+@dataclass(frozen=True, slots=True)
+class BaseCommandRequest:
+    sequence: int
+    issued_at_ms: int
+    command: BaseVelocity
+
+
+@dataclass(frozen=True, slots=True)
+class ObservationRequest:
+    frame_id: int
+    captured_at_ms: int
+
+
 @dataclass(slots=True)
 class LoopbackRobotTransport:
     pose: Pose2D
@@ -72,28 +85,20 @@ class LoopbackRobotTransport:
         if payload.get("schema_version") != 1:
             raise ValueError("unsupported robot command envelope")
         if payload.get("operation") == "observe":
-            return self._observe(payload)
+            return self._observe(decode_observation_request(request))
         if payload.get("operation") != "base_velocity":
             raise ValueError("unsupported robot command envelope")
-        return self._execute(payload)
+        return self._execute(decode_base_command(request))
 
-    def _execute(self, payload: dict[str, object]) -> bytes:
-        sequence = _required_int(payload, "sequence")
-        issued_at_ms = _required_int(payload, "issued_at_ms")
-        command_payload = payload.get("command")
-        if not isinstance(command_payload, dict):
-            raise ValueError("robot command is missing")
-        command = BaseVelocity(
-            float(command_payload["vx"]),
-            float(command_payload["vy"]),
-            float(command_payload["yaw_rate"]),
-            _required_int(command_payload, "duration_ms"),
-        )
+    def _execute(self, request: BaseCommandRequest) -> bytes:
+        sequence = request.sequence
+        issued_at_ms = request.issued_at_ms
+        command = request.command
         self.command_request_count += 1
         started_at_ms = issued_at_ms + self.command_latency_ms
         completed_at_ms = started_at_ms + command.duration_ms
         if self.stopped:
-            return _encode_receipt(
+            return encode_command_receipt(
                 CommandReceipt(
                     sequence,
                     False,
@@ -120,7 +125,7 @@ class LoopbackRobotTransport:
         )
         if collision:
             self.base_state = BaseState()
-            return _encode_receipt(
+            return encode_command_receipt(
                 CommandReceipt(
                     sequence,
                     False,
@@ -134,7 +139,7 @@ class LoopbackRobotTransport:
 
         self.pose = next_pose
         self.base_state = BaseState(command.vx, command.vy, command.yaw_rate)
-        return _encode_receipt(
+        return encode_command_receipt(
             CommandReceipt(
                 sequence,
                 True,
@@ -146,9 +151,9 @@ class LoopbackRobotTransport:
             )
         )
 
-    def _observe(self, payload: dict[str, object]) -> bytes:
-        frame_id = _required_int(payload, "frame_id")
-        captured_at_ms = _required_int(payload, "captured_at_ms")
+    def _observe(self, request: ObservationRequest) -> bytes:
+        frame_id = request.frame_id
+        captured_at_ms = request.captured_at_ms
         visible = tuple(
             obstacle
             for obstacle in self.obstacles
@@ -157,7 +162,7 @@ class LoopbackRobotTransport:
             and hypot(obstacle.x - self.pose.x, obstacle.y - self.pose.y) <= self.sensor_range_m
         )
         self.observation_request_count += 1
-        return _encode_sensor_packet(
+        return encode_sensor_packet(
             SensorPacket(
                 SensorFrame(
                     frame_id,
@@ -205,6 +210,35 @@ def encode_observation_request(frame_id: int, captured_at_ms: int) -> bytes:
         sort_keys=True,
         separators=(",", ":"),
     ).encode("utf-8")
+
+
+def decode_base_command(request: bytes) -> BaseCommandRequest:
+    payload = json.loads(request)
+    if payload.get("schema_version") != 1 or payload.get("operation") != "base_velocity":
+        raise ValueError("unsupported robot base command envelope")
+    command = payload.get("command")
+    if not isinstance(command, dict):
+        raise ValueError("robot command is missing")
+    return BaseCommandRequest(
+        _required_int(payload, "sequence"),
+        _required_int(payload, "issued_at_ms"),
+        BaseVelocity(
+            float(command["vx"]),
+            float(command["vy"]),
+            float(command["yaw_rate"]),
+            _required_int(command, "duration_ms"),
+        ),
+    )
+
+
+def decode_observation_request(request: bytes) -> ObservationRequest:
+    payload = json.loads(request)
+    if payload.get("schema_version") != 1 or payload.get("operation") != "observe":
+        raise ValueError("unsupported robot observation envelope")
+    return ObservationRequest(
+        _required_int(payload, "frame_id"),
+        _required_int(payload, "captured_at_ms"),
+    )
 
 
 def decode_command_receipt(response: bytes, expected_sequence: int) -> CommandReceipt:
@@ -266,7 +300,7 @@ def decode_sensor_frame(response: bytes, expected_frame_id: int) -> SensorFrame:
     return decode_sensor_packet(response, expected_frame_id).frame
 
 
-def _encode_receipt(receipt: CommandReceipt) -> bytes:
+def encode_command_receipt(receipt: CommandReceipt) -> bytes:
     return json.dumps(
         {
             "schema_version": 1,
@@ -278,7 +312,7 @@ def _encode_receipt(receipt: CommandReceipt) -> bytes:
     ).encode("utf-8")
 
 
-def _encode_sensor_packet(packet: SensorPacket) -> bytes:
+def encode_sensor_packet(packet: SensorPacket) -> bytes:
     frame = packet.frame
     return json.dumps(
         {
