@@ -55,10 +55,12 @@ CONTRACT_SCHEMAS: dict[str, dict[str, Any]] = {
     "plan": _object(
         {
             "schema_version": {"const": SCHEMA_VERSION},
-            "skill": {"type": "string", "minLength": 1},
-            "arguments": {"type": "object"},
+            "decision": {"enum": ["execute", "refuse"]},
+            "skill": {"type": ["string", "null"]},
+            "arguments": {"type": ["object", "null"]},
+            "reason": {"type": ["string", "null"]},
         },
-        ("schema_version", "skill", "arguments"),
+        ("schema_version", "decision", "skill", "arguments", "reason"),
     ),
     "skill": _object(
         {

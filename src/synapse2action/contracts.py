@@ -5,7 +5,15 @@ from enum import StrEnum
 from typing import Any, Mapping, Protocol
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
+
+
+class PlannerRefused(RuntimeError):
+    pass
+
+
+class InvalidTaskContext(ValueError):
+    pass
 
 
 class IntentKind(StrEnum):

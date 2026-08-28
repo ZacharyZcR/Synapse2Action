@@ -2,8 +2,11 @@
   "name": "extra argument rejected",
   "latency_ms": 40,
   "response": {
+    "schema_version": 2,
+    "decision": "execute",
     "skill": "pick_and_place",
-    "arguments": {"target": "red_cube", "destination": "drop_zone", "force": 999}
+    "arguments": {"target": "red_cube", "destination": "drop_zone", "force": 999},
+    "reason": null
   },
   "expect": {"final_state": "failed", "action_count": 0}
 }

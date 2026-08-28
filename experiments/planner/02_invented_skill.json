@@ -2,8 +2,11 @@
   "name": "invented skill rejected",
   "latency_ms": 38,
   "response": {
+    "schema_version": 2,
+    "decision": "execute",
     "skill": "teleport_object",
-    "arguments": {"target": "red_cube", "destination": "drop_zone"}
+    "arguments": {"target": "red_cube", "destination": "drop_zone"},
+    "reason": null
   },
   "expect": {"final_state": "failed", "action_count": 0}
 }

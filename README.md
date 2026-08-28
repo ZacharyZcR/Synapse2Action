@@ -82,11 +82,12 @@ The project follows a hardware-free-first strategy. Every external component beg
 ### Phase 2 — LLM Planning Behind the Harness / 阶段 2：Harness 约束下的大模型规划
 
 - [x] Define one OpenAI-compatible planner adapter instead of model-specific business logic. / 定义统一的 OpenAI-compatible Planner Adapter，避免在业务逻辑中绑定模型。
-- [ ] Integrate DeepSeek-V4-Flash-0731 as the initial cloud planner. / 首先接入 DeepSeek-V4-Flash-0731 云端规划器。
-- [ ] Integrate Qwen3.8-27B as the local planner option. / 接入 Qwen3.8-27B 本地规划器。
-- [ ] Add GLM-5.3-Flash as an optional multimodal planner and verifier. / 将 GLM-5.3-Flash 作为可选多模态规划器与验证器。
+- [ ] Accept DeepSeek-V4-Flash-0731 through the common live-provider benchmark. / 通过统一真实 Provider 评测验收 DeepSeek-V4-Flash-0731。
+- [ ] Accept Qwen3.8-27B as a local planner through the same benchmark. / 通过同一评测验收 Qwen3.8-27B 本地 Planner。
+- [ ] Accept GLM-5.3-Flash as an optional multimodal planner and verifier. / 验收 GLM-5.3-Flash 可选多模态 Planner 与 Verifier。
 - [x] Reject unknown skills, invalid arguments, stale object references, and plans that bypass confirmation. / 拒绝未知技能、非法参数、过期目标引用及绕过确认的计划。
 - [x] Add a deterministic boundary benchmark for schema compliance, invented skills, unsafe-action containment, injected latency, and provider failure. / 加入确定性边界评测，覆盖 Schema 遵循、虚构技能、不安全动作隔离、注入延迟及 Provider 故障。
+- [x] Provide one live-provider benchmark runner with explicit execute/refuse decisions and measured latency. / 提供统一真实 Provider 评测入口，记录明确的执行/拒绝决策和实测延迟。
 - [ ] Run and publish the same benchmark against each selected live model provider. / 对最终选定的在线模型 Provider 运行并发布同一评测。
 
 **Exit criterion / 完成标准:** a real LLM can replace `MockPlanner` without changing the Harness, and no malformed plan can reach the policy or robot layers. / 真实 LLM 可在不修改 Harness 的情况下替换 MockPlanner，任何非法计划均无法进入策略或机器人层。
@@ -194,6 +195,7 @@ PYTHONPATH=src python3 -m synapse2action --demo
 PYTHONPATH=src python3 -m synapse2action --contract-catalog
 PYTHONPATH=src python3 -m synapse2action --keyboard-intents
 PYTHONPATH=src python3 -m synapse2action --planner-benchmark experiments/planner
+PYTHONPATH=src python3 -m synapse2action --planner-live-benchmark experiments/planner_live --planner-base-url http://localhost:8000/v1 --planner-model your-model-name
 PYTHONPATH=src python3 -m synapse2action --navigation-demo
 PYTHONPATH=src python3 -m synapse2action --navigation-demo --navigation-scenario experiments/navigation/04_diagonal_dynamic.json
 PYTHONPATH=src python3 -m synapse2action --navigation-suite experiments/navigation --navigation-episode-directory artifacts/navigation-episodes

@@ -44,8 +44,11 @@ class EmbeddedPlannerServer:
                 request = json.loads(self.rfile.read(length).decode("utf-8"))
                 owner.requests.append(request)
                 plan = {
+                    "schema_version": 2,
+                    "decision": "execute",
                     "skill": "pick_and_place",
                     "arguments": {"target": owner.target, "destination": owner.destination},
+                    "reason": None,
                 }
                 response = {
                     "id": "embedded-plan-1",

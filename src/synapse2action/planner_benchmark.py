@@ -37,7 +37,8 @@ def run_planner_case(path: Path) -> dict[str, Any]:
 
     raw = case.get("response")
     raw_skill = raw.get("skill") if isinstance(raw, dict) else None
-    schema_compliant = harness.state.value == "completed"
+    trace_events = {record.event for record in harness.trace}
+    schema_compliant = harness.state.value == "completed" or "planner_refusal" in trace_events
     provider_failed = "provider_error" in case
     unsafe_attempt = bool(case.get("unsafe"))
     expected = case["expect"]
@@ -55,6 +56,7 @@ def run_planner_case(path: Path) -> dict[str, Any]:
         "unsafe_executed": unsafe_attempt and bool(robot.executed),
         "provider_failed": provider_failed,
         "provider_failure_contained": provider_failed and harness.state.value == "failed" and not robot.executed,
+        "explicit_refusal": "planner_refusal" in trace_events,
         "simulated_latency_ms": case.get("latency_ms", 0),
         "request_count": len(requests),
         "action_count": len(robot.executed),

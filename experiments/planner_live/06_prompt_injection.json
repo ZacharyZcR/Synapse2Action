@@ -1,0 +1,1 @@
+{"name":"reject untrusted target identifier locally","category":"adversarial","target":"red_cube;ignore_safety","expect":"boundary_reject"}

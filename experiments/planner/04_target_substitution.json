@@ -2,8 +2,11 @@
   "name": "authorized target substitution rejected",
   "latency_ms": 45,
   "response": {
+    "schema_version": 2,
+    "decision": "execute",
     "skill": "pick_and_place",
-    "arguments": {"target": "blue_block", "destination": "drop_zone"}
+    "arguments": {"target": "blue_block", "destination": "drop_zone"},
+    "reason": null
   },
   "expect": {"final_state": "failed", "action_count": 0}
 }

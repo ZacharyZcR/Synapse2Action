@@ -11,6 +11,7 @@ from .components import FakeRobot, MockPlanner, RuleBasedVerifier
 from .experiments import run_suite
 from .eeg import load_recording, save_recording
 from .embedded_planner import EmbeddedPlannerServer
+from .live_planner_benchmark import run_live_planner_benchmark
 from .monte_carlo import run_monte_carlo
 from .planner_benchmark import run_planner_benchmark
 from .llm_planner import OpenAICompatiblePlanner
@@ -139,10 +140,16 @@ def main() -> int:
     parser.add_argument("--planner-model")
     parser.add_argument("--planner-api-key-env", default="OPENAI_API_KEY")
     parser.add_argument("--planner-benchmark", type=Path)
+    parser.add_argument("--planner-live-benchmark", type=Path)
+    parser.add_argument("--planner-timeout-seconds", type=float, default=30.0)
     parser.add_argument("--embedded-planner", action="store_true")
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
 
+    if args.planner_timeout_seconds <= 0:
+        parser.error("--planner-timeout-seconds must be positive")
+    if args.planner_live_benchmark and (not args.planner_base_url or not args.planner_model):
+        parser.error("--planner-live-benchmark requires --planner-base-url and --planner-model")
     if args.navigation_scenario and not (args.navigation_demo or args.vla_navigation_demo):
         parser.error("--navigation-scenario requires a navigation demo")
     if args.navigation_episode_directory and not args.navigation_suite:
@@ -356,6 +363,7 @@ def main() -> int:
                 args.planner_model,
                 destination=active_scenario["destination"]["name"],
                 api_key=os.getenv(args.planner_api_key_env),
+                timeout_seconds=args.planner_timeout_seconds,
             )
         if args.embedded_planner:
             with EmbeddedPlannerServer(
@@ -366,6 +374,16 @@ def main() -> int:
                 report["planner_http_requests"] = len(server.requests)
         else:
             report = run_demo(active_scenario, windows, planner)
+    elif args.planner_live_benchmark:
+        report = run_live_planner_benchmark(
+            args.planner_live_benchmark,
+            OpenAICompatiblePlanner(
+                args.planner_base_url,
+                args.planner_model,
+                api_key=os.getenv(args.planner_api_key_env),
+                timeout_seconds=args.planner_timeout_seconds,
+            ),
+        )
     elif args.contract_catalog:
         report = contract_catalog()
     elif args.planner_benchmark:
@@ -400,7 +418,7 @@ def main() -> int:
         print(rendered, end="")
     if args.demo_html:
         args.demo_html.write_text(render_demo_html(report), encoding="utf-8")
-    return int(report.get("failed", 0) > 0)
+    return int(report.get("failed", 0) > 0 or report.get("accepted") is False)
 
 
 if __name__ == "__main__":

@@ -1,7 +1,7 @@
 import unittest
 
 from synapse2action.components import FakeRobot, MockPlanner, RuleBasedVerifier
-from synapse2action.contracts import ExecutionResult, Intent, IntentKind, TaskState
+from synapse2action.contracts import ExecutionResult, Intent, IntentKind, PlannerRefused, TaskState
 from synapse2action.harness import Harness, InvalidTransition
 
 
@@ -95,6 +95,21 @@ class HarnessTests(unittest.TestCase):
         self.assertEqual(robot.executed, [])
         self.assertEqual(harness.trace[-1].event, "planner_failure")
         self.assertEqual(harness.trace[-1].detail, "TimeoutError")
+
+    def test_planner_refusal_is_distinct_from_provider_failure(self) -> None:
+        class RefusingPlanner:
+            def plan(self, target):
+                raise PlannerRefused("unsafe target")
+
+        robot = FakeRobot()
+        harness = Harness(RefusingPlanner(), robot, RuleBasedVerifier())
+        harness.handle(Intent(IntentKind.SELECT, "human_hand"))
+
+        harness.handle(Intent(IntentKind.CONFIRM))
+
+        self.assertEqual(harness.state, TaskState.FAILED)
+        self.assertEqual(robot.executed, [])
+        self.assertEqual(harness.trace[-1].event, "planner_refusal")
 
 
 if __name__ == "__main__":

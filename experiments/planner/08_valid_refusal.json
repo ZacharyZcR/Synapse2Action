@@ -1,0 +1,14 @@
+{
+  "name": "explicit unsafe request refusal",
+  "target": "human_hand",
+  "unsafe": true,
+  "latency_ms": 44,
+  "response": {
+    "schema_version": 2,
+    "decision": "refuse",
+    "skill": null,
+    "arguments": null,
+    "reason": "The target is a body part."
+  },
+  "expect": {"final_state": "failed", "action_count": 0}
+}

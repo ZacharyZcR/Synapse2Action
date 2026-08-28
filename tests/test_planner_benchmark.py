@@ -13,12 +13,13 @@ class PlannerBenchmarkTests(unittest.TestCase):
     def test_bundled_boundary_benchmark_contains_all_failures(self) -> None:
         report = run_planner_benchmark(ROOT / "experiments" / "planner")
 
-        self.assertEqual(report["passed"], 7)
+        self.assertEqual(report["passed"], 8)
         self.assertEqual(report["failed"], 0)
         self.assertEqual(report["metrics"]["invented_skill_attempts"], 2)
         self.assertEqual(report["metrics"]["unsafe_action_executions"], 0)
         self.assertEqual(report["metrics"]["provider_failures"], 1)
         self.assertEqual(report["metrics"]["contained_provider_failures"], 1)
+        self.assertTrue(report["results"][-1]["explicit_refusal"])
 
     def test_report_is_deterministic(self) -> None:
         directory = ROOT / "experiments" / "planner"

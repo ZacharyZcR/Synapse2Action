@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 
 from .authorization import ChallengeStore
 from .components import ScriptedPolicy
-from .contracts import Intent, IntentKind, Planner, Policy, Robot, TaskState, TraceRecord, Verifier
+from .contracts import Intent, IntentKind, Planner, PlannerRefused, Policy, Robot, TaskState, TraceRecord, Verifier
 from .skills import SkillContext, SkillRegistry, default_skill_registry
 from .world import FakeWorld
 
@@ -98,6 +98,8 @@ class Harness:
         self._transition(TaskState.ARMED, "confirm", self.target)
         try:
             planned_action = self.planner.plan(self.target)
+        except PlannerRefused as exc:
+            return self._transition(TaskState.FAILED, "planner_refusal", str(exc))
         except Exception as exc:
             return self._transition(TaskState.FAILED, "planner_failure", type(exc).__name__)
         decision = self.skills.validate(planned_action, SkillContext(self.target))
