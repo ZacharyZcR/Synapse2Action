@@ -49,7 +49,7 @@ docker run --detach --name "${controller}" --network "${network}" --cpu-shares 4
   --env S2A_MAX_SPEED_MPS=0.3 --env S2A_PICK_PLACE=1 \
   --env S2A_MANIPULATION_START_DELAY_SECONDS=12 \
   "${controller_image}" ./build/g1_ctrl -n eth0 >/dev/null
-docker run --detach --name "${simulator}" --network "${network}" --cpu-shares 2048 \
+docker run --detach --name "${simulator}" --network "${network}" --cpu-shares 4096 \
   --workdir /workspace/current --env PYTHONPATH=/workspace/current/src --env MUJOCO_GL=osmesa \
   --volume "${project_dir}:/workspace/current:ro" \
   --volume "${report_dir}:/workspace/reports/simulation" \

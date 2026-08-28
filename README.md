@@ -201,6 +201,16 @@ The G1 Harness defaults to `MockPlanner`. A real OpenAI-compatible LLM is opt-in
 
 G1 Harness 默认使用 `MockPlanner`。真实 OpenAI-compatible LLM 必须显式启用，并在报告中记录 Provider、模型、耗时、结构化输入输出和阶段来源。控制台明确展示意图、LLM 规划、VLA、技能执行、运动控制和物理验证六个阶段；即使运行失败或没有相机帧，也能显示失败证据。
 
+`simulation/experiment_console.py` is the interactive experiment entry point. Its protected Run API executes the public PhysioNet/WFDB MAMEM SSVEP benchmark, live LLM planning, SmolVLA, Unitree SDK2, and MuJoCo in sequence. The browser polls stage state and displays a continuously updated MuJoCo camera feed during execution; it does not substitute selected post-run screenshots for the live environment.
+
+`simulation/experiment_console.py` 是交互实验入口。受访问 token 保护的运行 API 会依次执行公开 PhysioNet/WFDB MAMEM SSVEP 实验、真实 LLM 规划、SmolVLA、Unitree SDK2 和 MuJoCo。浏览器持续获取阶段状态，并在执行过程中显示不断更新的 MuJoCo 相机画面，不再用事后挑选的截图代替运行环境。
+
+```bash
+PYTHONPATH=src S2A_PLANNER_API_KEY=... python3 simulation/experiment_console.py \
+  --host 127.0.0.1 --port 8765 --access-token your-random-token \
+  --planner-base-url http://127.0.0.1:18765/deepseek-v4-yuesheng/v1
+```
+
 ```bash
 S2A_PLANNER_API_KEY=... PYTHONPATH=src python3 simulation/run_harness_unitree.py \
   --task pick-place --policy smolvla --destination red_cube \

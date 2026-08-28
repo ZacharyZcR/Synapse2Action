@@ -6,7 +6,7 @@ import json
 import os
 from pathlib import Path
 from time import perf_counter_ns
-from typing import Any
+from typing import Any, Callable
 
 from synapse2action.components import MockPlanner, ScriptedPolicy
 from synapse2action.contracts import Action, Intent, IntentKind, Planner, TaskState
@@ -24,8 +24,9 @@ from synapse2action.unitree_simulation import (
 
 
 class ObservablePlanner:
-    def __init__(self, planner: Planner, metadata: dict[str, Any]) -> None:
+    def __init__(self, planner: Planner, metadata: dict[str, Any], on_update: Callable[[dict[str, Any]], None] | None = None) -> None:
         self.planner = planner
+        self.on_update = on_update
         self.report = {**metadata, "status": "not_run", "latency_ms": None, "input": None, "output": None}
 
     def plan(self, target: str) -> Action:
@@ -35,6 +36,8 @@ class ObservablePlanner:
             action = self.planner.plan(target)
         except Exception as exc:
             self.report.update(status="failed", error=type(exc).__name__)
+            if self.on_update:
+                self.on_update(self.report)
             raise
         finally:
             self.report["latency_ms"] = round((perf_counter_ns() - started) / 1_000_000, 3)
@@ -42,6 +45,8 @@ class ObservablePlanner:
             status="completed",
             output={"skill": action.skill, "arguments": dict(action.arguments)},
         )
+        if self.on_update:
+            self.on_update(self.report)
         return action
 
 
@@ -74,6 +79,7 @@ def main() -> int:
     parser.add_argument("--planner-provider", default="unspecified")
     parser.add_argument("--planner-output-mode", choices=("json-schema", "prompt-json"), default="prompt-json")
     parser.add_argument("--planner-api-key-env", default="OPENAI_API_KEY")
+    parser.add_argument("--progress-output", type=Path)
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
     if args.planner == "live" and (not args.planner_base_url or not args.planner_model):
@@ -102,7 +108,20 @@ def main() -> int:
             "provider": None,
             "model": None,
         }
-    observable_planner = ObservablePlanner(active_planner, planner_metadata)
+    def progress(stage: str, status: str, detail: Any = None) -> None:
+        if not args.progress_output:
+            return
+        args.progress_output.parent.mkdir(parents=True, exist_ok=True)
+        with args.progress_output.open("a") as stream:
+            stream.write(json.dumps({"stage": stage, "status": status, "detail": detail}) + "\n")
+
+    if args.progress_output:
+        args.progress_output.unlink(missing_ok=True)
+    observable_planner = ObservablePlanner(
+        active_planner,
+        planner_metadata,
+        lambda report: progress("llm_planner", report["status"], report),
+    )
     if args.task == "pick-place":
         smolvla = args.policy == "smolvla"
         robot = UnitreePickPlaceSimulationRobot(
@@ -130,6 +149,8 @@ def main() -> int:
             NavigateToPlanner(), robot, UnitreeSimulationVerifier(robot), policy=ScriptedPolicy()
         )
     select_kind, confirm_kind = decoded_execution_intents(args.decoded_intents)
+    progress("intent", "completed", {"select": select_kind.value, "confirm": confirm_kind.value})
+    progress("llm_planner", "running", {"provider": args.planner_provider, "model": args.planner_model})
     selected = harness.handle(Intent(select_kind, args.destination))
     if selected is not TaskState.AWAITING_CONFIRMATION:
         raise RuntimeError("selection did not reach confirmation gate")
@@ -166,7 +187,7 @@ def main() -> int:
         {
             "id": "skill_executor",
             "mode": "deterministic",
-            "status": "completed" if harness.state is TaskState.COMPLETED else "failed",
+            "status": "completed" if simulator.get("sdk2_lowcmd_frames", 0) else "failed",
             "input": "pick_and_place(red_cube, drop_tray)",
             "output": "validated C++ manipulation targets",
         },

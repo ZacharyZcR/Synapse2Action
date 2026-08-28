@@ -6,7 +6,7 @@ from math import hypot
 from pathlib import Path
 import struct
 import sys
-from threading import Event, Lock
+from threading import Event, Lock, Thread
 from time import monotonic, sleep
 from types import SimpleNamespace
 import zlib
@@ -21,7 +21,7 @@ from unitree_sdk2py.core.channel import ChannelFactoryInitialize, ChannelSubscri
 from unitree_sdk2py.idl.unitree_hg.msg.dds_ import LowCmd_
 
 
-def write_rgb_png(path: Path, image: np.ndarray) -> None:
+def write_rgb_png(path: Path, image: np.ndarray, *, compression: int = 9) -> None:
     height, width, channels = image.shape
     if channels != 3 or image.dtype != np.uint8:
         raise ValueError("PNG image must be uint8 RGB")
@@ -32,7 +32,7 @@ def write_rgb_png(path: Path, image: np.ndarray) -> None:
 
     rows = b"".join(b"\0" + image[row].tobytes() for row in range(height))
     header = struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)
-    path.write_bytes(b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", header) + chunk(b"IDAT", zlib.compress(rows, 9)) + chunk(b"IEND", b""))
+    path.write_bytes(b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", header) + chunk(b"IDAT", zlib.compress(rows, compression)) + chunk(b"IEND", b""))
 
 
 def relative_pose(data: mujoco.MjData, parent: int, child: int) -> tuple[np.ndarray, np.ndarray]:
@@ -97,6 +97,8 @@ def main() -> None:
     model = mujoco.MjModel.from_xml_path(str(scene))
     model.opt.timestep = 0.002
     data = mujoco.MjData(model)
+    if args.visualization_directory:
+        args.visualization_directory.mkdir(parents=True, exist_ok=True)
     data.qpos[2] = 0.78
     data.qpos[7 : 7 + len(G1_FIX_STAND_POSITION_RAD)] = G1_FIX_STAND_POSITION_RAD
     mujoco.mj_forward(model, data)
@@ -241,9 +243,32 @@ def main() -> None:
     next_step = started
     steps = 0
     pending_chunk = None
+    live_stop = Event()
+    live_lock = Lock()
+    live_qpos = data.qpos.copy()
+
+    def render_live_frames() -> None:
+        render_data = mujoco.MjData(model)
+        renderer = mujoco.Renderer(model, height=180, width=320)
+        while not live_stop.wait(1.0):
+            with live_lock:
+                render_data.qpos[:] = live_qpos
+            mujoco.mj_forward(model, render_data)
+            renderer.update_scene(render_data, camera="camera1")
+            temporary = args.visualization_directory / ".live.png"
+            write_rgb_png(temporary, renderer.render(), compression=1)
+            temporary.replace(args.visualization_directory / "live.png")
+
+    live_thread = None
+    if args.visualization_directory:
+        live_thread = Thread(target=render_live_frames, daemon=True)
+        live_thread.start()
     while data.time - started_simulation_time < args.duration_seconds:
         mujoco.mj_step(model, data)
         steps += 1
+        if live_thread is not None and steps % 25 == 0:
+            with live_lock:
+                live_qpos[:] = data.qpos
         if coordinator is not None:
             chunk = coordinator.poll()
             if chunk is not None:
@@ -311,6 +336,10 @@ def main() -> None:
         if remaining > 0:
             sleep(remaining)
 
+    live_stop.set()
+    if live_thread is not None:
+        live_thread.join(timeout=2.0)
+
     if coordinator is not None:
         coordinator.close()
         final_chunk = coordinator.poll()
@@ -354,7 +383,6 @@ def main() -> None:
         report["vla_authorized_frames"] = bridge.vla_authorized_frames
         report["vla_runtime"] = coordinator.metrics.report()
     if args.visualization_directory:
-        args.visualization_directory.mkdir(parents=True, exist_ok=True)
         render_data = mujoco.MjData(model)
         renderer = mujoco.Renderer(model, height=360, width=640)
         visualization_frames = []
