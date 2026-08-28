@@ -1,6 +1,7 @@
 import unittest
 
 from types import SimpleNamespace
+from pathlib import Path
 
 from synapse2action.g1_vla import (
     G1_MANIPULATION_JOINTS,
@@ -64,6 +65,13 @@ class G1VLAActionProjectorTests(unittest.TestCase):
         bridge = make_g1_vla_bridge(BaseBridge)()
         bridge.LowCmdHandler(SimpleNamespace())
         self.assertEqual(bridge.mj_data.ctrl, [7.0] * 29)
+
+    def test_real_bridge_smoke_uses_fixed_unitree_image(self) -> None:
+        root = Path(__file__).resolve().parents[1]
+        runner = (root / "simulation/run_g1_vla_bridge_smoke.sh").read_text()
+        smoke = (root / "simulation/g1_vla_bridge_smoke.py").read_text()
+        self.assertIn("synapse2action-unitree-render:locked-v3", runner)
+        self.assertIn("make_g1_vla_bridge(UnitreeSdk2Bridge)", smoke)
 
 
 if __name__ == "__main__":
