@@ -196,6 +196,7 @@ PYTHONPATH=src python3 -m synapse2action --contract-catalog
 PYTHONPATH=src python3 -m synapse2action --keyboard-intents
 PYTHONPATH=src python3 -m synapse2action --planner-benchmark experiments/planner
 PYTHONPATH=src python3 -m synapse2action --planner-live-benchmark experiments/planner_live --planner-base-url http://localhost:8000/v1 --planner-model your-model-name
+PYTHONPATH=src python3 -m synapse2action --summarize-planner-providers artifacts/planner-*.json --required-planner-model your-model-name
 PYTHONPATH=src python3 -m synapse2action --navigation-demo
 PYTHONPATH=src python3 -m synapse2action --navigation-demo --navigation-scenario experiments/navigation/04_diagonal_dynamic.json
 PYTHONPATH=src python3 -m synapse2action --navigation-suite experiments/navigation --navigation-episode-directory artifacts/navigation-episodes

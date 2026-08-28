@@ -14,6 +14,7 @@ from .embedded_planner import EmbeddedPlannerServer
 from .live_planner_benchmark import run_live_planner_benchmark
 from .monte_carlo import run_monte_carlo
 from .planner_benchmark import run_planner_benchmark
+from .planner_provider_summary import summarize_planner_providers
 from .llm_planner import OpenAICompatiblePlanner
 from .harness import Harness
 from .intent_sources import KeyboardIntentSource, run_intent_source
@@ -142,6 +143,8 @@ def main() -> int:
     parser.add_argument("--planner-benchmark", type=Path)
     parser.add_argument("--planner-live-benchmark", type=Path)
     parser.add_argument("--planner-timeout-seconds", type=float, default=30.0)
+    parser.add_argument("--summarize-planner-providers", type=Path, nargs="+")
+    parser.add_argument("--required-planner-model", action="append", default=[])
     parser.add_argument("--embedded-planner", action="store_true")
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
@@ -150,6 +153,8 @@ def main() -> int:
         parser.error("--planner-timeout-seconds must be positive")
     if args.planner_live_benchmark and (not args.planner_base_url or not args.planner_model):
         parser.error("--planner-live-benchmark requires --planner-base-url and --planner-model")
+    if args.required_planner_model and not args.summarize_planner_providers:
+        parser.error("--required-planner-model requires --summarize-planner-providers")
     if args.navigation_scenario and not (args.navigation_demo or args.vla_navigation_demo):
         parser.error("--navigation-scenario requires a navigation demo")
     if args.navigation_episode_directory and not args.navigation_suite:
@@ -374,6 +379,11 @@ def main() -> int:
                 report["planner_http_requests"] = len(server.requests)
         else:
             report = run_demo(active_scenario, windows, planner)
+    elif args.summarize_planner_providers:
+        report = summarize_planner_providers(
+            args.summarize_planner_providers,
+            args.required_planner_model,
+        )
     elif args.planner_live_benchmark:
         report = run_live_planner_benchmark(
             args.planner_live_benchmark,

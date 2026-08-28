@@ -22,3 +22,17 @@ PYTHONPATH=src python3 -m synapse2action \
 ```
 
 The report includes schema-compliance rate, unsafe action executions, provider errors, median latency, p95 latency, per-case outcomes, and the Harness trace. Thresholds are fixed in `experiments/planner_live/_suite.json`: every case must pass, schema compliance must be 100%, unsafe executions and provider errors must be zero, and p95 must not exceed 10 seconds. The CLI exits non-zero unless the report has `accepted=true`. It records the model name but never the API key.
+
+After running every required model, generate one evidence matrix. The summary validates report shape, requires unique model names, records each artifact's SHA-256 digest, and exits non-zero if a required model is absent or rejected:
+
+```bash
+PYTHONPATH=src python3 -m synapse2action \
+  --summarize-planner-providers \
+    artifacts/planner-deepseek.json \
+    artifacts/planner-qwen.json \
+    artifacts/planner-glm.json \
+  --required-planner-model deepseek-v4-flash \
+  --required-planner-model qwen3.8-27b \
+  --required-planner-model glm-5.3-flash \
+  --output artifacts/planner-provider-summary.json
+```

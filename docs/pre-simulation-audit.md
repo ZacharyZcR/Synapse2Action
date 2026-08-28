@@ -16,6 +16,7 @@ Scope: all deterministic software and provider boundaries required before introd
 | Prompt-injection-shaped target identifiers rejected before network | Proven | identifier validation and live-suite mock call count |
 | Provider failure contained before robot | Proven | timeout boundary case and Harness failure trace |
 | Common live-provider acceptance runner | Proven with a mock compatible provider | six-case live suite; explicit thresholds; latency and safety metrics |
+| Multi-provider evidence matrix | Proven with fixture reports | strict report loader, required-model gate, unique names, artifact SHA-256 digests |
 | DeepSeek live acceptance report | Pending external evidence | no configured endpoint or API key in the current workspace |
 | Qwen local live acceptance report | Pending external evidence | no configured local endpoint/model in the current workspace |
 | GLM live acceptance report | Pending external evidence | no configured endpoint or API key in the current workspace |
