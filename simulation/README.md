@@ -48,6 +48,16 @@ after reaching them, and records both waypoint events. Acceptance requires
 physical clearance from the box, visible lateral deviation, final goal
 convergence, and a stopped upright robot.
 
+Run the dynamic-obstacle scenario:
+
+```bash
+./simulation/run_unitree_headless.sh dynamic-obstacle 0.9 0.0 0.0
+```
+
+The collision box enters the route after motion starts. Its SDK2 range reading
+triggers the controller's online detour; no obstacle position is supplied to
+the controller beforehand.
+
 On an Ubuntu machine with a working Python development toolchain, prepare the
 official sources and Python dependencies:
 

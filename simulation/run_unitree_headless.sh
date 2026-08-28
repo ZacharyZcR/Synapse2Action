@@ -4,10 +4,10 @@ set -euo pipefail
 project_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 report_dir="${project_dir}/reports/simulation"
 simulator_image="synapse2action-unitree:locked-v2"
-controller_image="synapse2action-unitree-controller:locked-v9"
+controller_image="synapse2action-unitree-controller:locked-v12"
 scenario="${1:-balance}"
-if [[ "${scenario}" != "balance" && "${scenario}" != "locomotion" && "${scenario}" != "obstacle" ]]; then
-  echo "usage: $0 [balance|locomotion|obstacle [target-x-m target-y-m target-yaw-rad]]" >&2
+if [[ "${scenario}" != "balance" && "${scenario}" != "locomotion" && "${scenario}" != "obstacle" && "${scenario}" != "dynamic-obstacle" ]]; then
+  echo "usage: $0 [balance|locomotion|obstacle|dynamic-obstacle [target-x-m target-y-m target-yaw-rad]]" >&2
   exit 2
 fi
 target_x="0.0"
@@ -16,12 +16,12 @@ target_yaw="0.0"
 duration_seconds="14"
 controller_obstacle_args=()
 simulator_obstacle_args=()
-if [[ "${scenario}" == "locomotion" || "${scenario}" == "obstacle" ]]; then
+if [[ "${scenario}" != "balance" ]]; then
   target_x="${2:-0.8}"
   target_y="${3:-0.0}"
   target_yaw="${4:-0.0}"
 fi
-if [[ "${scenario}" == "obstacle" ]]; then
+if [[ "${scenario}" == "obstacle" || "${scenario}" == "dynamic-obstacle" ]]; then
   target_x="${2:-0.9}"
   duration_seconds="30"
   controller_obstacle_args=(
@@ -34,6 +34,11 @@ if [[ "${scenario}" == "obstacle" ]]; then
     --obstacle-y 0.0
     --obstacle-radius 0.12
   )
+fi
+if [[ "${scenario}" == "dynamic-obstacle" ]]; then
+  duration_seconds="36"
+  controller_obstacle_args=(--env S2A_DYNAMIC_OBSTACLE=1)
+  simulator_obstacle_args+=(--dynamic-obstacle --obstacle-appear-seconds 0.05)
 fi
 run_id="$$"
 network="synapse2action-unitree-${run_id}"

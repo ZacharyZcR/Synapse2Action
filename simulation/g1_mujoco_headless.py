@@ -32,6 +32,8 @@ def main() -> None:
     parser.add_argument("--obstacle-x", type=float, default=0.0)
     parser.add_argument("--obstacle-y", type=float, default=0.0)
     parser.add_argument("--obstacle-radius", type=float, default=0.0)
+    parser.add_argument("--dynamic-obstacle", action="store_true")
+    parser.add_argument("--obstacle-appear-seconds", type=float, default=1.0)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     if args.interface != "lo" and not args.container_network:
@@ -44,11 +46,12 @@ def main() -> None:
     simulator_dir = args.unitree_mujoco / "simulate_python"
     scene = args.unitree_mujoco / "unitree_robots" / "g1" / "scene.xml"
     if args.obstacle_radius > 0:
+        initial_x = 5.0 if args.dynamic_obstacle else args.obstacle_x
         obstacle_geom = (
+            f'<body name="s2a_obstacle_body" mocap="true" pos="{initial_x} {args.obstacle_y} 0.25">'
             f'<geom name="s2a_obstacle" type="box" '
-            f'pos="{args.obstacle_x} {args.obstacle_y} 0.25" '
             f'size="{args.obstacle_radius} {args.obstacle_radius} 0.25" '
-            'rgba="0.8 0.15 0.1 1"/>\n'
+            'rgba="0.8 0.15 0.1 1"/></body>\n'
         )
         scene_text = scene.read_text().replace("</worldbody>", obstacle_geom + "</worldbody>", 1)
         scene = scene.with_name("scene_s2a_obstacle.xml")
@@ -60,6 +63,11 @@ def main() -> None:
     model = mujoco.MjModel.from_xml_path(str(scene))
     model.opt.timestep = 0.002
     data = mujoco.MjData(model)
+    obstacle_mocap_id = -1
+    if args.obstacle_radius > 0:
+        obstacle_body_id = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "s2a_obstacle_body")
+        obstacle_mocap_id = int(model.body_mocapid[obstacle_body_id])
+    obstacle_active = args.obstacle_radius > 0 and not args.dynamic_obstacle
     data.qpos[2] = 0.78
     data.qpos[7 : 7 + len(G1_FIX_STAND_POSITION_RAD)] = G1_FIX_STAND_POSITION_RAD
     mujoco.mj_forward(model, data)
@@ -82,6 +90,16 @@ def main() -> None:
         odometry.velocity = [float(value) for value in data.qvel[:3]]
         odometry.body_height = float(data.qpos[2])
         odometry.imu_state.rpy = [0.0, 0.0, base_yaw()]
+        obstacle_range = 10.0
+        if obstacle_active:
+            dx = args.obstacle_x - float(data.qpos[0])
+            dy = args.obstacle_y - float(data.qpos[1])
+            yaw = base_yaw()
+            forward = cos(yaw) * dx + sin(yaw) * dy
+            lateral = -sin(yaw) * dx + cos(yaw) * dy
+            if forward > 0 and abs(lateral) < 0.5:
+                obstacle_range = max(0.0, hypot(dx, dy) - args.obstacle_radius)
+        odometry.range_obstacle[:] = [obstacle_range, 10.0, 10.0, 10.0]
         odometry_publisher.Write(odometry)
         odometry_frames += 1
 
@@ -114,13 +132,16 @@ def main() -> None:
     minimum_obstacle_center_distance = float("inf")
     maximum_abs_lateral_position = abs(float(data.qpos[1]))
     while monotonic() - started < args.duration_seconds:
+        if args.dynamic_obstacle and not obstacle_active and data.time >= args.obstacle_appear_seconds:
+            data.mocap_pos[obstacle_mocap_id] = [args.obstacle_x, args.obstacle_y, 0.25]
+            obstacle_active = True
         mujoco.mj_step(model, data)
         publish_odometry()
         steps += 1
         minimum_base_height = min(minimum_base_height, float(data.qpos[2]))
         maximum_base_height = max(maximum_base_height, float(data.qpos[2]))
         maximum_abs_lateral_position = max(maximum_abs_lateral_position, abs(float(data.qpos[1])))
-        if args.obstacle_radius > 0:
+        if obstacle_active:
             minimum_obstacle_center_distance = min(
                 minimum_obstacle_center_distance,
                 hypot(float(data.qpos[0]) - args.obstacle_x, float(data.qpos[1]) - args.obstacle_y),
@@ -154,6 +175,8 @@ def main() -> None:
         "final_yaw_rate_rad_s": float(data.qvel[5]),
         "obstacle_position_xy_m": [args.obstacle_x, args.obstacle_y],
         "obstacle_radius_m": args.obstacle_radius,
+        "dynamic_obstacle": args.dynamic_obstacle,
+        "obstacle_appear_seconds": args.obstacle_appear_seconds,
         "minimum_obstacle_center_distance_m": (
             minimum_obstacle_center_distance if args.obstacle_radius > 0 else None
         ),

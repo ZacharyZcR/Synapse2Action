@@ -12,7 +12,11 @@ def load_json(path: Path) -> dict[str, object]:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Validate an official Unitree SDK2 simulation run")
     parser.add_argument("report_directory", type=Path)
-    parser.add_argument("--scenario", choices=("balance", "locomotion", "obstacle"), default="balance")
+    parser.add_argument(
+        "--scenario",
+        choices=("balance", "locomotion", "obstacle", "dynamic-obstacle"),
+        default="balance",
+    )
     args = parser.parse_args()
     simulator = load_json(args.report_directory / "g1-mujoco.json")
     controller_log = (args.report_directory / "g1-controller.log").read_text()
@@ -38,7 +42,7 @@ def main() -> None:
         "final_height": float(simulator.get("base_height_m", 0)) >= 0.65,
         "upright_quaternion": upright_quaternion,
     }
-    if args.scenario in ("locomotion", "obstacle"):
+    if args.scenario in ("locomotion", "obstacle", "dynamic-obstacle"):
         final_velocity = simulator.get("final_base_linear_velocity_xyz_mps", [])
         checks["closed_loop_position_reached"] = float(simulator.get("final_position_error_m", 99)) <= 0.1
         checks["closed_loop_yaw_reached"] = abs(float(simulator.get("final_yaw_error_rad", 99))) <= 0.15
@@ -49,7 +53,7 @@ def main() -> None:
             and abs(float(final_velocity[1])) < 0.2
             and abs(float(simulator.get("final_yaw_rate_rad_s", 99))) < 0.15
         )
-    if args.scenario == "obstacle":
+    if args.scenario in ("obstacle", "dynamic-obstacle"):
         obstacle_radius = float(simulator.get("obstacle_radius_m", 0))
         checks["obstacle_has_collision_geometry"] = obstacle_radius > 0
         checks["navigation_replanned"] = (
@@ -61,6 +65,9 @@ def main() -> None:
             >= obstacle_radius + 0.25
         )
         checks["detour_executed"] = float(simulator.get("maximum_abs_lateral_position_m", 0)) >= 0.3
+    if args.scenario == "dynamic-obstacle":
+        checks["dynamic_obstacle_appeared"] = simulator.get("dynamic_obstacle") is True
+        checks["online_detection_triggered"] = "Dynamic obstacle detected" in controller_log
     report = {"accepted": all(checks.values()), "checks": checks}
     output = args.report_directory / "acceptance.json"
     output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")

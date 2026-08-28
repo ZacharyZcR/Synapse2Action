@@ -31,10 +31,15 @@ REGISTER_OBSERVATION(sim_velocity_commands)
         return value == nullptr ? 0.3f : std::stof(value);
     }();
     static const bool avoid_obstacle = std::getenv("S2A_OBSTACLE_X_M") != nullptr;
+    static const bool dynamic_obstacle = std::getenv("S2A_DYNAMIC_OBSTACLE") != nullptr;
     static const float obstacle_x = avoid_obstacle ? std::stof(std::getenv("S2A_OBSTACLE_X_M")) : 0.0f;
     static const float obstacle_y = avoid_obstacle ? std::stof(std::getenv("S2A_OBSTACLE_Y_M")) : 0.0f;
     static const float obstacle_radius = avoid_obstacle ? std::stof(std::getenv("S2A_OBSTACLE_RADIUS_M")) : 0.0f;
     static int waypoint_stage = avoid_obstacle ? 0 : 2;
+    static bool dynamic_replanned = false;
+    static float detour_start_x = 0.0f;
+    static float detour_y = obstacle_y + obstacle_radius + 0.45f;
+    static float detour_end_x = obstacle_x + obstacle_radius + 0.20f;
     static bool replan_logged = false;
     if (target_value == nullptr || odometry->isTimeout()) {
         return std::vector<float>{0.0f, 0.0f, 0.0f};
@@ -42,8 +47,18 @@ REGISTER_OBSERVATION(sim_velocity_commands)
     std::lock_guard<std::mutex> lock(odometry->mutex_);
     const float position_x = odometry->msg_.position()[0];
     const float position_y = odometry->msg_.position()[1];
-    const float waypoint_x = waypoint_stage == 0 ? 0.0f : obstacle_x + obstacle_radius + 0.20f;
-    const float waypoint_y = obstacle_y + obstacle_radius + 0.45f;
+    const float front_range = odometry->msg_.range_obstacle()[0];
+    if (dynamic_obstacle && !dynamic_replanned && front_range > 0.05f && front_range < 0.7f) {
+        detour_start_x = position_x;
+        detour_y = position_y + 0.57f;
+        detour_end_x = position_x + 0.70f;
+        waypoint_stage = 0;
+        dynamic_replanned = true;
+        replan_logged = false;
+        spdlog::info("Dynamic obstacle detected at {:.3f} m", front_range);
+    }
+    const float waypoint_x = waypoint_stage == 0 ? detour_start_x : detour_end_x;
+    const float waypoint_y = detour_y;
     if (waypoint_stage < 2 && !replan_logged) {
         spdlog::info("Navigation replan: two-waypoint detour");
         replan_logged = true;
@@ -53,7 +68,7 @@ REGISTER_OBSERVATION(sim_velocity_commands)
         spdlog::info("Navigation waypoint {} reached", waypoint_stage);
     }
     const float active_target_x = waypoint_stage < 2
-        ? (waypoint_stage == 0 ? 0.0f : obstacle_x + obstacle_radius + 0.20f)
+        ? (waypoint_stage == 0 ? detour_start_x : detour_end_x)
         : target_x;
     const float active_target_y = waypoint_stage < 2 ? waypoint_y : target_y;
     const float world_x = active_target_x - position_x;
@@ -76,6 +91,9 @@ REGISTER_OBSERVATION(sim_velocity_commands)
     const float yaw_rate = std::abs(yaw_error) <= 0.05f
         ? 0.0f
         : std::clamp(1.2f * yaw_error, -0.2f, 0.2f);
+    if (waypoint_stage == 2 && distance < 0.20f && std::abs(yaw_error) > 0.10f) {
+        vx = std::max(vx, 0.20f);
+    }
     return std::vector<float>{vx, vy, yaw_rate};
 }
 }
