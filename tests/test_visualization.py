@@ -58,6 +58,7 @@ class VisualizationTests(unittest.TestCase):
                 },
                 "training": {"mse": 0.01, "arm_waist_mse": 0.02, "frames": 140, "finite": True},
                 "frames": [{"stage": "ready", "data": "data:image/png;base64,iVBORw0KGgo="}],
+                "snapshot": {"generated_at": "2026-08-28T12:00:00+00:00"},
             }
         )
 
@@ -69,9 +70,12 @@ class VisualizationTests(unittest.TestCase):
         self.assertIn("navigator.language", html)
         self.assertIn("s2a-language", html)
         self.assertIn('id="language"', html)
-        self.assertIn("Intelligence pipeline stages", html)
-        self.assertIn("智能链路阶段", html)
-        self.assertIn("Every stage exposes provenance and evidence", html)
+        self.assertIn("What happened in this run", html)
+        self.assertIn("这次运行经历了什么", html)
+        self.assertIn("This simulation run succeeded", html)
+        self.assertIn("SmolVLA currently authorizes a skill", html)
+        self.assertIn("View input and output evidence", html)
+        self.assertIn('class="advanced"', html)
         self.assertIn("prefers-reduced-motion", html)
         self.assertIn('class="skip"', html)
         self.assertNotIn("https://", html)

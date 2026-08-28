@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+from datetime import datetime, timezone
 import json
 from pathlib import Path
 from typing import Any
@@ -48,6 +49,10 @@ def main() -> None:
         "eeg": load_json(args.eeg),
         "training": load_json(args.training),
         "frames": frames,
+        "snapshot": {
+            "generated_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "source": str(args.harness),
+        },
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(render_g1_dashboard_html(dashboard))
