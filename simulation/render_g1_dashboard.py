@@ -36,6 +36,7 @@ def main() -> None:
             "final_state": harness["final_state"],
             "trace": harness["trace"],
             "intelligence_stages": harness.get("intelligence_stages", []),
+            "task": harness.get("task"),
         },
         "acceptance": harness.get("unitree_acceptance") or {
             "runtime": {

@@ -14,5 +14,7 @@ docker run --rm \
   --volume "${project_dir}:/workspace/current:ro" \
   --volume "${cache_dir}:/root/.cache/huggingface" \
   --volume "${report_dir}:/workspace/reports/simulation" \
+  --env PYTHONPATH=/workspace/current/src \
   "${image}" python simulation/smolvla_inference_smoke.py \
+  --task-spec /workspace/current/experiments/tasks/g1_pick_place.json \
   --output /workspace/reports/simulation/smolvla-smoke.json

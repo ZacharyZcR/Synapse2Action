@@ -88,7 +88,7 @@ Run the same task through selection and confirmation in the Harness:
 
 ```bash
 PYTHONPATH=src python3 simulation/run_harness_unitree.py \
-  --task pick-place --destination red_cube \
+  --task pick-place --task-spec experiments/tasks/g1_pick_place.json \
   --output reports/simulation/harness-unitree-pick-place.json
 ```
 

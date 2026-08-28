@@ -9,25 +9,14 @@ from .unitree_g1 import G1_MOTOR_COUNT
 from .vla_chunk import G1ActionChunk, G1ActionChunkPlayer
 
 
-G1_MANIPULATION_JOINTS = (12, 15, 16, 17, 18, 22, 23, 24, 25)
-G1_MANIPULATION_LIMITS_RAD = (
-    (-2.618, 2.618),
-    (-3.0892, 2.6704),
-    (-1.5882, 2.2515),
-    (-2.618, 2.618),
-    (-1.0472, 2.0944),
-    (-3.0892, 2.6704),
-    (-2.2515, 1.5882),
-    (-2.618, 2.618),
-    (-1.0472, 2.0944),
-)
-
 class G1VLAActionProjector:
     """Blend bounded VLA residuals into an RL/behavior whole-body command."""
 
     def __init__(
         self,
         *,
+        joint_indices: Sequence[int],
+        joint_limits_rad: Sequence[tuple[float, float]],
         frequency_hz: float = 10.0,
         maximum_speed_rad_s: float = 2.0,
         blend_weight: float = 0.1,
@@ -40,6 +29,10 @@ class G1VLAActionProjector:
         self.maximum_delta_rad = maximum_speed_rad_s / frequency_hz
         self.blend_weight = blend_weight
         self.maximum_residual_rad = maximum_residual_rad
+        self.joint_indices = tuple(int(index) for index in joint_indices)
+        self.joint_limits_rad = tuple(joint_limits_rad)
+        if len(self.joint_indices) != len(self.joint_limits_rad):
+            raise ValueError("joint indices and limits must have equal length")
         self._previous: tuple[float, ...] | None = None
         self.last_contribution_rad = 0.0
 
@@ -56,7 +49,7 @@ class G1VLAActionProjector:
         previous = self._previous or base
         result = list(base)
         contribution = 0.0
-        for joint, limits in zip(G1_MANIPULATION_JOINTS, G1_MANIPULATION_LIMITS_RAD, strict=True):
+        for joint, limits in zip(self.joint_indices, self.joint_limits_rad, strict=True):
             residual = self.blend_weight * (predicted[joint] - base[joint])
             residual = min(max(residual, -self.maximum_residual_rad), self.maximum_residual_rad)
             target = min(max(base[joint] + residual, limits[0]), limits[1])
@@ -82,6 +75,8 @@ def _action(values: Sequence[float], label: str) -> tuple[float, ...]:
 def make_g1_vla_bridge(
     base_bridge: type,
     *,
+    joint_indices: Sequence[int],
+    joint_limits_rad: Sequence[tuple[float, float]],
     action_frequency_hz: float = 10.0,
     control_frequency_hz: float = 500.0,
     stale_after_s: float = 7.0,
@@ -91,7 +86,11 @@ def make_g1_vla_bridge(
 
     class G1VLAUnitreeBridge(base_bridge):
         def __init__(self, *args: object, **kwargs: object) -> None:
-            self._vla_projector = G1VLAActionProjector(frequency_hz=control_frequency_hz)
+            self._vla_projector = G1VLAActionProjector(
+                frequency_hz=control_frequency_hz,
+                joint_indices=joint_indices,
+                joint_limits_rad=joint_limits_rad,
+            )
             self._vla_action: tuple[float, ...] | None = None
             self._vla_chunks = G1ActionChunkPlayer(
                 frequency_hz=action_frequency_hz,

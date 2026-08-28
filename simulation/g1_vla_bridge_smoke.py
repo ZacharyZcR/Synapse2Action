@@ -8,7 +8,8 @@ from types import SimpleNamespace
 
 import mujoco
 
-from synapse2action.g1_vla import G1_MANIPULATION_JOINTS, make_g1_vla_bridge
+from synapse2action.g1_vla import make_g1_vla_bridge
+from synapse2action.task_spec import load_task_spec
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize
 from unitree_sdk2py.idl.default import unitree_hg_msg_dds__LowCmd_
 
@@ -16,8 +17,10 @@ from unitree_sdk2py.idl.default import unitree_hg_msg_dds__LowCmd_
 def main() -> None:
     parser = argparse.ArgumentParser(description="Exercise the VLA overlay on Unitree's real MuJoCo bridge")
     parser.add_argument("--unitree-mujoco", type=Path, required=True)
+    parser.add_argument("--task-spec", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
+    task = load_task_spec(args.task_spec)
 
     simulator_dir = args.unitree_mujoco / "simulate_python"
     sys.path.insert(0, str(simulator_dir))
@@ -29,7 +32,11 @@ def main() -> None:
     data.qpos[2] = 0.78
     mujoco.mj_forward(model, data)
     ChannelFactoryInitialize(1, "lo")
-    bridge = make_g1_vla_bridge(UnitreeSdk2Bridge)(model, data)
+    bridge = make_g1_vla_bridge(
+        UnitreeSdk2Bridge,
+        joint_indices=task.controller.joint_indices,
+        joint_limits_rad=task.controller.joint_limits_rad,
+    )(model, data)
     command = unitree_hg_msg_dds__LowCmd_()
     for motor in command.motor_cmd[:29]:
         motor.mode = 1
@@ -44,7 +51,7 @@ def main() -> None:
     bridge.set_vla_action((1.0,) * 29)
     bridge.LowCmdHandler(command)
     overlaid = data.ctrl.copy()
-    manipulation = set(G1_MANIPULATION_JOINTS)
+    manipulation = set(task.controller.joint_indices)
     checks = {
         "official_bridge_class": UnitreeSdk2Bridge.__module__ == "unitree_sdk2py_bridge",
         "all_values_finite": bool(all(float(value) == float(value) for value in overlaid)),

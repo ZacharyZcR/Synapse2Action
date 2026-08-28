@@ -1,5 +1,7 @@
 {
   "name": "provider timeout contained",
+  "target": "red_cube",
+  "destination": "drop_zone",
   "latency_ms": 30000,
   "provider_error": "timeout",
   "expect": {"final_state": "failed", "action_count": 0}

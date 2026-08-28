@@ -15,6 +15,7 @@ import mujoco
 import numpy as np
 
 from synapse2action.g1_vla import make_g1_vla_bridge
+from synapse2action.task_spec import load_task_spec
 from synapse2action.unitree_g1 import G1_FIX_STAND_POSITION_RAD
 from synapse2action.vla_chunk import G1ChunkCoordinator, SmolVLAChunkClient
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize, ChannelSubscriber
@@ -46,16 +47,14 @@ def relative_pose(data: mujoco.MjData, parent: int, child: int) -> tuple[np.ndar
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Official G1 MuJoCo SDK2 pick-and-place scene")
+    parser = argparse.ArgumentParser(description="Official G1 MuJoCo SDK2 TaskSpec scene")
     parser.add_argument("--unitree-mujoco", type=Path, required=True)
     parser.add_argument("--domain-id", type=int, default=1)
     parser.add_argument("--interface", default="lo")
+    parser.add_argument("--task-spec", type=Path, required=True)
+    parser.add_argument("--plan-source", default="standalone")
     parser.add_argument("--duration-seconds", type=float, default=14.0)
     parser.add_argument("--vla-endpoint")
-    parser.add_argument("--vla-skill")
-    parser.add_argument("--vla-target")
-    parser.add_argument("--vla-destination")
-    parser.add_argument("--vla-plan-source")
     parser.add_argument("--vla-block-on-refresh", action="store_true")
     parser.add_argument("--vla-typed-skill-passthrough", action="store_true")
     parser.add_argument("--vla-frequency-hz", type=float, default=10.0)
@@ -66,39 +65,31 @@ def main() -> None:
     parser.add_argument("--episode-output", type=Path)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
+    task = load_task_spec(args.task_spec)
     if args.vla_frequency_hz <= 0:
         parser.error("VLA frequency must be positive")
-    plan_values = (args.vla_skill, args.vla_target, args.vla_destination, args.vla_plan_source)
-    if args.vla_endpoint and not all(plan_values):
-        parser.error("VLA endpoint requires structured skill, target, destination, and plan source")
-    if args.vla_endpoint and (
-        args.vla_skill != "pick_and_place"
-        or args.vla_target != "red_cube"
-        or args.vla_destination != "drop_tray"
-    ):
-        parser.error("the current MuJoCo scene only supports pick_and_place(red_cube, drop_tray)")
-
     source = args.unitree_mujoco / "unitree_robots" / "g1" / "scene.xml"
-    additions = """
-      <body name="pick_object" pos="0.15 0 0.68">
+    target = task.target_entity
+    destination = task.destination_entity
+    vector = lambda values: " ".join(str(value) for value in values)
+    additions = f"""
+      <body name="task_target" pos="{vector(target.position)}">
         <freejoint/>
-        <geom name="pick_object_geom" type="box" size="0.045 0.18 0.045" mass="0.12" rgba="0.9 0.15 0.1 1"/>
+        <geom name="task_target_geom" type="box" size="{vector(target.size)}" mass="{target.mass}" rgba="{vector(target.rgba)}"/>
       </body>
-      <body name="drop_tray" pos="0.32 0.12 0.60">
-        <geom name="drop_zone" type="box" size="0.12 0.22 0.03" rgba="0.1 0.8 0.2 0.5"/>
+      <body name="task_destination" pos="{vector(destination.position)}">
+        <geom name="task_destination_geom" type="box" size="{vector(destination.size)}" rgba="{vector(destination.rgba)}"/>
       </body>
-      <camera name="camera1" mode="targetbody" target="torso_link" pos="1.4 0 1.25"/>
-      <camera name="camera2" mode="targetbody" target="torso_link" pos="0.8 1.1 1.15"/>
-      <camera name="camera3" mode="targetbody" target="torso_link" pos="0.8 -1.1 1.15"/>
+      {''.join(f'<camera name="{name}" mode="targetbody" target="torso_link" pos="{vector(position)}"/>' for name, position in task.cameras.items())}
     """
     equality = """
       <equality>
-        <weld name="object_fixture" body1="pick_object" active="true"/>
-        <weld name="rubber_hand_grasp" body1="left_wrist_yaw_link" body2="pick_object" active="false"/>
+        <weld name="object_fixture" body1="task_target" active="true"/>
+        <weld name="task_grasp" body1="left_wrist_yaw_link" body2="task_target" active="false"/>
       </equality>
     """
     text = source.read_text().replace("</worldbody>", additions + "</worldbody>", 1).replace("</mujoco>", equality + "</mujoco>", 1)
-    scene = source.with_name("scene_s2a_pick_place.xml")
+    scene = source.with_name("scene_s2a_task.xml")
     scene.write_text(text)
 
     simulator_dir = args.unitree_mujoco / "simulate_python"
@@ -121,6 +112,8 @@ def main() -> None:
             action_frequency_hz=args.vla_frequency_hz,
             stale_after_s=args.vla_stale_after_seconds,
             apply_vla_targets=not args.vla_typed_skill_passthrough,
+            joint_indices=task.controller.joint_indices,
+            joint_limits_rad=task.controller.joint_limits_rad,
         )
         if args.vla_endpoint
         else UnitreeSdk2Bridge
@@ -130,10 +123,10 @@ def main() -> None:
     coordinator = None
     online_renderers = None
     if args.vla_endpoint:
-        vla_task = "pick the red block and place it in the green tray"
+        vla_task = task.instruction
         coordinator = G1ChunkCoordinator(
             SmolVLAChunkClient(args.vla_endpoint),
-            session_id="g1-pick-place",
+            session_id=task.task_id,
             task=vla_task,
             frequency_hz=args.vla_frequency_hz,
         )
@@ -202,8 +195,8 @@ def main() -> None:
 
     left = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "left_wrist_yaw_link")
     right = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "right_wrist_yaw_link")
-    item = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "pick_object")
-    weld = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_EQUALITY, "rubber_hand_grasp")
+    item = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "task_target")
+    weld = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_EQUALITY, "task_grasp")
     fixture = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_EQUALITY, "object_fixture")
     initial_item = data.xpos[item].copy()
     visualization_qpos = {"ready": data.qpos.copy()}
@@ -278,9 +271,14 @@ def main() -> None:
         right_distance = float(np.linalg.norm(data.xpos[right] - data.xpos[item]))
         minimum_left_distance = min(minimum_left_distance, left_distance)
         minimum_right_distance = min(minimum_right_distance, right_distance)
-        if fell_at_seconds is None and data.qpos[2] < 0.65:
+        if fell_at_seconds is None and data.qpos[2] < task.verification.minimum_base_height_m:
             fell_at_seconds = float(data.time)
-        if not grasped and data.time > 3.0 and left_distance < 0.25 and right_distance < 0.25:
+        if (
+            not grasped
+            and data.time > task.verification.grasp_after_s
+            and left_distance < task.verification.grasp_distance_m
+            and right_distance < task.verification.grasp_distance_m
+        ):
             position, quaternion = relative_pose(data, left, item)
             model.eq_data[weld, 3:6] = position
             model.eq_data[weld, 6:10] = quaternion
@@ -289,14 +287,17 @@ def main() -> None:
             grasped = True
             grasped_at_seconds = float(data.time)
             visualization_qpos["grasp"] = data.qpos.copy()
-        drop_zone_delta = data.xpos[item, :2] - np.asarray((0.32, 0.12))
-        object_lifted = maximum_item_height - initial_item[2] >= 0.10
+        drop_zone_delta = data.xpos[item, :2] - np.asarray(destination.position[:2])
+        object_lifted = maximum_item_height - initial_item[2] >= task.verification.minimum_lift_m
         if object_lifted and "lift" not in visualization_qpos:
             visualization_qpos["lift"] = data.qpos.copy()
-        object_over_drop_zone = abs(drop_zone_delta[0]) <= 0.075 and abs(drop_zone_delta[1]) <= 0.04
-        object_lowered_for_release = data.xpos[item, 2] <= 0.72
+        object_over_drop_zone = all(
+            abs(delta) <= extent - target.size[index]
+            for index, (delta, extent) in enumerate(zip(drop_zone_delta, destination.size[:2]))
+        )
+        object_lowered_for_release = data.xpos[item, 2] <= task.verification.release_height_m
         release_ready = (
-            data.time > 9.0
+            data.time > task.verification.release_after_s
             and object_lifted
             and object_over_drop_zone
             and object_lowered_for_release
@@ -333,7 +334,7 @@ def main() -> None:
             coordinator.metrics.record_stale_fallback()
     final_item = data.xpos[item].copy()
     visualization_qpos["final"] = data.qpos.copy()
-    drop_zone_delta = final_item[:2] - np.asarray((0.32, 0.12))
+    drop_zone_delta = final_item[:2] - np.asarray(destination.position[:2])
     report = {
         "simulator": "unitreerobotics/unitree_mujoco",
         "model": "g1_29dof",
@@ -343,11 +344,19 @@ def main() -> None:
         "initial_object_position_xyz_m": initial_item.tolist(),
         "final_object_position_xyz_m": final_item.tolist(),
         "object_planar_displacement_m": hypot(float(final_item[0] - initial_item[0]), float(final_item[1] - initial_item[1])),
-        "drop_zone_center_xy_m": [0.32, 0.12],
-        "drop_zone_half_extents_xy_m": [0.12, 0.22],
+        "task_spec": str(args.task_spec),
+        "task_id": task.task_id,
+        "task": {"skill": task.skill, "arguments": task.arguments, "instruction": task.instruction},
+        "verification": {
+            "minimum_lift_m": task.verification.minimum_lift_m,
+            "minimum_base_height_m": task.verification.minimum_base_height_m,
+        },
+        "drop_zone_center_xy_m": list(destination.position[:2]),
+        "drop_zone_half_extents_xy_m": list(destination.size[:2]),
         "final_drop_zone_error_m": hypot(float(drop_zone_delta[0]), float(drop_zone_delta[1])),
         "final_object_center_in_drop_zone": bool(
-            abs(drop_zone_delta[0]) <= 0.12 and abs(drop_zone_delta[1]) <= 0.22
+            abs(drop_zone_delta[0]) <= destination.size[0]
+            and abs(drop_zone_delta[1]) <= destination.size[1]
         ),
         "maximum_object_height_m": maximum_item_height,
         "minimum_base_height_m": minimum_base_height,
@@ -369,12 +378,9 @@ def main() -> None:
         report["vla_runtime"] = coordinator.metrics.report()
         report["vla_task"] = vla_task
         report["vla_task_binding"] = {
-            "skill": args.vla_skill,
-            "arguments": {
-                "target": args.vla_target,
-                "destination": args.vla_destination,
-            },
-            "source": args.vla_plan_source,
+            "skill": task.skill,
+            "arguments": task.arguments,
+            "source": args.plan_source,
         }
         report["vla_first_chunk_latency_ms"] = report["vla_runtime"][
             "first_chunk_round_trip_ms"
@@ -415,7 +421,7 @@ def main() -> None:
             images_camera1=np.stack(episode_images["camera1"]),
             images_camera2=np.stack(episode_images["camera2"]),
             images_camera3=np.stack(episode_images["camera3"]),
-            task=np.asarray("pick the red block and place it in the green tray"),
+            task=np.asarray(task.instruction),
         )
 
 

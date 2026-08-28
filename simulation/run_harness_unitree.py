@@ -13,6 +13,7 @@ from synapse2action.contracts import Action, Intent, IntentKind, Planner, TaskSt
 from synapse2action.harness import Harness
 from synapse2action.llm_planner import OpenAICompatiblePlanner
 from synapse2action.navigation import Pose2D
+from synapse2action.task_spec import load_task_spec
 from synapse2action.unitree_simulation import (
     NavigateToPlanner,
     UnitreePickPlaceSimulationRobot,
@@ -69,6 +70,11 @@ def main() -> int:
     parser.add_argument("--task", choices=("navigation", "pick-place"), default="navigation")
     parser.add_argument("--policy", choices=("scripted", "smolvla"), default="scripted")
     parser.add_argument("--destination", default="point_b")
+    parser.add_argument(
+        "--task-spec",
+        type=Path,
+        default=Path("experiments/tasks/g1_pick_place.json"),
+    )
     parser.add_argument("--target-x", type=float, default=0.8)
     parser.add_argument("--target-y", type=float, default=0.0)
     parser.add_argument("--target-yaw", type=float, default=0.0)
@@ -86,11 +92,17 @@ def main() -> int:
         parser.error("--planner live requires --planner-base-url and --planner-model")
 
     project = Path(__file__).resolve().parents[1]
+    task_spec_path = args.task_spec if args.task_spec.is_absolute() else project / args.task_spec
+    task_spec = load_task_spec(task_spec_path) if args.task == "pick-place" else None
+    selected_target = task_spec.target if task_spec else args.destination
     if args.planner == "live":
         active_planner: Planner = OpenAICompatiblePlanner(
             args.planner_base_url,
             args.planner_model,
-            destination="drop_tray",
+            destination=task_spec.destination if task_spec else args.destination,
+            skill=task_spec.skill if task_spec else "navigate_to",
+            instruction=task_spec.instruction if task_spec else None,
+            expected_arguments=task_spec.arguments if task_spec else {"destination": args.destination},
             api_key=os.getenv(args.planner_api_key_env),
             output_mode=args.planner_output_mode,
         )
@@ -101,7 +113,10 @@ def main() -> int:
             "model": args.planner_model,
         }
     else:
-        active_planner = MockPlanner(arguments={"target": args.destination, "destination": "drop_tray"})
+        active_planner = MockPlanner(
+            skill=task_spec.skill if task_spec else "navigate_to",
+            arguments=task_spec.arguments if task_spec else {"destination": args.destination},
+        )
         planner_metadata = {
             "component": "MockPlanner",
             "mode": "mock",
@@ -131,6 +146,7 @@ def main() -> int:
             project / "reports" / "simulation",
             timeout_seconds=120.0 if smolvla else 30.0,
             report_stem="g1-smolvla-closed-loop" if smolvla else "g1-pick-place",
+            task_spec_path=task_spec_path,
         )
         harness = Harness(
             observable_planner,
@@ -149,9 +165,9 @@ def main() -> int:
             NavigateToPlanner(), robot, UnitreeSimulationVerifier(robot), policy=ScriptedPolicy()
         )
     select_kind, confirm_kind = decoded_execution_intents(args.decoded_intents)
-    progress("intent", "completed", {"selected": args.destination, "intent": select_kind.value})
+    progress("intent", "completed", {"selected": selected_target, "intent": select_kind.value})
     progress("llm_planner", "running", {"provider": args.planner_provider, "model": args.planner_model})
-    selected = harness.handle(Intent(select_kind, args.destination))
+    selected = harness.handle(Intent(select_kind, selected_target))
     if selected is not TaskState.AWAITING_CONFIRMATION:
         raise RuntimeError("selection did not reach confirmation gate")
     assert harness.pending_action is not None
@@ -169,6 +185,9 @@ def main() -> int:
         "accepted": harness.state is TaskState.COMPLETED,
         "final_state": harness.state.value,
         "destination": args.destination,
+        "task_spec": str(task_spec_path) if task_spec else None,
+        "task": ({"id": task_spec.task_id, "skill": task_spec.skill, "arguments": task_spec.arguments,
+                  "instruction": task_spec.instruction, "display": task_spec.display} if task_spec else None),
         "intent_source": str(args.decoded_intents) if args.decoded_intents else "scripted",
         "policy": args.policy,
         "planner": observable_planner.report,
@@ -183,7 +202,7 @@ def main() -> int:
             "mode": "synthetic" if args.decoded_intents else "scripted",
             "status": "completed",
             "input": str(args.decoded_intents) if args.decoded_intents else "scripted select + confirm",
-            "output": f"select({args.destination}) + confirm",
+            "output": f"select({selected_target}) + confirm",
         },
         {"id": "llm_planner", **observable_planner.report},
         {
@@ -205,7 +224,7 @@ def main() -> int:
             "id": "skill_executor",
             "mode": "deterministic",
             "status": "completed" if simulator.get("sdk2_lowcmd_frames", 0) else "failed",
-            "input": "pick_and_place(red_cube, drop_tray)",
+            "input": task_spec.action_text() if task_spec else harness.pending_action.skill,
             "output": "validated C++ manipulation targets",
         },
         {

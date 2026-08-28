@@ -17,4 +17,5 @@ docker run --rm \
   --volume "${report_dir}:/workspace/reports/eeg" \
   "${image}" python simulation/public_ssvep_benchmark.py \
   --data /workspace/data \
+  --task-spec /workspace/current/experiments/tasks/g1_pick_place.json \
   --report /workspace/reports/eeg/public-ssvep.json

@@ -10,19 +10,19 @@ import torch
 from lerobot.policies import make_pre_post_processors
 from lerobot.policies.smolvla import SmolVLAPolicy
 from lerobot.policies.utils import prepare_observation_for_inference
-
-
-ARM_WAIST_JOINTS = np.asarray((12, 15, 16, 17, 18, 22, 23, 24, 25))
+from synapse2action.task_spec import load_task_spec
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Evaluate G1 SmolVLA chunks on a recorded episode")
     parser.add_argument("model", type=Path)
     parser.add_argument("episode", type=Path)
+    parser.add_argument("--task-spec", type=Path, required=True)
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--predictions-output", type=Path)
     parser.add_argument("--seed", type=int, default=0)
     args = parser.parse_args()
+    manipulation_joints = np.asarray(load_task_spec(args.task_spec).controller.joint_indices)
     torch.manual_seed(args.seed)
     episode = np.load(args.episode)
     policy = SmolVLAPolicy.from_pretrained(args.model)
@@ -56,7 +56,7 @@ def main() -> None:
             "start_frame": start,
             "frames": count,
             "mse": float(np.mean((predicted - target) ** 2)),
-            "arm_waist_mse": float(np.mean((predicted[:, ARM_WAIST_JOINTS] - target[:, ARM_WAIST_JOINTS]) ** 2)),
+            "arm_waist_mse": float(np.mean((predicted[:, manipulation_joints] - target[:, manipulation_joints]) ** 2)),
         })
     predicted = np.concatenate(predictions)
     target = np.concatenate(targets)
@@ -66,7 +66,7 @@ def main() -> None:
         "segments": segments,
         "mse": float(np.mean((predicted - target) ** 2)),
         "mae": float(np.mean(np.abs(predicted - target))),
-        "arm_waist_mse": float(np.mean((predicted[:, ARM_WAIST_JOINTS] - target[:, ARM_WAIST_JOINTS]) ** 2)),
+        "arm_waist_mse": float(np.mean((predicted[:, manipulation_joints] - target[:, manipulation_joints]) ** 2)),
         "finite": bool(np.isfinite(predicted).all()),
     }
     args.report.parent.mkdir(parents=True, exist_ok=True)

@@ -20,6 +20,9 @@ from synapse2action.unitree_simulation import (
 )
 
 
+TASK_SPEC = Path(__file__).resolve().parents[1] / "experiments/tasks/g1_pick_place.json"
+
+
 class UnitreeSimulationTests(unittest.TestCase):
     def test_confirmed_navigation_crosses_harness_and_real_runner_boundary(self) -> None:
         with TemporaryDirectory() as directory:
@@ -109,7 +112,9 @@ class UnitreeSimulationTests(unittest.TestCase):
                 }))
                 return subprocess.CompletedProcess(command, 0, "", "")
 
-            robot = UnitreePickPlaceSimulationRobot(Path("runner"), reports, report_stem="vla", run=run)
+            robot = UnitreePickPlaceSimulationRobot(
+                Path("runner"), reports, report_stem="vla", task_spec_path=TASK_SPEC, run=run
+            )
             harness = Harness(
                 MockPlanner(arguments={"target": "red_cube", "destination": "drop_tray"}),
                 robot,
@@ -124,7 +129,7 @@ class UnitreeSimulationTests(unittest.TestCase):
             self.assertEqual(len(robot.executed), 1)
             self.assertEqual(
                 calls,
-                [("runner", "red_cube", "drop_tray", "planner_action")],
+                [("runner", str(TASK_SPEC), "planner_action")],
             )
 
     def test_failed_runner_keeps_physical_report_for_observability(self) -> None:
@@ -136,7 +141,9 @@ class UnitreeSimulationTests(unittest.TestCase):
                 (reports / "vla.json").write_text(json.dumps({"grasped": False}))
                 return subprocess.CompletedProcess(command, 1, "", "acceptance failed")
 
-            robot = UnitreePickPlaceSimulationRobot(Path("runner"), reports, report_stem="vla", run=run)
+            robot = UnitreePickPlaceSimulationRobot(
+                Path("runner"), reports, report_stem="vla", task_spec_path=TASK_SPEC, run=run
+            )
             result = robot.execute(
                 Action("pick_and_place", {"target": "red_cube", "destination": "drop_tray"})
             )

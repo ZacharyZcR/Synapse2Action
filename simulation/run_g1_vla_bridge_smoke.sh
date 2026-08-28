@@ -12,4 +12,5 @@ docker run --rm \
   synapse2action-unitree-render:locked-v3 \
   python3 simulation/g1_vla_bridge_smoke.py \
   --unitree-mujoco /opt/unitree/unitree_mujoco \
+  --task-spec /workspace/current/experiments/tasks/g1_pick_place.json \
   --output /workspace/reports/simulation/g1-vla-bridge-smoke.json

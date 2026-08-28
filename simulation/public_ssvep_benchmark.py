@@ -18,6 +18,7 @@ from synapse2action.components import MockPlanner, ScriptedPolicy
 from synapse2action.contracts import Intent, IntentKind
 from synapse2action.harness import Harness
 from synapse2action.tabletop import Point2D, TabletopObject, TabletopRobot, TabletopVerifier
+from synapse2action.task_spec import TaskSpec, load_task_spec
 from synapse2action.world import FakeWorld, WorldObject
 
 
@@ -256,13 +257,18 @@ def continuous_stream_metrics(
     }
 
 
-def make_harness() -> Harness:
-    world_object = WorldObject("red_cube", 1, 0, (0.4, 0.1, 0.2))
+def make_harness(task: TaskSpec) -> Harness:
+    target_position = task.target_entity.position
+    destination_position = task.destination_entity.position
+    world_object = WorldObject(task.target, 1, 0, target_position)
     world = FakeWorld([world_object], max_age_ms=2_000)
-    drop_zone = Point2D(0.8, 0.6)
-    robot = TabletopRobot(TabletopObject("red_cube", Point2D(0.4, 0.1)), {"drop_zone": drop_zone})
+    drop_zone = Point2D(*destination_position[:2])
+    robot = TabletopRobot(
+        TabletopObject(task.target, Point2D(*target_position[:2])),
+        {task.destination: drop_zone},
+    )
     return Harness(
-        MockPlanner(arguments={"target": "red_cube", "destination": "drop_zone"}),
+        MockPlanner(skill=task.skill, arguments=task.arguments),
         robot,
         TabletopVerifier(robot, drop_zone),
         authorizer=ChallengeStore(lifetime_ms=2_000),
@@ -271,7 +277,9 @@ def make_harness() -> Harness:
     )
 
 
-def harness_replay(probability: np.ndarray, labels: np.ndarray, abstain_at: float) -> dict[str, object]:
+def harness_replay(
+    probability: np.ndarray, labels: np.ndarray, abstain_at: float, task: TaskSpec
+) -> dict[str, object]:
     confidence = probability.max(axis=1)
     prediction = probability.argmax(axis=1)
     examples: dict[IntentKind, dict[str, float | int | str]] = {}
@@ -288,13 +296,13 @@ def harness_replay(probability: np.ndarray, labels: np.ndarray, abstain_at: floa
     if set(examples) != set(IntentKind):
         return {"accepted": False, "decoded_examples": {kind.value: value for kind, value in examples.items()}}
 
-    completed = make_harness()
-    completed.handle(Intent(IntentKind.SELECT, "red_cube", 1, at_ms=0))
+    completed = make_harness(task)
+    completed.handle(Intent(IntentKind.SELECT, task.target, 1, at_ms=0))
     completed.handle(Intent(IntentKind.CONFIRM, target_revision=1, challenge_token=completed.challenge_token, at_ms=800))
-    cancelled = make_harness()
-    cancelled.handle(Intent(IntentKind.SELECT, "red_cube", 1, at_ms=0))
+    cancelled = make_harness(task)
+    cancelled.handle(Intent(IntentKind.SELECT, task.target, 1, at_ms=0))
     cancelled.handle(Intent(IntentKind.CANCEL, at_ms=800))
-    stopped = make_harness()
+    stopped = make_harness(task)
     stopped.handle(Intent(IntentKind.STOP, at_ms=0))
     states = {
         "select_confirm": completed.state.value,
@@ -315,6 +323,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Subject-independent public MAMEM SSVEP benchmark")
     parser.add_argument("--data", type=Path, required=True)
     parser.add_argument("--report", type=Path, required=True)
+    parser.add_argument("--task-spec", type=Path, required=True)
     args = parser.parse_args()
     random.seed(17)
     np.random.seed(17)
@@ -345,7 +354,8 @@ def main() -> None:
     cnn_test = probabilities(test_logits, temperature=1.0)
     cnn_threshold = threshold(cnn_calibration, labels[calibration])
 
-    replay = harness_replay(fbcca_test, labels[test], fbcca_threshold)
+    task = load_task_spec(args.task_spec)
+    replay = harness_replay(fbcca_test, labels[test], fbcca_threshold, task)
     stream = continuous_stream_metrics(fbcca_test, labels[test], fbcca_threshold)
     report = {
         "accepted": True,
@@ -355,6 +365,7 @@ def main() -> None:
         "window_seconds": 5,
         "channels": int(windows.shape[1]),
         "frequency_to_intent": {str(key): value for key, value in FREQUENCY_TO_INTENT.items()},
+        "task": {"id": task.task_id, "skill": task.skill, "arguments": task.arguments},
         "split": {"train_subjects": ["001", "002"], "calibration_subjects": ["003"], "test_subjects": ["004"]},
         "window_counts": {"train": int(train.sum()), "calibration": int(calibration.sum()), "test": int(test.sum())},
         "quality_gate": {"finite": True, "non_flat_channels": True, "absolute_amplitude_limit": 1e5},

@@ -14,24 +14,8 @@ from .tabletop import Point2D, TabletopObject, TabletopRobot, TabletopVerifier
 from .world import FakeWorld, WorldObject
 
 
-DEFAULT_SCENARIO: dict[str, Any] = {
-    "name": "synthetic_eeg_pick_and_place",
-    "expected_final_state": "completed",
-    "decoder_threshold": 0.55,
-    "eeg_seed": 42,
-    "object": {
-        "object_id": "red_cube",
-        "revision": 1,
-        "observed_at_ms": 0,
-        "position": [0.4, 0.1, 0.2],
-        "color": "#dc2626",
-    },
-    "destination": {"name": "drop_zone", "position": [0.8, 0.6]},
-    "neural_windows": [
-        {"at_ms": 0, "label": "select", "signal_amplitude": 1.0, "noise_std": 0.15},
-        {"at_ms": 800, "label": "confirm", "signal_amplitude": 1.0, "noise_std": 0.15},
-    ],
-}
+DEFAULT_SCENARIO_PATH = Path(__file__).resolve().parents[2] / "experiments/demos/red_cube.json"
+DEFAULT_SCENARIO: dict[str, Any] = json.loads(DEFAULT_SCENARIO_PATH.read_text(encoding="utf-8"))
 
 
 class FakePerception:

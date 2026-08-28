@@ -19,7 +19,8 @@ def run_llm_vla_benchmark(
     plan_available = bool(
         planner.get("status") == "completed"
         and isinstance(plan, dict)
-        and plan.get("skill") == "pick_and_place"
+        and isinstance(plan.get("skill"), str)
+        and bool(plan.get("skill"))
         and isinstance(plan.get("arguments"), dict)
     )
     arguments = plan.get("arguments", {}) if isinstance(plan, dict) else {}

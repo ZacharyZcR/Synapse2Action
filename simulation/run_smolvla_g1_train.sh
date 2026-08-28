@@ -18,7 +18,7 @@ docker run --rm \
   --volume "${cache}:/root/.cache/huggingface" \
   --volume "${project_dir}/reports/simulation:/workspace/reports/simulation:ro" \
   --volume "${project_dir}/reports/training:/workspace/reports/training" \
-  --env HF_HUB_OFFLINE=1 --env TRANSFORMERS_OFFLINE=1 \
+  --env PYTHONPATH=/workspace/current/src --env HF_HUB_OFFLINE=1 --env TRANSFORMERS_OFFLINE=1 \
   "${image}" lerobot-train \
   --dataset.repo_id=synapse2action/g1-pick-place-sim \
   --dataset.root=/workspace/reports/simulation/lerobot-g1-pick-place \

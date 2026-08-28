@@ -27,8 +27,8 @@ def run_planner_case(path: Path) -> dict[str, Any]:
             raise errors[error](error)
         return _chat_response(case["response"])
 
-    target = case.get("target", "red_cube")
-    destination = case.get("destination", "drop_zone")
+    target = case["target"]
+    destination = case["destination"]
     planner = OpenAICompatiblePlanner("http://planner.invalid/v1", "fixture", destination, transport=transport)
     robot = FakeRobot()
     harness = Harness(planner, robot, RuleBasedVerifier())

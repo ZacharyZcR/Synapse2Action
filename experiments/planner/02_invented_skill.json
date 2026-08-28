@@ -1,5 +1,7 @@
 {
   "name": "invented skill rejected",
+  "target": "red_cube",
+  "destination": "drop_zone",
   "latency_ms": 38,
   "response": {
     "schema_version": 2,

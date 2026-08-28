@@ -196,7 +196,8 @@ SmolVLA 不直接写入力矩或 DDS 指令。其 50-action chunk 以 3Hz 运行
 ./simulation/run_smolvla_g1_suite_train.sh
 ./simulation/run_smolvla_g1_closed_loop.sh
 PYTHONPATH=src python3 simulation/run_harness_unitree.py \
-  --task pick-place --policy smolvla --destination red_cube \
+  --task pick-place --policy smolvla \
+  --task-spec experiments/tasks/g1_pick_place.json \
   --output reports/simulation/harness-unitree-smolvla-pick-place.json
 PYTHONPATH=src python3 simulation/render_g1_dashboard.py
 ```
@@ -222,6 +223,7 @@ Measure the EEG-to-Planner boundary without granting execution authority:
 ```bash
 PYTHONPATH=src python3 -m synapse2action \
   --eeg-planner-benchmark reports/eeg/public-ssvep.json \
+  --task-spec experiments/tasks/g1_pick_place.json \
   --output reports/eeg/eeg-planner-boundary.json
 ```
 
@@ -246,7 +248,8 @@ PYTHONPATH=src S2A_PLANNER_API_KEY=... python3 simulation/experiment_console.py 
 
 ```bash
 S2A_PLANNER_API_KEY=... PYTHONPATH=src python3 simulation/run_harness_unitree.py \
-  --task pick-place --policy smolvla --destination red_cube \
+  --task pick-place --policy smolvla \
+  --task-spec experiments/tasks/g1_pick_place.json \
   --decoded-intents reports/eeg/live-eeg-lsl.json \
   --planner live --planner-provider your-provider \
   --planner-base-url http://your-openai-compatible-endpoint/v1 \

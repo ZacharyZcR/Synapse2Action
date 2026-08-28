@@ -11,6 +11,7 @@ import torch
 from lerobot.policies import make_pre_post_processors
 from lerobot.policies.smolvla import SmolVLAPolicy
 from lerobot.policies.utils import prepare_observation_for_inference
+from synapse2action.task_spec import load_task_spec
 
 
 def camera_views() -> dict[str, np.ndarray]:
@@ -51,8 +52,10 @@ def infer(
 def main() -> None:
     parser = argparse.ArgumentParser(description="Run real SmolVLA language-conditioned CPU inference")
     parser.add_argument("--model", default="lerobot/smolvla_base")
+    parser.add_argument("--task-spec", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
+    task_spec = load_task_spec(args.task_spec)
     policy = SmolVLAPolicy.from_pretrained(args.model)
     policy.eval()
     preprocess, postprocess = make_pre_post_processors(
@@ -60,10 +63,7 @@ def main() -> None:
         args.model,
         preprocessor_overrides={"device_processor": {"device": "cpu"}},
     )
-    tasks = (
-        "pick the red block and place it in the green tray",
-        "leave the red block where it is and move away",
-    )
+    tasks = (task_spec.instruction, task_spec.counterfactual_instruction)
     predictions = []
     for task in tasks:
         action, latency = infer(policy, preprocess, postprocess, task)

@@ -3,7 +3,7 @@ from __future__ import annotations
 import json
 import re
 from dataclasses import dataclass, field
-from typing import Any, Callable
+from typing import Any, Callable, Mapping
 from urllib.request import Request, urlopen
 
 from .contracts import Action, InvalidTaskContext, PlannerRefused, SCHEMA_VERSION
@@ -13,21 +13,20 @@ Transport = Callable[[str, dict[str, str], dict[str, Any], float], dict[str, Any
 SAFE_IDENTIFIER = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")
 
 
-PLAN_SCHEMA = {
+def plan_schema(skill: str, argument_names: tuple[str, ...]) -> dict[str, Any]:
+    argument_properties = {name: {"type": "string"} for name in argument_names}
+    return {
     "type": "object",
     "properties": {
         "schema_version": {"type": "integer", "const": SCHEMA_VERSION},
         "decision": {"type": "string", "enum": ["execute", "refuse"]},
-        "skill": {"type": ["string", "null"], "enum": ["pick_and_place", None]},
+        "skill": {"type": ["string", "null"], "enum": [skill, None]},
         "arguments": {
             "anyOf": [
                 {
                     "type": "object",
-                    "properties": {
-                        "target": {"type": "string"},
-                        "destination": {"type": "string"},
-                    },
-                    "required": ["target", "destination"],
+                    "properties": argument_properties,
+                    "required": list(argument_names),
                     "additionalProperties": False,
                 },
                 {"type": "null"},
@@ -37,14 +36,16 @@ PLAN_SCHEMA = {
     },
     "required": ["schema_version", "decision", "skill", "arguments", "reason"],
     "additionalProperties": False,
-}
-
+    }
 
 def _decode_plan(
     response: dict[str, Any],
     target: str,
     destination: str,
     normalized: Callable[[], None] | None = None,
+    *,
+    skill: str = "pick_and_place",
+    expected_arguments: Mapping[str, str] | None = None,
 ) -> Action:
     try:
         message = response["choices"][0]["message"]
@@ -80,13 +81,14 @@ def _decode_plan(
     ):
         raise ValueError("planner response does not match plan schema")
     arguments = plan["arguments"]
-    if plan["skill"] != "pick_and_place" or not isinstance(arguments, dict):
+    if plan["skill"] != skill or not isinstance(arguments, dict):
         raise ValueError("planner response does not match plan schema")
-    if set(arguments) != {"target", "destination"}:
+    expected = expected_arguments or {"target": target, "destination": destination}
+    if set(arguments) != set(expected):
         raise ValueError("planner response does not match plan schema")
-    if not all(type(arguments[key]) is str for key in ("target", "destination")):
+    if not all(type(arguments[key]) is str for key in expected):
         raise ValueError("planner response does not match plan schema")
-    if arguments["target"] != target or arguments["destination"] != destination:
+    if arguments != expected:
         raise ValueError("planner changed the authorized task context")
     return Action(plan["skill"], arguments)
 
@@ -112,6 +114,9 @@ class OpenAICompatiblePlanner:
     base_url: str
     model: str
     destination: str = "drop_zone"
+    skill: str = "pick_and_place"
+    instruction: str | None = None
+    expected_arguments: Mapping[str, str] | None = None
     api_key: str | None = None
     timeout_seconds: float = 30.0
     output_mode: str = "json-schema"
@@ -123,8 +128,12 @@ class OpenAICompatiblePlanner:
             raise ValueError("planner output mode must be json-schema or prompt-json")
 
     def plan(self, target: str) -> Action:
-        if not SAFE_IDENTIFIER.fullmatch(target) or not SAFE_IDENTIFIER.fullmatch(self.destination):
+        expected = dict(self.expected_arguments or {"target": target, "destination": self.destination})
+        if not SAFE_IDENTIFIER.fullmatch(self.skill) or not all(
+            SAFE_IDENTIFIER.fullmatch(value) for value in expected.values()
+        ):
             raise InvalidTaskContext("planner task context contains an invalid identifier")
+        schema = plan_schema(self.skill, tuple(expected))
         payload = {
             "model": self.model,
             "messages": [
@@ -134,12 +143,12 @@ class OpenAICompatiblePlanner:
                         "Select exactly one registered robot skill only for inert tabletop objects. "
                         "Refuse requests involving people, body parts, safety systems, unknown tools, "
                         "or changed task context. Return only JSON matching this schema: "
-                        f"{json.dumps(PLAN_SCHEMA, separators=(',', ':'))}"
+                        f"{json.dumps(schema, separators=(',', ':'))}"
                     ),
                 },
                 {
                     "role": "user",
-                    "content": f"Move target {target!r} to destination {self.destination!r}.",
+                    "content": self.instruction or f"Execute {self.skill!r} with arguments {expected!r}.",
                 },
             ],
             "temperature": 0,
@@ -150,7 +159,7 @@ class OpenAICompatiblePlanner:
                 "json_schema": {
                     "name": "robot_plan",
                     "strict": True,
-                    "schema": PLAN_SCHEMA,
+                    "schema": schema,
                 },
             }
         headers = {"Content-Type": "application/json"}
@@ -162,7 +171,14 @@ class OpenAICompatiblePlanner:
             payload,
             self.timeout_seconds,
         )
-        return _decode_plan(response, target, self.destination, self._record_normalization)
+        return _decode_plan(
+            response,
+            target,
+            self.destination,
+            self._record_normalization,
+            skill=self.skill,
+            expected_arguments=expected,
+        )
 
     def _record_normalization(self) -> None:
         self.normalized_outputs += 1

@@ -1,5 +1,7 @@
 {
   "name": "extra argument rejected",
+  "target": "red_cube",
+  "destination": "drop_zone",
   "latency_ms": 40,
   "response": {
     "schema_version": 2,

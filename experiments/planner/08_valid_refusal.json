@@ -1,6 +1,7 @@
 {
   "name": "explicit unsafe request refusal",
   "target": "human_hand",
+  "destination": "drop_zone",
   "unsafe": true,
   "latency_ms": 44,
   "response": {

@@ -8,6 +8,9 @@
 #include <chrono>
 #include <cmath>
 #include <cstdlib>
+#include <sstream>
+#include <stdexcept>
+#include <type_traits>
 #include <unordered_map>
 
 namespace isaaclab
@@ -44,11 +47,25 @@ State_RLBase::State_RLBase(int state_mode, std::string state_string)
 namespace
 {
 using Pose = std::array<float, 9>;
-constexpr std::array<int, 9> joints = {12, 15, 16, 17, 18, 22, 23, 24, 25};
-constexpr Pose stand = {0.0f, 0.0f, 0.25f, 0.0f, 0.97f, 0.0f, -0.25f, 0.0f, 0.97f};
-constexpr Pose grasp = {0.0f, -0.36445f, -0.02471f, 0.78152f, 1.45247f, -0.36455f, 0.02455f, -0.78133f, 1.45280f};
-constexpr Pose lift = {0.0f, 0.17811f, 0.46812f, -0.37733f, -0.36836f, 0.17808f, -0.46815f, 0.37730f, -0.36835f};
-constexpr Pose transport = {0.0f, -0.21138f, 0.44107f, 0.14765f, 0.97303f, 0.17808f, -0.46815f, 0.37730f, -0.36835f};
+using JointMap = std::array<int, 9>;
+using PhaseTimes = std::array<float, 4>;
+
+template <typename T, std::size_t N>
+std::array<T, N> environment_array(const char* name)
+{
+    const char* value = std::getenv(name);
+    if (value == nullptr) throw std::runtime_error(std::string("missing ") + name);
+    std::array<T, N> result{};
+    std::stringstream stream(value);
+    std::string item;
+    for (std::size_t index = 0; index < N; ++index) {
+        if (!std::getline(stream, item, ',')) throw std::runtime_error(std::string("invalid ") + name);
+        if constexpr (std::is_same_v<T, int>) result[index] = std::stoi(item);
+        else result[index] = std::stof(item);
+    }
+    if (std::getline(stream, item, ',')) throw std::runtime_error(std::string("invalid ") + name);
+    return result;
+}
 
 Pose interpolate(const Pose& from, const Pose& to, float ratio)
 {
@@ -61,6 +78,11 @@ Pose interpolate(const Pose& from, const Pose& to, float ratio)
 
 Pose manipulation_pose(float seconds)
 {
+    static const Pose stand = environment_array<float, 9>("S2A_MANIPULATION_STAND");
+    static const Pose grasp = environment_array<float, 9>("S2A_MANIPULATION_GRASP");
+    static const Pose lift = environment_array<float, 9>("S2A_MANIPULATION_LIFT");
+    static const Pose transport = environment_array<float, 9>("S2A_MANIPULATION_TRANSPORT");
+    static const PhaseTimes phases = environment_array<float, 4>("S2A_MANIPULATION_PHASE_END_SECONDS");
     static const float time_scale = [] {
         const char* value = std::getenv("S2A_MANIPULATION_TIME_SCALE");
         return value == nullptr ? 1.0f : std::clamp(std::stof(value), 0.5f, 1.5f);
@@ -71,10 +93,10 @@ Pose manipulation_pose(float seconds)
     }();
     seconds = std::max(0.0f, seconds - start_delay);
     seconds /= time_scale;
-    if (seconds < 1.0f) return stand;
-    if (seconds < 5.0f) return interpolate(stand, grasp, (seconds - 1.0f) / 4.0f);
-    if (seconds < 9.0f) return interpolate(grasp, lift, (seconds - 5.0f) / 4.0f);
-    if (seconds < 12.0f) return interpolate(lift, transport, (seconds - 9.0f) / 3.0f);
+    if (seconds < phases[0]) return stand;
+    if (seconds < phases[1]) return interpolate(stand, grasp, (seconds - phases[0]) / (phases[1] - phases[0]));
+    if (seconds < phases[2]) return interpolate(grasp, lift, (seconds - phases[1]) / (phases[2] - phases[1]));
+    if (seconds < phases[3]) return interpolate(lift, transport, (seconds - phases[2]) / (phases[3] - phases[2]));
     return transport;
 }
 }
@@ -85,9 +107,10 @@ void State_RLBase::run()
     for (int i = 0; i < env->robot->data.joint_ids_map.size(); ++i) {
         lowcmd->msg_.motor_cmd()[env->robot->data.joint_ids_map[i]].q() = action[i];
     }
-    if (std::getenv("S2A_PICK_PLACE") == nullptr) return;
+    if (std::getenv("S2A_TASK_TRAJECTORY") == nullptr) return;
     static const auto started = std::chrono::steady_clock::now();
     const float seconds = std::chrono::duration<float>(std::chrono::steady_clock::now() - started).count();
     const auto pose = manipulation_pose(seconds);
+    static const JointMap joints = environment_array<int, 9>("S2A_MANIPULATION_JOINTS");
     for (std::size_t i = 0; i < joints.size(); ++i) lowcmd->msg_.motor_cmd()[joints[i]].q() = pose[i];
 }

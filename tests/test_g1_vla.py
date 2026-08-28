@@ -4,23 +4,31 @@ from types import SimpleNamespace
 from pathlib import Path
 
 from synapse2action.g1_vla import (
-    G1_MANIPULATION_JOINTS,
     G1VLAActionProjector,
     make_g1_vla_bridge,
 )
+from synapse2action.task_spec import load_task_spec
+
+TASK = load_task_spec(Path(__file__).resolve().parents[1] / "experiments/tasks/g1_pick_place.json")
+G1_MANIPULATION_JOINTS = TASK.controller.joint_indices
+PROJECTOR_ARGS = {
+    "joint_indices": TASK.controller.joint_indices,
+    "joint_limits_rad": TASK.controller.joint_limits_rad,
+}
 
 
 class G1VLAActionProjectorTests(unittest.TestCase):
     def test_only_manipulation_joints_override_rl_command(self) -> None:
         rl = tuple(index / 100 for index in range(29))
         predicted = tuple(-value for value in rl)
-        projector = G1VLAActionProjector(maximum_speed_rad_s=100, blend_weight=1, maximum_residual_rad=10)
+        projector = G1VLAActionProjector(**PROJECTOR_ARGS, maximum_speed_rad_s=100, blend_weight=1, maximum_residual_rad=10)
         result = projector.project(rl, predicted)
         for index in range(29):
             self.assertEqual(result[index], predicted[index] if index in G1_MANIPULATION_JOINTS else rl[index])
 
     def test_projection_clamps_joint_range_and_step_speed(self) -> None:
         projector = G1VLAActionProjector(
+            **PROJECTOR_ARGS,
             frequency_hz=10,
             maximum_speed_rad_s=2,
             blend_weight=1,
@@ -32,7 +40,7 @@ class G1VLAActionProjectorTests(unittest.TestCase):
         self.assertTrue(all(result[index] == 0.0 for index in set(range(29)) - set(G1_MANIPULATION_JOINTS)))
 
     def test_projection_rejects_bad_action(self) -> None:
-        projector = G1VLAActionProjector()
+        projector = G1VLAActionProjector(**PROJECTOR_ARGS)
         with self.assertRaisesRegex(ValueError, "29 joints"):
             projector.project((0.0,) * 29, (0.0,) * 28)
         with self.assertRaisesRegex(ValueError, "non-finite"):
@@ -40,7 +48,7 @@ class G1VLAActionProjectorTests(unittest.TestCase):
 
     def test_default_projection_is_a_bounded_residual_over_behavior(self) -> None:
         base = (0.5,) * 29
-        projector = G1VLAActionProjector(maximum_speed_rad_s=100)
+        projector = G1VLAActionProjector(**PROJECTOR_ARGS, maximum_speed_rad_s=100)
         result = projector.project(base, (2.0,) * 29)
         for index in G1_MANIPULATION_JOINTS:
             self.assertAlmostEqual(result[index], 0.55)
@@ -60,7 +68,7 @@ class G1VLAActionProjectorTests(unittest.TestCase):
         message = SimpleNamespace(
             motor_cmd=[motor(0.0 if index in G1_MANIPULATION_JOINTS else index / 10) for index in range(29)]
         )
-        bridge = make_g1_vla_bridge(BaseBridge)()
+        bridge = make_g1_vla_bridge(BaseBridge, **PROJECTOR_ARGS)()
         bridge.set_vla_action((1.0,) * 29)
         bridge.LowCmdHandler(message)
         self.assertEqual(bridge.vla_overlay_frames, 1)
@@ -79,7 +87,7 @@ class G1VLAActionProjectorTests(unittest.TestCase):
             def LowCmdHandler(self, message: object) -> None:
                 self.mj_data.ctrl[:] = [7.0] * 29
 
-        bridge = make_g1_vla_bridge(BaseBridge)()
+        bridge = make_g1_vla_bridge(BaseBridge, **PROJECTOR_ARGS)()
         bridge.LowCmdHandler(SimpleNamespace())
         self.assertEqual(bridge.mj_data.ctrl, [7.0] * 29)
 
@@ -93,7 +101,7 @@ class G1VLAActionProjectorTests(unittest.TestCase):
                 self.mj_data.ctrl[:] = [motor.q for motor in message.motor_cmd]
 
         motors = [SimpleNamespace(q=float(index)) for index in range(29)]
-        bridge = make_g1_vla_bridge(BaseBridge, apply_vla_targets=False)()
+        bridge = make_g1_vla_bridge(BaseBridge, **PROJECTOR_ARGS, apply_vla_targets=False)()
         bridge.set_vla_action((1.0,) * 29)
         bridge.LowCmdHandler(SimpleNamespace(motor_cmd=motors))
         self.assertEqual(bridge.mj_data.ctrl, [float(index) for index in range(29)])
@@ -106,7 +114,7 @@ class G1VLAActionProjectorTests(unittest.TestCase):
         runner = (root / "simulation/run_g1_vla_bridge_smoke.sh").read_text()
         smoke = (root / "simulation/g1_vla_bridge_smoke.py").read_text()
         self.assertIn("synapse2action-unitree-render:locked-v3", runner)
-        self.assertIn("make_g1_vla_bridge(UnitreeSdk2Bridge)", smoke)
+        self.assertIn("task.controller.joint_indices", smoke)
 
 
 if __name__ == "__main__":

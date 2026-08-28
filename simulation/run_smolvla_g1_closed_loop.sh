@@ -2,15 +2,18 @@
 set -euo pipefail
 
 project_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-target="${1:-red_cube}"
-destination="${2:-drop_tray}"
-plan_source="${3:-standalone_default}"
+task_spec="${1:-${project_dir}/experiments/tasks/g1_pick_place.json}"
+plan_source="${2:-standalone_default}"
+task_spec_relative="${task_spec#${project_dir}/}"
+[[ "${task_spec_relative}" != "${task_spec}" && -f "${task_spec}" ]] || { echo "task spec must be a file inside ${project_dir}" >&2; exit 2; }
+container_task_spec="/workspace/current/${task_spec_relative}"
 report_dir="${project_dir}/reports/simulation"
+controller_env="${report_dir}/task-controller-$$.env"
 cache="${project_dir}/simulation/vendor/huggingface"
 model="${project_dir}/reports/training/smolvla-g1-suite/checkpoints/last/pretrained_model"
 policy_image="synapse2action-smolvla:0.6.1"
 simulator_image="synapse2action-unitree-render:locked-v3"
-controller_image="synapse2action-unitree-controller:locked-v19"
+controller_image="synapse2action-unitree-controller:locked-v20"
 [[ -f "${model}/config.json" ]] || { echo "missing trained SmolVLA checkpoint: ${model}" >&2; exit 2; }
 
 run_id="$$"
@@ -21,9 +24,11 @@ simulator="synapse2action-vla-simulator-${run_id}"
 cleanup() {
   docker rm -f "${simulator}" "${controller}" "${policy}" >/dev/null 2>&1 || true
   docker network rm "${network}" >/dev/null 2>&1 || true
+  rm -f "${controller_env}"
 }
 trap cleanup EXIT
 mkdir -p "${report_dir}"
+PYTHONPATH="${project_dir}/src" python3 "${project_dir}/simulation/export_task_controller_env.py" "${task_spec}" "${controller_env}"
 if ! docker image inspect "${controller_image}" >/dev/null 2>&1; then
   docker build --platform linux/amd64 \
     -f "${project_dir}/simulation/docker/Dockerfile.unitree-controller-amd64" \
@@ -48,9 +53,9 @@ until docker exec "${policy}" python -c \
   sleep 1
 done
 docker run --detach --name "${controller}" --network "${network}" --cpu-shares 4096 \
+  --env-file "${controller_env}" \
   --env S2A_TARGET_X_M=0.0 --env S2A_TARGET_Y_M=0.0 --env S2A_TARGET_YAW_RAD=0.0 \
-  --env S2A_MAX_SPEED_MPS=0.3 --env S2A_PICK_PLACE=1 \
-  --env S2A_MANIPULATION_START_DELAY_SECONDS=12 \
+  --env S2A_MAX_SPEED_MPS=0.3 --env S2A_TASK_TRAJECTORY=1 \
   "${controller_image}" ./build/g1_ctrl -n eth0 >/dev/null
 docker run --detach --name "${simulator}" --network "${network}" --cpu-shares 4096 \
   --workdir /workspace/current --env PYTHONPATH=/workspace/current/src --env MUJOCO_GL=osmesa \
@@ -58,9 +63,8 @@ docker run --detach --name "${simulator}" --network "${network}" --cpu-shares 40
   --volume "${report_dir}:/workspace/reports/simulation" \
   "${simulator_image}" python3 simulation/g1_mujoco_pick_place.py \
   --unitree-mujoco /opt/unitree/unitree_mujoco --interface eth0 \
+  --task-spec "${container_task_spec}" --plan-source "${plan_source}" \
   --duration-seconds 20 --vla-endpoint http://${policy}:8080 \
-  --vla-skill pick_and_place --vla-target "${target}" \
-  --vla-destination "${destination}" --vla-plan-source "${plan_source}" \
   --vla-frequency-hz 3 --vla-stale-after-seconds 20 \
   --vla-refresh-lookahead-actions 50 --release-timeout-seconds 19.8 \
   --visualization-directory /workspace/reports/simulation/g1-smolvla-frames \
@@ -72,4 +76,5 @@ docker logs "${simulator}" >"${report_dir}/g1-smolvla-simulator.log" 2>&1
 [[ "${simulator_exit}" == "0" ]] || { cat "${report_dir}/g1-smolvla-simulator.log" >&2; exit 1; }
 PYTHONPATH="${project_dir}/src" python3 "${project_dir}/simulation/validate_g1_vla_rollout.py" \
   "${report_dir}/g1-smolvla-closed-loop.json" \
+  --task-spec "${task_spec}" \
   --output "${report_dir}/g1-smolvla-closed-loop-acceptance.json"

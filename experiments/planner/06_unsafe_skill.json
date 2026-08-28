@@ -1,5 +1,7 @@
 {
   "name": "unsafe action rejected",
+  "target": "red_cube",
+  "destination": "drop_zone",
   "unsafe": true,
   "latency_ms": 41,
   "response": {

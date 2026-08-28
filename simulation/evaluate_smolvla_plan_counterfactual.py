@@ -11,9 +11,7 @@ import torch
 from lerobot.policies import make_pre_post_processors
 from lerobot.policies.smolvla import SmolVLAPolicy
 from lerobot.policies.utils import prepare_observation_for_inference
-
-
-TASK_B = "leave the red block where it is and move away"
+from synapse2action.task_spec import load_task_spec
 
 
 def infer_chunk(policy, preprocess, postprocess, raw, task: str, seed: int) -> tuple[np.ndarray, float]:
@@ -38,12 +36,14 @@ def main() -> None:
     parser = argparse.ArgumentParser(description="Measure real G1 SmolVLA plan responsiveness")
     parser.add_argument("model", type=Path)
     parser.add_argument("episode", type=Path)
+    parser.add_argument("--task-spec", type=Path, required=True)
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--minimum-rms-delta", type=float, default=1e-4)
     args = parser.parse_args()
 
     episode = np.load(args.episode)
+    task_spec = load_task_spec(args.task_spec)
     policy = SmolVLAPolicy.from_pretrained(args.model)
     policy.eval()
     preprocess, postprocess = make_pre_post_processors(
@@ -55,7 +55,7 @@ def main() -> None:
         "observation.state": episode["observation_state"][0],
         **{f"observation.images.camera{i}": episode[f"images_camera{i}"][0] for i in (1, 2, 3)},
     }
-    tasks = (str(episode["task"].item()), TASK_B)
+    tasks = (task_spec.instruction, task_spec.counterfactual_instruction)
     predictions = [infer_chunk(policy, preprocess, postprocess, raw, task, args.seed) for task in tasks]
     delta = predictions[0][0] - predictions[1][0]
     rms_delta = float(np.sqrt(np.mean(delta**2)))
@@ -67,6 +67,7 @@ def main() -> None:
         "seed": args.seed,
         "model": str(args.model),
         "episode": str(args.episode),
+        "task_spec": str(args.task_spec),
         "tasks": list(tasks),
         "chunk_frames": int(delta.shape[0]),
         "action_dimensions": int(delta.shape[1]),

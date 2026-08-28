@@ -1,5 +1,7 @@
 {
   "name": "malformed JSON rejected",
+  "target": "red_cube",
+  "destination": "drop_zone",
   "latency_ms": 36,
   "response": "not json",
   "expect": {"final_state": "failed", "action_count": 0}

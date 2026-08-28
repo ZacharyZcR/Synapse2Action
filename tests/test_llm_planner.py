@@ -7,6 +7,35 @@ from synapse2action.demo import run_demo
 
 
 class LLMPlannerTests(unittest.TestCase):
+    def test_skill_and_argument_contract_are_runtime_configuration(self) -> None:
+        captured = {}
+
+        def transport(url, headers, payload, timeout):
+            captured.update(payload)
+            return {"choices": [{"message": {"content": json.dumps({
+                "schema_version": 2,
+                "decision": "execute",
+                "skill": "inspect_object",
+                "arguments": {"object": "sample_a"},
+                "reason": None,
+            })}}]}
+
+        planner = OpenAICompatiblePlanner(
+            "http://localhost:8000/v1",
+            "test-model",
+            skill="inspect_object",
+            instruction="inspect sample_a",
+            expected_arguments={"object": "sample_a"},
+            transport=transport,
+        )
+
+        action = planner.plan("sample_a")
+
+        self.assertEqual(action.skill, "inspect_object")
+        self.assertEqual(action.arguments, {"object": "sample_a"})
+        schema = captured["response_format"]["json_schema"]["schema"]
+        self.assertEqual(schema["properties"]["skill"]["enum"], ["inspect_object", None])
+
     def test_structured_plan_is_converted_to_action(self) -> None:
         captured = {}
 

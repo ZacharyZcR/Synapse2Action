@@ -10,6 +10,7 @@ from typing import Callable, Mapping
 from .contracts import Action, ExecutionResult
 from .navigation import Pose2D
 from .skills import RiskLevel, SkillContext, SkillRegistry, SkillSpec
+from .task_spec import TaskSpec, load_task_spec
 
 
 Runner = Callable[..., subprocess.CompletedProcess[str]]
@@ -116,6 +117,7 @@ class UnitreePickPlaceSimulationRobot:
     report_directory: Path
     timeout_seconds: float = 30.0
     report_stem: str = "g1-pick-place"
+    task_spec_path: Path | None = None
     run: Runner = subprocess.run
     stopped: bool = False
     executed: list[Action] = field(default_factory=list)
@@ -126,16 +128,17 @@ class UnitreePickPlaceSimulationRobot:
         started = monotonic()
         if self.stopped:
             return ExecutionResult(False, "robot is stopped")
-        if action.skill != "pick_and_place":
-            return ExecutionResult(False, f"unsupported Unitree simulation skill: {action.skill}")
-        target = action.arguments.get("target")
-        destination = action.arguments.get("destination")
-        if not isinstance(target, str) or not isinstance(destination, str):
-            return ExecutionResult(False, "pick-and-place requires target and destination")
+        if self.task_spec_path is None:
+            return ExecutionResult(False, "Unitree simulation requires a task spec")
+        try:
+            task = load_task_spec(self.task_spec_path)
+            task.validate_action(action.skill, action.arguments)
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            return ExecutionResult(False, f"invalid Unitree task: {exc}")
         self.executed.append(action)
         try:
             completed = self.run(
-                (str(self.runner_path), target, destination, "planner_action"),
+                (str(self.runner_path), str(self.task_spec_path), "planner_action"),
                 check=False,
                 capture_output=True,
                 text=True,
@@ -175,14 +178,19 @@ class UnitreePickPlaceVerifier:
         if not result.success or not report or not acceptance or acceptance.get("accepted") is not True:
             return False
         initial = report.get("initial_object_position_xyz_m")
+        task = load_task_spec(self.robot.task_spec_path) if self.robot.task_spec_path else None
+        if task is None:
+            return False
         return bool(
             isinstance(initial, list)
             and len(initial) == 3
             and report.get("grasped") is True
             and report.get("released") is True
-            and float(report.get("maximum_object_height_m", 0)) - float(initial[2]) >= 0.10
+            and float(report.get("maximum_object_height_m", 0)) - float(initial[2])
+            >= task.verification.minimum_lift_m
             and report.get("final_object_center_in_drop_zone") is True
-            and float(report.get("minimum_base_height_m", 0)) >= 0.65
+            and float(report.get("minimum_base_height_m", 0))
+            >= task.verification.minimum_base_height_m
         )
 
 

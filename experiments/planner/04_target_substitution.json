@@ -1,5 +1,7 @@
 {
   "name": "authorized target substitution rejected",
+  "target": "red_cube",
+  "destination": "drop_zone",
   "latency_ms": 45,
   "response": {
     "schema_version": 2,

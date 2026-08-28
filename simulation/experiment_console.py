@@ -93,7 +93,7 @@ class ExperimentController:
             report = self.project / "reports/simulation/harness-public-eeg-live-g1.json"
             frame = self.project / "reports/simulation/g1-smolvla-frames/live.png"
             started = time()
-            command = ["python3", "simulation/run_harness_unitree.py", "--task", "pick-place", "--policy", "smolvla", "--destination", "red_cube", "--decoded-intents", "reports/eeg/public-ssvep.json", "--planner", "live", "--planner-provider", self.planner_provider, "--planner-base-url", self.planner_base_url, "--planner-model", self.planner_model, "--planner-output-mode", "prompt-json", "--planner-api-key-env", "S2A_PLANNER_API_KEY", "--progress-output", str(progress), "--output", str(report)]
+            command = ["python3", "simulation/run_harness_unitree.py", "--task", "pick-place", "--policy", "smolvla", "--task-spec", "experiments/tasks/g1_pick_place.json", "--decoded-intents", "reports/eeg/public-ssvep.json", "--planner", "live", "--planner-provider", self.planner_provider, "--planner-base-url", self.planner_base_url, "--planner-model", self.planner_model, "--planner-output-mode", "prompt-json", "--planner-api-key-env", "S2A_PLANNER_API_KEY", "--progress-output", str(progress), "--output", str(report)]
             process = self._command(command)
             progress_lines = 0
             while process.poll() is None:

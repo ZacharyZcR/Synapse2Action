@@ -27,7 +27,7 @@ def run_eeg_planner_benchmark(
     eeg_report_path: Path,
     planner: Planner,
     provider: str,
-    target: str = "red_cube",
+    target: str,
 ) -> dict[str, Any]:
     eeg_report = json.loads(eeg_report_path.read_text(encoding="utf-8"))
     stream = eeg_report.get("continuous_stream")
@@ -123,7 +123,7 @@ def run_eeg_planner_benchmark(
         "provider": provider,
         "eeg_report": str(eeg_report_path),
         "target_binding": target,
-        "limitation": "The public EEG labels intent kind, not a scene object; target grounding is fixed by the experiment fixture.",
+        "limitation": "The public EEG labels intent kind, not a scene object; target grounding comes from the experiment TaskSpec.",
         "metrics": metrics,
         "acceptance": acceptance,
         "results": results,

@@ -25,7 +25,7 @@ class EEGPlannerBenchmarkTests(unittest.TestCase):
         with TemporaryDirectory() as directory:
             path = Path(directory) / "eeg.json"
             path.write_text(json.dumps(report))
-            result = run_eeg_planner_benchmark(path, MockPlanner(), "fixture")
+            result = run_eeg_planner_benchmark(path, MockPlanner(), "fixture", "fixture_target")
 
         metrics = result["metrics"]
         self.assertFalse(result["accepted"])
@@ -41,7 +41,7 @@ class EEGPlannerBenchmarkTests(unittest.TestCase):
             path = Path(directory) / "eeg.json"
             path.write_text("{}")
             with self.assertRaisesRegex(ValueError, "continuous event stream"):
-                run_eeg_planner_benchmark(path, MockPlanner(), "fixture")
+                run_eeg_planner_benchmark(path, MockPlanner(), "fixture", "fixture_target")
 
 
 if __name__ == "__main__":

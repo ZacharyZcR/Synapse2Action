@@ -42,7 +42,7 @@ class SmolVLAAssetsTests(unittest.TestCase):
 
     def test_g1_offline_gate_reports_manipulation_joint_error(self) -> None:
         source = (ROOT / "simulation" / "evaluate_smolvla_g1_offline.py").read_text()
-        self.assertIn("ARM_WAIST_JOINTS", source)
+        self.assertIn("controller.joint_indices", source)
         self.assertIn('"arm_waist_mse"', source)
         self.assertIn("policy.config.chunk_size", source)
 
@@ -63,8 +63,10 @@ class SmolVLAAssetsTests(unittest.TestCase):
 
     def test_pick_place_uses_rectangular_drop_zone_geometry(self) -> None:
         simulator = (ROOT / "simulation" / "g1_mujoco_pick_place.py").read_text()
+        task = json.loads((ROOT / "experiments" / "tasks" / "g1_pick_place.json").read_text())
         runner = (ROOT / "simulation" / "run_unitree_pick_place.sh").read_text()
-        self.assertIn('"drop_zone_half_extents_xy_m": [0.12, 0.22]', simulator)
+        self.assertEqual(task["scene"]["destination"]["half_size_xyz_m"][:2], [0.12, 0.22])
+        self.assertIn('list(destination.size[:2])', simulator)
         self.assertIn('simulator["final_object_center_in_drop_zone"]', runner)
 
     def test_suite_training_uses_episode_level_holdout(self) -> None:
@@ -88,11 +90,11 @@ class SmolVLAAssetsTests(unittest.TestCase):
         runner = (ROOT / "simulation" / "run_smolvla_g1_closed_loop.sh").read_text()
         validator = (ROOT / "simulation" / "validate_g1_vla_rollout.py").read_text()
         self.assertIn("smolvla_g1_chunk_server.py", runner)
-        self.assertIn("unitree-controller:locked-v19", runner)
-        self.assertIn("S2A_MANIPULATION_START_DELAY_SECONDS=12", runner)
+        self.assertIn("unitree-controller:locked-v20", runner)
+        self.assertIn("export_task_controller_env.py", runner)
         self.assertNotIn("--vla-typed-skill-passthrough", runner)
         self.assertIn("--vla-endpoint", runner)
-        self.assertIn("--vla-plan-source", runner)
+        self.assertIn("--plan-source", runner)
         self.assertIn("--visualization-directory", runner)
         self.assertIn('"functional_accepted"', validator)
         self.assertIn('"realtime_accepted"', validator)

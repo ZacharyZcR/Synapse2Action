@@ -113,6 +113,10 @@ Authoritative local artifacts are `reports/training/smolvla-g1-suite-heldout.jso
 
 ## LLM-to-VLA boundary / LLM 到 VLA 边界
 
+`experiments/tasks/g1_pick_place.json` is the single task contract for the current G1 experiment. Planner skill and arguments, VLA instructions, MuJoCo entities and cameras, controller joint trajectory, bilingual display labels, and physical acceptance thresholds are loaded from this file. Artifact names and the 29-DoF SDK2 wire contract remain platform constants rather than task semantics.
+
+`experiments/tasks/g1_pick_place.json` 是当前 G1 实验唯一的任务契约。Planner Skill 与 Arguments、VLA 指令、MuJoCo 实体与相机、Controller 关节轨迹、中英文显示名称和物理验收阈值均从该文件加载。产物文件名及 29-DoF SDK2 线协议属于平台常量，不属于任务语义。
+
 `--llm-vla-benchmark` audits a completed Harness report rather than rerunning the expensive model and simulator. `simulation/run_smolvla_plan_counterfactual.sh` separately runs the trained checkpoint twice with the same observation and random seed; pass its report with `--llm-vla-counterfactual`. Acceptance requires a valid structured Planner output, exact structured proof that the same skill and arguments became the VLA task, at least one valid Action Chunk, measured first-chunk latency within chunk coverage, zero stale fallbacks, and a paired counterfactual proving that a changed plan changes VLA output. Aggregate chunk latency or a hard-coded task string cannot satisfy task binding.
 
 `--llm-vla-benchmark` 审计已完成的 Harness 报告，不会重复运行昂贵模型和模拟器。`simulation/run_smolvla_plan_counterfactual.sh` 会在同一观测、同一随机种子下对已训练 Checkpoint 推理两次，并通过 `--llm-vla-counterfactual` 接入其报告。验收要求：Planner 结构化输出有效；同一 Skill 与 Arguments 被结构化证明已成为 VLA Task；至少收到一个有效 Action Chunk；首 Chunk 延迟已测且小于 Chunk 覆盖时间；没有 Stale Fallback；并通过成对反事实证明改变 Plan 会改变 VLA 输出。聚合 Chunk 延迟或硬编码 Task String 均不能证明任务绑定。

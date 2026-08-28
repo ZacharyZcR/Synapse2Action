@@ -18,6 +18,7 @@ from .planner_benchmark import run_planner_benchmark
 from .planner_provider_summary import summarize_planner_providers
 from .llm_planner import OpenAICompatiblePlanner
 from .llm_vla_benchmark import run_llm_vla_benchmark
+from .task_spec import load_task_spec
 from .harness import Harness
 from .intent_sources import KeyboardIntentSource, run_intent_source
 from .navigation import (
@@ -152,6 +153,7 @@ def main() -> int:
     parser.add_argument("--eeg-planner-benchmark", type=Path)
     parser.add_argument("--llm-vla-benchmark", type=Path)
     parser.add_argument("--llm-vla-counterfactual", type=Path)
+    parser.add_argument("--task-spec", type=Path)
     parser.add_argument("--planner-live-benchmark", type=Path)
     parser.add_argument("--planner-timeout-seconds", type=float, default=30.0)
     parser.add_argument("--summarize-planner-providers", type=Path, nargs="+")
@@ -416,6 +418,9 @@ def main() -> int:
             args.planner_provider_name,
         )
     elif args.eeg_planner_benchmark:
+        if not args.task_spec:
+            parser.error("--eeg-planner-benchmark requires --task-spec")
+        task_spec = load_task_spec(args.task_spec)
         if bool(args.planner_base_url) != bool(args.planner_model):
             parser.error(
                 "--eeg-planner-benchmark requires both or neither of "
@@ -425,17 +430,22 @@ def main() -> int:
             OpenAICompatiblePlanner(
                 args.planner_base_url,
                 args.planner_model,
+                destination=task_spec.destination,
+                skill=task_spec.skill,
+                instruction=task_spec.instruction,
+                expected_arguments=task_spec.arguments,
                 api_key=os.getenv(args.planner_api_key_env),
                 timeout_seconds=args.planner_timeout_seconds,
                 output_mode=args.planner_output_mode,
             )
             if args.planner_base_url
-            else MockPlanner()
+            else MockPlanner(skill=task_spec.skill, arguments=task_spec.arguments)
         )
         report = run_eeg_planner_benchmark(
             args.eeg_planner_benchmark,
             planner,
             args.planner_provider_name or "mock",
+            task_spec.target,
         )
     elif args.llm_vla_benchmark:
         report = run_llm_vla_benchmark(

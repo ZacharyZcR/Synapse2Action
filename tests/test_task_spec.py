@@ -1,0 +1,31 @@
+from pathlib import Path
+import unittest
+
+from synapse2action.task_spec import load_task_spec
+
+
+ROOT = Path(__file__).resolve().parents[1]
+
+
+class TaskSpecTests(unittest.TestCase):
+    def test_task_spec_is_the_single_task_contract(self) -> None:
+        task = load_task_spec(ROOT / "experiments/tasks/g1_pick_place.json")
+
+        self.assertEqual(task.arguments, {
+            "target": task.target_entity.name,
+            "destination": task.destination_entity.name,
+        })
+        task.validate_action(task.skill, task.arguments)
+        self.assertEqual(len(task.controller.joint_indices), len(task.controller.joint_limits_rad))
+        self.assertIn(task.target, task.action_text())
+        self.assertNotEqual(task.instruction, task.counterfactual_instruction)
+
+    def test_mismatched_action_is_rejected(self) -> None:
+        task = load_task_spec(ROOT / "experiments/tasks/g1_pick_place.json")
+
+        with self.assertRaisesRegex(ValueError, "does not match"):
+            task.validate_action(task.skill, {"target": "different", "destination": task.destination})
+
+
+if __name__ == "__main__":
+    unittest.main()
