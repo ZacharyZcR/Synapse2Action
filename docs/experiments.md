@@ -57,6 +57,10 @@ virtual clock until a real integration layer is introduced.
 
 ## Context-bound authorization / 上下文绑定授权
 
+The Harness plans and validates immediately after target selection, then exposes the stored pending action for review. Confirmation authorizes that concrete skill and argument set; planning never happens after the user has already confirmed. Planner refusal or invalid output terminates before the confirmation gate and can never reach the robot.
+
+Harness 在目标选择后立即规划并校验，然后将不可变的待执行动作暴露给审阅阶段。确认授权的是这组具体技能和参数；系统不会让用户先确认、再生成计划。Planner 拒绝或非法输出会在确认门之前终止，永远不会抵达机器人。
+
 An optional deterministic challenge binds confirmation to a target, target revision, and expiry time. Challenges are single-use and reject expiry, replay, unknown tokens, and world-state revision drift. The token is a reproducible experiment identifier, not a cryptographic secret. This mechanism prevents stale or mismatched confirmation; it does not prove that a decoded EEG confirmation was intentional.
 
 可选的确定性 challenge 将确认绑定到目标、目标版本和有效期。Challenge 只能消费一次，并拒绝过期、重放、未知 token 与世界状态版本漂移。该 token 是可复现实验标识，不是密码学秘密。它能阻止过期或错位确认，但不能证明 EEG 解码出的确认确实来自用户意图。

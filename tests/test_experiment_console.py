@@ -28,12 +28,12 @@ class ExperimentConsoleTests(unittest.TestCase):
         self.assertIn("prefers-reduced-motion", html)
         self.assertNotIn("https://", html)
 
-    def test_controller_starts_with_seven_pending_stages(self) -> None:
+    def test_controller_starts_with_eight_pending_stages(self) -> None:
         controller = MODULE.ExperimentController(ROOT, "http://127.0.0.1:18765/v1", "/model", "test")
         state = controller.snapshot()
 
         self.assertFalse(state["running"])
-        self.assertEqual(len(state["stages"]), 7)
+        self.assertEqual(len(state["stages"]), 8)
         self.assertTrue(all(stage["status"] == "pending" for stage in state["stages"]))
 
     def test_controller_keeps_only_latest_log_for_each_stage(self) -> None:

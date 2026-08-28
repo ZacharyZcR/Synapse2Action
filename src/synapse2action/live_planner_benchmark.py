@@ -9,7 +9,7 @@ from time import perf_counter_ns
 from typing import Any
 
 from .components import FakeRobot, RuleBasedVerifier
-from .contracts import Intent, IntentKind
+from .contracts import Intent, IntentKind, TaskState
 from .harness import Harness
 from .llm_planner import OpenAICompatiblePlanner
 
@@ -27,8 +27,9 @@ def run_live_planner_case(path: Path, planner: OpenAICompatiblePlanner) -> dict[
     harness = Harness(planner, robot, RuleBasedVerifier())
     normalized_before = planner.normalized_outputs
     started = perf_counter_ns()
-    harness.handle(Intent(IntentKind.SELECT, case["target"]))
-    harness.handle(Intent(IntentKind.CONFIRM))
+    selected = harness.handle(Intent(IntentKind.SELECT, case["target"]))
+    if selected is TaskState.AWAITING_CONFIRMATION:
+        harness.handle(Intent(IntentKind.CONFIRM))
     latency_ms = (perf_counter_ns() - started) / 1_000_000
     events = {record.event for record in harness.trace}
     if harness.state.value == "completed":

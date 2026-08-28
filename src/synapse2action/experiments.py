@@ -61,6 +61,13 @@ def run_scenario(path: Path) -> ExperimentResult:
 
     try:
         for item in scenario["intents"]:
+            if harness.state in {
+                TaskState.COMPLETED,
+                TaskState.FAILED,
+                TaskState.CANCELLED,
+                TaskState.EMERGENCY_STOPPED,
+            }:
+                break
             if "world_update" in item:
                 update = item["world_update"]
                 if update["op"] == "move":

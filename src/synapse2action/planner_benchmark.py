@@ -6,7 +6,7 @@ from pathlib import Path
 from typing import Any
 
 from .components import FakeRobot, RuleBasedVerifier
-from .contracts import Intent, IntentKind
+from .contracts import Intent, IntentKind, TaskState
 from .harness import Harness
 from .llm_planner import OpenAICompatiblePlanner
 
@@ -32,8 +32,9 @@ def run_planner_case(path: Path) -> dict[str, Any]:
     planner = OpenAICompatiblePlanner("http://planner.invalid/v1", "fixture", destination, transport=transport)
     robot = FakeRobot()
     harness = Harness(planner, robot, RuleBasedVerifier())
-    harness.handle(Intent(IntentKind.SELECT, target))
-    harness.handle(Intent(IntentKind.CONFIRM))
+    selected = harness.handle(Intent(IntentKind.SELECT, target))
+    if selected is TaskState.AWAITING_CONFIRMATION:
+        harness.handle(Intent(IntentKind.CONFIRM))
 
     raw = case.get("response")
     raw_skill = raw.get("skill") if isinstance(raw, dict) else None

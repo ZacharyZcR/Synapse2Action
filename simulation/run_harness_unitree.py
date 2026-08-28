@@ -149,11 +149,21 @@ def main() -> int:
             NavigateToPlanner(), robot, UnitreeSimulationVerifier(robot), policy=ScriptedPolicy()
         )
     select_kind, confirm_kind = decoded_execution_intents(args.decoded_intents)
-    progress("intent", "completed", {"select": select_kind.value, "confirm": confirm_kind.value})
+    progress("intent", "completed", {"selected": args.destination, "intent": select_kind.value})
     progress("llm_planner", "running", {"provider": args.planner_provider, "model": args.planner_model})
     selected = harness.handle(Intent(select_kind, args.destination))
     if selected is not TaskState.AWAITING_CONFIRMATION:
         raise RuntimeError("selection did not reach confirmation gate")
+    assert harness.pending_action is not None
+    progress(
+        "plan_review",
+        "completed",
+        {
+            "skill": harness.pending_action.skill,
+            "arguments": dict(harness.pending_action.arguments),
+            "confirmation": confirm_kind.value,
+        },
+    )
     harness.handle(Intent(confirm_kind))
     report = {
         "accepted": harness.state is TaskState.COMPLETED,
@@ -176,6 +186,13 @@ def main() -> int:
             "output": f"select({args.destination}) + confirm",
         },
         {"id": "llm_planner", **observable_planner.report},
+        {
+            "id": "plan_review",
+            "mode": "confirmed",
+            "status": "completed",
+            "input": observable_planner.report.get("output"),
+            "output": "reviewed plan + confirm",
+        },
         {
             "id": "vla",
             "mode": "live" if args.policy == "smolvla" else "scripted",

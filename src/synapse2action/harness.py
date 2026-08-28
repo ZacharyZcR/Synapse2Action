@@ -4,7 +4,7 @@ from dataclasses import dataclass, field
 
 from .authorization import ChallengeStore
 from .components import ScriptedPolicy
-from .contracts import Intent, IntentKind, Planner, PlannerRefused, Policy, Robot, TaskState, TraceRecord, Verifier
+from .contracts import Action, Intent, IntentKind, Planner, PlannerRefused, Policy, Robot, TaskState, TraceRecord, Verifier
 from .skills import SkillContext, SkillRegistry, default_skill_registry
 from .world import FakeWorld
 
@@ -27,11 +27,14 @@ class Harness:
     challenge_token: str | None = None
     world: FakeWorld | None = None
     policy: Policy = field(default_factory=ScriptedPolicy)
+    pending_action: Action | None = None
 
     def handle(self, intent: Intent) -> TaskState:
         if intent.kind is IntentKind.STOP:
             if self.authorizer:
                 self.authorizer.revoke()
+            self.pending_action = None
+            self.challenge_token = None
             self.robot.stop()
             return self._transition(TaskState.EMERGENCY_STOPPED, "stop", "global stop")
 
@@ -42,6 +45,7 @@ class Harness:
             self.target = None
             self.target_revision = None
             self.challenge_token = None
+            self.pending_action = None
             return self._transition(TaskState.CANCELLED, "cancel")
 
         if intent.kind is IntentKind.SELECT:
@@ -59,6 +63,10 @@ class Harness:
             self.target = intent.target
             self.target_revision = intent.target_revision
             self._transition(TaskState.TARGET_SELECTED, "select", intent.target)
+            planned_action = self._plan_selected_target()
+            if planned_action is None:
+                return self.state
+            self.pending_action = planned_action
             if self.authorizer:
                 assert intent.target_revision is not None and intent.at_ms is not None
                 challenge = self.authorizer.issue(intent.target, intent.target_revision, intent.at_ms)
@@ -95,17 +103,10 @@ class Harness:
 
     def _execute_confirmed_target(self) -> TaskState:
         assert self.target is not None
-        self._transition(TaskState.ARMED, "confirm", self.target)
-        try:
-            planned_action = self.planner.plan(self.target)
-        except PlannerRefused as exc:
-            return self._transition(TaskState.FAILED, "planner_refusal", str(exc))
-        except Exception as exc:
-            return self._transition(TaskState.FAILED, "planner_failure", type(exc).__name__)
-        decision = self.skills.validate(planned_action, SkillContext(self.target))
-        if not decision.accepted:
-            return self._transition(TaskState.FAILED, "reject_plan", decision.reason)
-        self._transition(TaskState.ARMED, "plan", planned_action.skill)
+        assert self.pending_action is not None
+        planned_action = self.pending_action
+        self.pending_action = None
+        self._transition(TaskState.ARMED, "confirm", planned_action.skill)
         action = self.policy.prepare(planned_action)
         decision = self.skills.validate(action, SkillContext(self.target))
         if not decision.accepted:
@@ -121,6 +122,23 @@ class Harness:
         final_state = TaskState.COMPLETED if verified else TaskState.FAILED
         detail = result.detail if verified else skill_result.reason
         return self._transition(final_state, "result", detail)
+
+    def _plan_selected_target(self) -> Action | None:
+        assert self.target is not None
+        try:
+            planned_action = self.planner.plan(self.target)
+        except PlannerRefused as exc:
+            self._transition(TaskState.FAILED, "planner_refusal", str(exc))
+            return None
+        except Exception as exc:
+            self._transition(TaskState.FAILED, "planner_failure", type(exc).__name__)
+            return None
+        decision = self.skills.validate(planned_action, SkillContext(self.target))
+        if not decision.accepted:
+            self._transition(TaskState.FAILED, "reject_plan", decision.reason)
+            return None
+        self._transition(TaskState.TARGET_SELECTED, "plan", planned_action.skill)
+        return planned_action
 
     def _require(self, *allowed: TaskState) -> None:
         if self.state not in allowed:

@@ -37,7 +37,7 @@ PYTHONPATH=src python3 simulation/run_harness_unitree.py \
   --output reports/simulation/harness-unitree.json
 ```
 
-This single command executes `select -> confirm -> plan -> policy -> Robot`
+This single command executes `select -> plan -> review -> confirm -> policy -> Robot`
 before starting the official SDK2 controller and MuJoCo bridge. The Harness only
 completes after the independent simulator acceptance and measured final pose
 checks pass.

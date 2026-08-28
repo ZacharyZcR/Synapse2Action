@@ -72,6 +72,7 @@ class VisualizationTests(unittest.TestCase):
         self.assertIn('id="language"', html)
         self.assertIn("What happened in this run", html)
         self.assertIn("这次运行经历了什么", html)
+        self.assertIn("Plan review and confirmation", html)
         self.assertIn("This simulation run succeeded", html)
         self.assertIn("SmolVLA contributes bounded waist and arm residuals", html)
         self.assertIn("VLA RESIDUAL OVERLAY ENABLED", html)

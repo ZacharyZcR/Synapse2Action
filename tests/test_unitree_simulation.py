@@ -50,7 +50,7 @@ class UnitreeSimulationTests(unittest.TestCase):
             self.assertEqual(state, TaskState.COMPLETED)
             self.assertEqual(calls[0], ("simulation/run_unitree_headless.sh", "locomotion", "0.8", "0.2", "0.3"))
             self.assertEqual([record.event for record in harness.trace], [
-                "select", "await_confirmation", "confirm", "plan", "policy", "execute", "verify", "result"
+                "select", "plan", "await_confirmation", "confirm", "policy", "execute", "verify", "result"
             ])
 
     def test_runner_is_never_called_before_confirmation(self) -> None:

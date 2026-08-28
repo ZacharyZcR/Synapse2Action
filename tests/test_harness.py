@@ -14,7 +14,10 @@ class HarnessTests(unittest.TestCase):
     def test_confirmed_target_executes_once(self) -> None:
         harness, robot = make_harness()
 
-        harness.handle(Intent(IntentKind.SELECT, "red_cube"))
+        selected = harness.handle(Intent(IntentKind.SELECT, "red_cube"))
+        self.assertEqual(selected, TaskState.AWAITING_CONFIRMATION)
+        self.assertEqual(harness.pending_action.skill, "pick_and_place")
+        self.assertEqual(robot.executed, [])
         state = harness.handle(Intent(IntentKind.CONFIRM))
 
         self.assertEqual(state, TaskState.COMPLETED)
@@ -63,9 +66,7 @@ class HarnessTests(unittest.TestCase):
     def test_unknown_skill_never_reaches_robot(self) -> None:
         robot = FakeRobot(allowed_skills=frozenset({"invented_skill"}))
         harness = Harness(MockPlanner("invented_skill"), robot, RuleBasedVerifier())
-        harness.handle(Intent(IntentKind.SELECT, "red_cube"))
-
-        state = harness.handle(Intent(IntentKind.CONFIRM))
+        state = harness.handle(Intent(IntentKind.SELECT, "red_cube"))
 
         self.assertEqual(state, TaskState.FAILED)
         self.assertEqual(robot.executed, [])
@@ -87,9 +88,7 @@ class HarnessTests(unittest.TestCase):
 
         robot = FakeRobot()
         harness = Harness(FailedPlanner(), robot, RuleBasedVerifier())
-        harness.handle(Intent(IntentKind.SELECT, "red_cube"))
-
-        state = harness.handle(Intent(IntentKind.CONFIRM))
+        state = harness.handle(Intent(IntentKind.SELECT, "red_cube"))
 
         self.assertEqual(state, TaskState.FAILED)
         self.assertEqual(robot.executed, [])
@@ -104,8 +103,6 @@ class HarnessTests(unittest.TestCase):
         robot = FakeRobot()
         harness = Harness(RefusingPlanner(), robot, RuleBasedVerifier())
         harness.handle(Intent(IntentKind.SELECT, "human_hand"))
-
-        harness.handle(Intent(IntentKind.CONFIRM))
 
         self.assertEqual(harness.state, TaskState.FAILED)
         self.assertEqual(robot.executed, [])

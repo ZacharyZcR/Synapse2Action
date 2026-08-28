@@ -174,9 +174,9 @@ Synapse2Action 面向科研、教学与有人监督的原型验证，不属于�
 
 ## Status / 当前状态
 
-The project now has accepted Unitree G1 navigation, scripted manipulation, and SmolVLA-authorized manipulation paths through the official SDK2, RL controller, and MuJoCo bridge. The official LeRobot 0.6.1 pipeline trains SmolVLA on five independently simulated episodes and evaluates a held-out episode before deployment. A confirmation-gated Harness run completes `select → confirm → plan → policy → execute → verify`; measured robot and object state independently determines success. Live synthetic BrainFlow/LSL input also reaches the same simulation boundary. Physical EEG acquisition, human-subject metrics, physical G1 integration, and safety certification are not yet claimed.
+The project now has accepted Unitree G1 navigation, scripted manipulation, and bounded SmolVLA action-control paths through the official SDK2, RL controller, and MuJoCo bridge. The official LeRobot 0.6.1 pipeline trains SmolVLA on five independently simulated episodes and evaluates a held-out episode before deployment. A confirmation-gated Harness run completes `select → plan → review → confirm → policy → execute → verify`; measured robot and object state independently determines success. Live synthetic BrainFlow/LSL input also reaches the same simulation boundary. Physical EEG acquisition, human-subject metrics, physical G1 integration, and safety certification are not yet claimed.
 
-项目目前已通过官方 SDK2、RL Controller 与 MuJoCo Bridge 验收 Unitree G1 导航、固定策略抓放和 SmolVLA 受限残差动作抓放链路。官方 LeRobot 0.6.1 管线使用五条独立仿真 episode 训练 SmolVLA，并在部署前评估完全留出的 episode。确认门控 Harness 已跑通 `选择 → 确认 → 规划 → 策略 → 执行 → 验证`，成功状态由机器人与物体实测状态独立判定。BrainFlow/LSL 合成实时输入也已抵达同一仿真边界。真实 EEG 采集、受试者指标、G1 真机接入和安全认证仍未完成。
+项目目前已通过官方 SDK2、RL Controller 与 MuJoCo Bridge 验收 Unitree G1 导航、固定策略抓放和 SmolVLA 受限残差动作抓放链路。官方 LeRobot 0.6.1 管线使用五条独立仿真 episode 训练 SmolVLA，并在部署前评估完全留出的 episode。确认门控 Harness 已跑通 `选择 → 规划 → 审阅 → 确认 → 策略 → 执行 → 验证`，用户确认的是已经生成并校验过的具体计划；成功状态由机器人与物体实测状态独立判定。BrainFlow/LSL 合成实时输入也已抵达同一仿真边界。真实 EEG 采集、受试者指标、G1 真机接入和安全认证仍未完成。
 
 ### SmolVLA G1 closed loop / SmolVLA G1 闭环
 
