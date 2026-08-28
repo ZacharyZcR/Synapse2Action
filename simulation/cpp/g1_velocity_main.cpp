@@ -1,6 +1,24 @@
 #include "FSM/CtrlFSM.h"
 #include "FSM/State_RLBase.h"
 #include "Types.h"
+#include "isaaclab/envs/mdp/observations/observations.h"
+
+#include <cstdlib>
+
+namespace isaaclab::mdp
+{
+REGISTER_OBSERVATION(sim_velocity_commands)
+{
+    static const float forward_mps = [] {
+        const char* value = std::getenv("S2A_FORWARD_MPS");
+        return value == nullptr ? 0.0f : std::stof(value);
+    }();
+    static int policy_step = 0;
+    const bool moving = policy_step >= 50 && policy_step < 350;
+    ++policy_step;
+    return std::vector<float>{moving ? forward_mps : 0.0f, 0.0f, 0.0f};
+}
+}
 
 std::unique_ptr<LowCmd_t> FSMState::lowcmd = nullptr;
 std::shared_ptr<LowState_t> FSMState::lowstate = nullptr;

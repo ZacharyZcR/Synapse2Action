@@ -4,7 +4,16 @@ set -euo pipefail
 project_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 report_dir="${project_dir}/reports/simulation"
 simulator_image="synapse2action-unitree:locked-v2"
-controller_image="synapse2action-unitree-controller:locked"
+controller_image="synapse2action-unitree-controller:locked-v2"
+scenario="${1:-balance}"
+if [[ "${scenario}" != "balance" && "${scenario}" != "locomotion" ]]; then
+  echo "usage: $0 [balance|locomotion]" >&2
+  exit 2
+fi
+forward_mps="0.0"
+if [[ "${scenario}" == "locomotion" ]]; then
+  forward_mps="0.3"
+fi
 run_id="$$"
 network="synapse2action-unitree-${run_id}"
 simulator="synapse2action-unitree-simulator-${run_id}"
@@ -38,6 +47,7 @@ docker network create "${network}" >/dev/null
 docker run --detach \
   --name "${controller}" \
   --network "${network}" \
+  --env S2A_FORWARD_MPS="${forward_mps}" \
   "${controller_image}" \
   ./build/g1_ctrl -n eth0 >/dev/null
 docker run --detach \
@@ -64,4 +74,5 @@ if [[ "${simulator_exit}" != "0" ]]; then
   exit "${simulator_exit}"
 fi
 
-python3 "${project_dir}/simulation/validate_unitree_report.py" "${report_dir}"
+python3 "${project_dir}/simulation/validate_unitree_report.py" \
+  "${report_dir}" --scenario "${scenario}"

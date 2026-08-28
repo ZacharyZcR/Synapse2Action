@@ -23,6 +23,16 @@ support, all 29 motors, a minimum and final base height of at least 0.65 m, an
 upright quaternion, and controller logs proving `FSM: Start Velocity`. Reports
 are written to `reports/simulation/` and are intentionally not committed.
 
+Run the A-to-B locomotion scenario with a bounded 0.3 m/s forward command:
+
+```bash
+./simulation/run_unitree_headless.sh locomotion
+```
+
+It warms up at zero command, walks forward for 300 policy steps, then commands
+zero velocity long enough to stop. In addition to balance checks, acceptance
+requires at least 0.5 m forward displacement and low final horizontal velocity.
+
 On an Ubuntu machine with a working Python development toolchain, prepare the
 official sources and Python dependencies:
 

@@ -44,6 +44,7 @@ def main() -> None:
     data.qpos[2] = 0.78
     data.qpos[7 : 7 + len(G1_FIX_STAND_POSITION_RAD)] = G1_FIX_STAND_POSITION_RAD
     mujoco.mj_forward(model, data)
+    initial_base_position = [float(value) for value in data.qpos[:3]]
     ChannelFactoryInitialize(args.domain_id, args.interface)
     bridge = UnitreeSdk2Bridge(model, data)
     bridge.low_state.mode_machine = 5
@@ -84,6 +85,10 @@ def main() -> None:
         "simulated_seconds": float(data.time),
         "control_timestep_seconds": float(model.opt.timestep),
         "base_height_m": float(data.qpos[2]),
+        "initial_base_position_xyz_m": initial_base_position,
+        "final_base_position_xyz_m": [float(value) for value in data.qpos[:3]],
+        "forward_displacement_m": float(data.qpos[0]) - initial_base_position[0],
+        "final_base_linear_velocity_xyz_mps": [float(value) for value in data.qvel[:3]],
         "minimum_base_height_m": minimum_base_height,
         "maximum_base_height_m": maximum_base_height,
         "physics_started_after_lowcmd": first_command.is_set(),

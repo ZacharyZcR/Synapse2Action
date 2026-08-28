@@ -12,6 +12,7 @@ def load_json(path: Path) -> dict[str, object]:
 def main() -> None:
     parser = argparse.ArgumentParser(description="Validate an official Unitree SDK2 simulation run")
     parser.add_argument("report_directory", type=Path)
+    parser.add_argument("--scenario", choices=("balance", "locomotion"), default="balance")
     args = parser.parse_args()
     simulator = load_json(args.report_directory / "g1-mujoco.json")
     controller_log = (args.report_directory / "g1-controller.log").read_text()
@@ -36,6 +37,15 @@ def main() -> None:
         "final_height": float(simulator.get("base_height_m", 0)) >= 0.65,
         "upright_quaternion": upright_quaternion,
     }
+    if args.scenario == "locomotion":
+        final_velocity = simulator.get("final_base_linear_velocity_xyz_mps", [])
+        checks["forward_locomotion"] = float(simulator.get("forward_displacement_m", 0)) >= 0.5
+        checks["stopped_after_locomotion"] = (
+            isinstance(final_velocity, list)
+            and len(final_velocity) == 3
+            and abs(float(final_velocity[0])) < 0.2
+            and abs(float(final_velocity[1])) < 0.2
+        )
     report = {"accepted": all(checks.values()), "checks": checks}
     output = args.report_directory / "acceptance.json"
     output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
