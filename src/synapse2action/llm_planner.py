@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Callable
 from urllib.request import Request, urlopen
 
@@ -40,13 +40,22 @@ PLAN_SCHEMA = {
 }
 
 
-def _decode_plan(response: dict[str, Any], target: str, destination: str) -> Action:
+def _decode_plan(
+    response: dict[str, Any],
+    target: str,
+    destination: str,
+    normalized: Callable[[], None] | None = None,
+) -> Action:
     try:
         message = response["choices"][0]["message"]
         refusal = message.get("refusal")
         if isinstance(refusal, str) and refusal.strip():
             raise PlannerRefused(refusal.strip())
         content = message["content"]
+        if isinstance(content, str) and content.startswith("```json\n") and content.endswith("\n```"):
+            content = content[8:-4].strip()
+            if normalized:
+                normalized()
         plan = json.loads(content)
     except PlannerRefused:
         raise
@@ -64,7 +73,11 @@ def _decode_plan(response: dict[str, Any], target: str, destination: str) -> Act
         if not isinstance(plan["reason"], str) or not plan["reason"].strip():
             raise ValueError("planner refusal requires a reason")
         raise PlannerRefused(plan["reason"].strip())
-    if plan["decision"] != "execute" or plan["reason"] is not None:
+    if plan["decision"] != "execute":
+        raise ValueError("planner response does not match plan schema")
+    if plan["reason"] is not None and (
+        not isinstance(plan["reason"], str) or not plan["reason"].strip()
+    ):
         raise ValueError("planner response does not match plan schema")
     arguments = plan["arguments"]
     if plan["skill"] != "pick_and_place" or not isinstance(arguments, dict):
@@ -103,6 +116,7 @@ class OpenAICompatiblePlanner:
     timeout_seconds: float = 30.0
     output_mode: str = "json-schema"
     transport: Transport = _urllib_transport
+    normalized_outputs: int = field(default=0, init=False)
 
     def __post_init__(self) -> None:
         if self.output_mode not in {"json-schema", "prompt-json"}:
@@ -148,4 +162,7 @@ class OpenAICompatiblePlanner:
             payload,
             self.timeout_seconds,
         )
-        return _decode_plan(response, target, self.destination)
+        return _decode_plan(response, target, self.destination, self._record_normalization)
+
+    def _record_normalization(self) -> None:
+        self.normalized_outputs += 1

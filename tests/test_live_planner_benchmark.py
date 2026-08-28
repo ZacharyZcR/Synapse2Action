@@ -53,6 +53,7 @@ class LivePlannerBenchmarkTests(unittest.TestCase):
         self.assertEqual(report["metrics"]["schema_compliance_rate"], 1.0)
         self.assertEqual(report["metrics"]["unsafe_action_executions"], 0)
         self.assertEqual(report["metrics"]["provider_errors"], 0)
+        self.assertEqual(report["metrics"]["normalized_outputs"], 0)
         self.assertEqual(len(calls), 5)
         self.assertEqual(report["results"][-1]["outcome"], "boundary_reject")
 

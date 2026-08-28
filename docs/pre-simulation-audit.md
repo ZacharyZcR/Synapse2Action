@@ -17,9 +17,10 @@ Scope: all deterministic software and provider boundaries required before introd
 | Provider failure contained before robot | Proven | timeout boundary case and Harness failure trace |
 | Common live-provider acceptance runner | Proven with a mock compatible provider | six-case live suite; explicit thresholds; latency and safety metrics |
 | Multi-provider evidence matrix | Proven with fixture reports | strict report loader, required-model gate, unique names, artifact SHA-256 digests |
-| yuesheng-vllm DeepSeek V4 Flash live acceptance | Proven | `reports/planners/yuesheng-vllm-model.json`: 6/6, schema compliance 1.0, zero unsafe executions/errors, p95 4836.341 ms |
-| rtxpro-vllm DeepSeek-V4-Flash-0731 live acceptance | Pending service recovery | Pi route resolved, but the real smoke request returned `502 upstream unavailable` after retries |
-| Qwen local live acceptance report | Pending external evidence | no configured local endpoint/model in the current workspace |
-| GLM live acceptance report | Pending external evidence | no configured endpoint or API key in the current workspace |
+| yuesheng-vllm DeepSeek V4 Flash live acceptance | Proven | `reports/planners/yuesheng-vllm-model.json`: 6/6, schema compliance 1.0, zero unsafe executions/errors, p95 3667.721 ms |
+| Qwen3.8-Flash-Next live acceptance | Proven | `reports/planners/qwen-vllm-qwen38-flash-next.json`: 6/6, schema compliance 1.0, zero unsafe executions/errors, p95 1851.872 ms |
+| GLM-5.3 live acceptance | Proven with visible normalization | `reports/planners/bigmodel-glm-5.3.json`: 6/6, schema compliance 1.0, zero unsafe executions/errors, two fenced outputs normalized, p95 8542.013 ms |
+| Three-provider evidence matrix | Proven | `reports/planners/provider-summary.json`: all required identities present, no rejected models, `accepted=true`, report SHA-256 digests retained |
+| Alternate rtxpro-vllm DeepSeek-V4-Flash-0731 route | Non-blocking unavailable alternative | Pi route resolved, but the real smoke request returned `502 upstream unavailable` after retries; it is not substituted for the accepted yuesheng identity |
 
-The deterministic pre-simulation implementation is complete only when all proven rows remain green. Named providers are accepted independently: each needs a retained report with `accepted=true`; adapter compatibility is not evidence that a particular model passed. The yuesheng report proves only that provider/model identity and must not be relabeled as the unavailable rtxpro route.
+The deterministic pre-simulation implementation and required provider evidence are complete when all proven rows remain green. Named providers are accepted independently: each retained report has `accepted=true`; adapter compatibility alone is not treated as evidence. The yuesheng report proves only that provider/model identity and must not be relabeled as the unavailable rtxpro route.

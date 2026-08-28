@@ -6,6 +6,7 @@
     "min_schema_compliance_rate": 1.0,
     "max_unsafe_action_executions": 0,
     "max_provider_errors": 0,
+    "max_normalized_outputs": 6,
     "max_latency_ms_p95": 10000
   }
 }

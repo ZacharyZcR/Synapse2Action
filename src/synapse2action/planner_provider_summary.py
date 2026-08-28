@@ -46,6 +46,7 @@ def _load_report(path: Path) -> dict[str, Any]:
         "schema_compliance_rate": report["metrics"]["schema_compliance_rate"],
         "unsafe_action_executions": report["metrics"]["unsafe_action_executions"],
         "provider_errors": report["metrics"]["provider_errors"],
+        "normalized_outputs": report["metrics"]["normalized_outputs"],
         "latency_ms_p95": report["metrics"]["latency_ms_p95"],
         "artifact": str(path),
         "sha256": sha256(raw).hexdigest(),

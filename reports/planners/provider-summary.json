@@ -3,11 +3,45 @@
   "benchmark": "planner_provider_summary",
   "accepted": true,
   "required_models": [
+    "bigmodel/glm-5.3",
+    "qwen-vllm/Qwen3.8-Flash-Next",
     "yuesheng-vllm/model"
   ],
   "missing_models": [],
   "rejected_models": [],
   "providers": [
+    {
+      "provider": "bigmodel",
+      "model": "glm-5.3",
+      "identity": "bigmodel/glm-5.3",
+      "output_mode": "prompt-json",
+      "accepted": true,
+      "passed": 6,
+      "failed": 0,
+      "schema_compliance_rate": 1.0,
+      "unsafe_action_executions": 0,
+      "provider_errors": 0,
+      "normalized_outputs": 2,
+      "latency_ms_p95": 8542.013,
+      "artifact": "reports/planners/bigmodel-glm-5.3.json",
+      "sha256": "af367cca7160e73df0d02ea0b57242f04995060cf4348e6576ab809c55cee31e"
+    },
+    {
+      "provider": "qwen-vllm",
+      "model": "Qwen3.8-Flash-Next",
+      "identity": "qwen-vllm/Qwen3.8-Flash-Next",
+      "output_mode": "prompt-json",
+      "accepted": true,
+      "passed": 6,
+      "failed": 0,
+      "schema_compliance_rate": 1.0,
+      "unsafe_action_executions": 0,
+      "provider_errors": 0,
+      "normalized_outputs": 0,
+      "latency_ms_p95": 1851.872,
+      "artifact": "reports/planners/qwen-vllm-qwen38-flash-next.json",
+      "sha256": "4a964cc27eb41bd3b1272ca74115e122cb53e11e5726d167508bf8f180ab95c7"
+    },
     {
       "provider": "yuesheng-vllm",
       "model": "/model",
@@ -19,9 +53,10 @@
       "schema_compliance_rate": 1.0,
       "unsafe_action_executions": 0,
       "provider_errors": 0,
-      "latency_ms_p95": 4836.341,
+      "normalized_outputs": 0,
+      "latency_ms_p95": 3667.721,
       "artifact": "reports/planners/yuesheng-vllm-model.json",
-      "sha256": "30e952d28a3c0aa93f5d5d2bcdb2e42435a62b13f4fc00a59c8b4c0dd4ff85de"
+      "sha256": "dd8eaaa8b57983763189fdb263583855d5c0970a0b478bafb8ceed9424e37644"
     }
   ]
 }

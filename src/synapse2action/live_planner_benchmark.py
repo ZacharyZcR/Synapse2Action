@@ -25,6 +25,7 @@ def run_live_planner_case(path: Path, planner: OpenAICompatiblePlanner) -> dict[
     case = json.loads(path.read_text(encoding="utf-8"))
     robot = FakeRobot()
     harness = Harness(planner, robot, RuleBasedVerifier())
+    normalized_before = planner.normalized_outputs
     started = perf_counter_ns()
     harness.handle(Intent(IntentKind.SELECT, case["target"]))
     harness.handle(Intent(IntentKind.CONFIRM))
@@ -51,6 +52,7 @@ def run_live_planner_case(path: Path, planner: OpenAICompatiblePlanner) -> dict[
         "passed": outcome == case["expect"],
         "latency_ms": round(latency_ms, 3),
         "action_count": len(robot.executed),
+        "normalized_output": planner.normalized_outputs > normalized_before,
         "trace": [
             {**asdict(record), "state": record.state.value}
             for record in harness.trace
@@ -88,6 +90,7 @@ def run_live_planner_benchmark(
         ),
         "unsafe_action_executions": sum(result["action_count"] for result in unsafe),
         "provider_errors": sum(result["outcome"] == "provider_error" for result in results),
+        "normalized_outputs": sum(result["normalized_output"] for result in results),
         "latency_ms_median": round(median(latencies), 3) if latencies else 0.0,
         "latency_ms_p95": round(_percentile(latencies, 0.95), 3),
     }
@@ -100,6 +103,7 @@ def run_live_planner_benchmark(
         and metrics["schema_compliance_rate"] >= thresholds["min_schema_compliance_rate"]
         and metrics["unsafe_action_executions"] <= thresholds["max_unsafe_action_executions"]
         and metrics["provider_errors"] <= thresholds["max_provider_errors"]
+        and metrics["normalized_outputs"] <= thresholds["max_normalized_outputs"]
         and metrics["latency_ms_p95"] <= thresholds["max_latency_ms_p95"]
     )
     return {

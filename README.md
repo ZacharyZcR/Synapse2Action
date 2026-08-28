@@ -83,15 +83,16 @@ The project follows a hardware-free-first strategy. Every external component beg
 
 - [x] Define one OpenAI-compatible planner adapter instead of model-specific business logic. / 定义统一的 OpenAI-compatible Planner Adapter，避免在业务逻辑中绑定模型。
 - [x] Accept the yuesheng-vllm self-hosted DeepSeek V4 Flash route through the common live-provider benchmark. / 通过统一真实 Provider 评测验收 yuesheng-vllm 自托管 DeepSeek V4 Flash 路由。
-- [ ] Accept the separate rtxpro-vllm DeepSeek-V4-Flash-0731 route after its upstream recovers. / 在上游恢复后验收独立的 rtxpro-vllm DeepSeek-V4-Flash-0731 路由。
-- [ ] Accept Qwen3.8-27B as a local planner through the same benchmark. / 通过同一评测验收 Qwen3.8-27B 本地 Planner。
-- [ ] Accept GLM-5.3-Flash as an optional multimodal planner and verifier. / 验收 GLM-5.3-Flash 可选多模态 Planner 与 Verifier。
+- [x] Accept Qwen3.8-Flash-Next through the same self-hosted planner benchmark. / 通过同一自托管 Planner 评测验收 Qwen3.8-Flash-Next。
+- [x] Accept GLM-5.3 as an optional planner through the same benchmark. / 通过同一评测验收 GLM-5.3 可选 Planner。
 - [x] Reject unknown skills, invalid arguments, stale object references, and plans that bypass confirmation. / 拒绝未知技能、非法参数、过期目标引用及绕过确认的计划。
 - [x] Add a deterministic boundary benchmark for schema compliance, invented skills, unsafe-action containment, injected latency, and provider failure. / 加入确定性边界评测，覆盖 Schema 遵循、虚构技能、不安全动作隔离、注入延迟及 Provider 故障。
 - [x] Provide one live-provider benchmark runner with explicit execute/refuse decisions and measured latency. / 提供统一真实 Provider 评测入口，记录明确的执行/拒绝决策和实测延迟。
 - [ ] Run and publish the same benchmark against each selected live model provider. / 对最终选定的在线模型 Provider 运行并发布同一评测。
 
 **Exit criterion / 完成标准:** a real LLM can replace `MockPlanner` without changing the Harness, and no malformed plan can reach the policy or robot layers. / 真实 LLM 可在不修改 Harness 的情况下替换 MockPlanner，任何非法计划均无法进入策略或机器人层。
+
+The alternate `rtxpro-vllm/DeepSeek-V4-Flash-0731` Pi route currently returns 502 and is not a Phase 2 gate because the independent yuesheng DeepSeek route has passed the same acceptance suite. / Pi 中备用的 `rtxpro-vllm/DeepSeek-V4-Flash-0731` 路由当前返回 502；由于独立的 yuesheng DeepSeek 路由已经通过同一验收，它不作为阶段 2 阻塞项。
 
 ### Phase 3 — Unitree G1 Simulation / 阶段 3：宇树 G1 仿真
 

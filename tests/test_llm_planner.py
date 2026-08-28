@@ -100,6 +100,25 @@ class LLMPlannerTests(unittest.TestCase):
         with self.assertRaisesRegex(PlannerRefused, "Provider safety refusal"):
             planner.plan("loaded_firearm")
 
+    def test_execute_may_include_non_empty_reason_allowed_by_schema(self) -> None:
+        planner = OpenAICompatiblePlanner(
+            "http://localhost:8000/v1",
+            "test-model",
+            transport=lambda *_: {
+                "choices": [{"message": {"content": json.dumps({
+                    "schema_version": 2,
+                    "decision": "execute",
+                    "skill": "pick_and_place",
+                    "arguments": {"target": "red_cube", "destination": "drop_zone"},
+                    "reason": "Valid inert tabletop object.",
+                })}}]
+            },
+        )
+
+        action = planner.plan("red_cube")
+
+        self.assertEqual(action.skill, "pick_and_place")
+
     def test_prompt_injection_identifier_is_rejected_before_request(self) -> None:
         called = False
 
@@ -139,6 +158,41 @@ class LLMPlannerTests(unittest.TestCase):
 
         self.assertNotIn("response_format", captured)
         self.assertIn('"schema_version"', captured["messages"][0]["content"])
+
+    def test_single_json_fence_is_normalized_before_strict_validation(self) -> None:
+        content = json.dumps({
+            "schema_version": 2,
+            "decision": "execute",
+            "skill": "pick_and_place",
+            "arguments": {"target": "blue_block", "destination": "drop_zone"},
+            "reason": None,
+        })
+        planner = OpenAICompatiblePlanner(
+            "http://localhost:8000/v1",
+            "test-model",
+            output_mode="prompt-json",
+            transport=lambda *_: {
+                "choices": [{"message": {"content": f"```json\n{content}\n```"}}]
+            },
+        )
+
+        action = planner.plan("blue_block")
+
+        self.assertEqual(action.arguments["target"], "blue_block")
+        self.assertEqual(planner.normalized_outputs, 1)
+
+    def test_fenced_json_with_surrounding_text_is_rejected(self) -> None:
+        planner = OpenAICompatiblePlanner(
+            "http://localhost:8000/v1",
+            "test-model",
+            output_mode="prompt-json",
+            transport=lambda *_: {
+                "choices": [{"message": {"content": "Here is JSON:\n```json\n{}\n```"}}]
+            },
+        )
+
+        with self.assertRaises(ValueError):
+            planner.plan("blue_block")
 
     def test_adapter_runs_complete_hardware_free_pipeline(self) -> None:
         planner = OpenAICompatiblePlanner(

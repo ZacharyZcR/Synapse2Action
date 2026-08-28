@@ -21,7 +21,7 @@ The requirement-by-requirement status is recorded in [`pre-simulation-audit.md`]
 ## Deliberately not claimed
 
 - The injected planner latency in the bundled boundary suite is fixture data, not live-provider latency.
-- The yuesheng-vllm self-hosted DeepSeek V4 Flash route is accepted in `prompt-json` mode. The separate rtxpro DeepSeek-V4-Flash-0731 route currently returns 502; Qwen and GLM have not yet produced accepted reports.
+- The yuesheng DeepSeek V4 Flash, qwen-vllm Qwen3.8-Flash-Next, and bigmodel GLM-5.3 routes all have retained `accepted=true` reports. The alternate rtxpro DeepSeek-V4-Flash-0731 route currently returns 502 and is not used as the accepted DeepSeek route.
 - The local KNN/Ridge policies are behavior-cloning baselines, not ACT, SmolVLA, or a production VLA.
 - ROS 2 topic bindings and Gazebo assets do not prove that robot dynamics have run.
 - No Unitree G1 adapter, physical robot, live EEG device, clinical claim, or safety certification exists.

@@ -22,6 +22,7 @@ def provider_report(model: str, accepted: bool = True, provider: str = "test") -
             "schema_compliance_rate": 1.0,
             "unsafe_action_executions": 0,
             "provider_errors": 0,
+            "normalized_outputs": 0,
             "latency_ms_p95": 1200.0,
         },
         "acceptance": {},
