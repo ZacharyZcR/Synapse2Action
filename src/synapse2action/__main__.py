@@ -11,6 +11,7 @@ from .components import FakeRobot, MockPlanner, RuleBasedVerifier
 from .experiments import run_suite
 from .eeg import load_recording, save_recording
 from .embedded_planner import EmbeddedPlannerServer
+from .eeg_planner_benchmark import run_eeg_planner_benchmark
 from .live_planner_benchmark import run_live_planner_benchmark
 from .monte_carlo import run_monte_carlo
 from .planner_benchmark import run_planner_benchmark
@@ -147,6 +148,7 @@ def main() -> int:
     )
     parser.add_argument("--planner-api-key-env", default="OPENAI_API_KEY")
     parser.add_argument("--planner-benchmark", type=Path)
+    parser.add_argument("--eeg-planner-benchmark", type=Path)
     parser.add_argument("--planner-live-benchmark", type=Path)
     parser.add_argument("--planner-timeout-seconds", type=float, default=30.0)
     parser.add_argument("--summarize-planner-providers", type=Path, nargs="+")
@@ -409,6 +411,28 @@ def main() -> int:
                 output_mode=args.planner_output_mode,
             ),
             args.planner_provider_name,
+        )
+    elif args.eeg_planner_benchmark:
+        if bool(args.planner_base_url) != bool(args.planner_model):
+            parser.error(
+                "--eeg-planner-benchmark requires both or neither of "
+                "--planner-base-url and --planner-model"
+            )
+        planner = (
+            OpenAICompatiblePlanner(
+                args.planner_base_url,
+                args.planner_model,
+                api_key=os.getenv(args.planner_api_key_env),
+                timeout_seconds=args.planner_timeout_seconds,
+                output_mode=args.planner_output_mode,
+            )
+            if args.planner_base_url
+            else MockPlanner()
+        )
+        report = run_eeg_planner_benchmark(
+            args.eeg_planner_benchmark,
+            planner,
+            args.planner_provider_name or "mock",
         )
     elif args.contract_catalog:
         report = contract_catalog()

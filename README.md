@@ -217,6 +217,16 @@ The separate `./simulation/run_public_ssvep_256.sh` command runs the experimenta
 
 独立命令 `./simulation/run_public_ssvep_256.sh` 会运行 MAMEM Experiment 2 实验解析器，使用 256 通道源记录、2 秒窗口和协议 Rest。它当前生成的是未通过的研究报告，不会替换已经验收的 5 秒 Experiment 3 基线。
 
+Measure the EEG-to-Planner boundary without granting execution authority:
+
+```bash
+PYTHONPATH=src python3 -m synapse2action \
+  --eeg-planner-benchmark reports/eeg/public-ssvep.json \
+  --output reports/eeg/eeg-planner-boundary.json
+```
+
+该指标只允许 `select` 调用 Planner，并统计 Select Precision/Recall、错误 Planner 调用、有效计划率、端到端 Plan Recall 与 P95 延迟；它不会自动确认或执行动作。
+
 ```bash
 PYTHONPATH=src S2A_PLANNER_API_KEY=... python3 simulation/experiment_console.py \
   --host 127.0.0.1 --port 8765 --access-token your-random-token \
