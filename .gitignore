@@ -8,3 +8,4 @@ artifacts/
 simulation/vendor/
 reports/simulation/
 reports/training/
+reports/eeg/

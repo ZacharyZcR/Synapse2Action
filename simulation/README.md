@@ -128,6 +128,34 @@ backward passes, local checkpoint saving, and checkpoint inference without
 publishing to the Hub. It is not a task-quality claim. A useful manipulation
 policy requires varied training episodes and held-out closed-loop evaluation.
 
+## Public offline SSVEP gate
+
+Run a subject-independent benchmark on the open PhysioNet MAMEM SSVEP
+Experiment 3 recordings:
+
+```bash
+./simulation/run_public_ssvep.sh
+```
+
+The locked container uses the official WFDB SDK to download and read 14-channel
+Emotiv EPOC recordings. Subjects 001-002 are training data, subject 003 is used
+only for confidence calibration, and subject 004 is held out for testing. The
+benchmark compares multi-harmonic CCA with a PyTorch spectral MLP, applies an
+explicit abstention threshold and signal-quality gate, and replays accepted
+select, confirm, cancel, and stop predictions through the same `Harness` intent
+interface. Generated recordings and reports remain ignored local artifacts.
+
+Run the accepted public EEG selection and confirmation through the Harness and
+into the physically verified SDK2/MuJoCo G1 pick-and-place simulation:
+
+```bash
+./simulation/run_public_ssvep_unitree.sh
+```
+
+The runner refuses an unaccepted EEG benchmark or a decoded sequence other
+than select followed by confirm. The simulated robot still uses the independent
+physical object, lift, drop-zone, and standing acceptance checks.
+
 On an Ubuntu machine with a working Python development toolchain, prepare the
 official sources and Python dependencies:
 

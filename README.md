@@ -119,12 +119,12 @@ The alternate `rtxpro-vllm/DeepSeek-V4-Flash-0731` Pi route currently returns 50
 
 ### Phase 5 — Offline EEG Intent Decoding / 阶段 5：离线 EEG 意图解码
 
-- [ ] Start with SSVEP and four discrete intents: select, confirm, cancel, and stop. / 以 SSVEP 和选择、确认、取消、停止四种离散意图起步。
-- [ ] Add public-dataset playback before acquiring any hardware. / 在采购硬件前接入公开数据集回放。
-- [ ] Build preprocessing, event alignment, signal-quality checks, and leakage-free evaluation. / 建立预处理、事件对齐、信号质量检查与无数据泄漏评测。
-- [ ] Compare a classical decoder with a deep-learning baseline. / 比较传统解码器与深度学习基线。
-- [ ] Calibrate confidence and implement explicit abstention for uncertain predictions. / 校准置信度，并对不确定预测明确拒识。
-- [ ] Replay decoded intents through the exact Phase 1 Harness interface. / 通过阶段 1 的同一 Harness 接口重放解码意图。
+- [x] Start with SSVEP and four discrete intents: select, confirm, cancel, and stop. / 以 SSVEP 和选择、确认、取消、停止四种离散意图起步。
+- [x] Add public-dataset playback before acquiring any hardware. / 在采购硬件前接入公开数据集回放。
+- [x] Build preprocessing, event alignment, signal-quality checks, and leakage-free evaluation. / 建立预处理、事件对齐、信号质量检查与无数据泄漏评测。
+- [x] Compare a classical decoder with a deep-learning baseline. / 比较传统解码器与深度学习基线。
+- [x] Calibrate confidence and implement explicit abstention for uncertain predictions. / 校准置信度，并对不确定预测明确拒识。
+- [x] Replay decoded intents through the exact Phase 1 Harness interface. / 通过阶段 1 的同一 Harness 接口重放解码意图。
 
 **Exit criterion / 完成标准:** public EEG data can drive the simulated G1 pipeline, and low-quality or uncertain windows result in no action. / 公开 EEG 数据可驱动 G1 仿真管线，低质量或不确定窗口不会产生动作。
 
@@ -176,7 +176,7 @@ Synapse2Action 面向科研、教学与有人监督的原型验证，不属于�
 
 The project now has a deterministic pre-simulation stack plus an accepted Unitree G1 navigation path through the official SDK2, RL controller, and MuJoCo bridge. Confirmation-gated Harness execution reaches the simulator through a high-level `Robot` adapter, and measured pose independently determines completion. G1 manipulation, production VLA results, live EEG, physical hardware, and safety certification are not yet claimed.
 
-项目目前已形成确定性的仿真前软件栈，并通过官方 SDK2、RL Controller 与 MuJoCo Bridge 验收了 Unitree G1 导航及固定策略抓取放置链路。确认门控后的 Harness 会经高层 `Robot` Adapter 进入仿真，最终完成状态由实测位姿独立判定。真实 LeRobot Dataset、SmolVLA 29 维训练及 checkpoint 推理链路已经通过集成验收；VLA 闭环任务效果、公开 EEG、实时 EEG、真机集成及安全认证仍未完成。
+项目目前已形成确定性的仿真前软件栈，并通过官方 SDK2、RL Controller 与 MuJoCo Bridge 验收了 Unitree G1 导航及固定策略抓取放置链路。确认门控后的 Harness 会经高层 `Robot` Adapter 进入仿真，最终完成状态由实测位姿独立判定。真实 LeRobot Dataset、SmolVLA 29 维训练及 checkpoint 推理链路已经通过集成验收；公开 PhysioNet SSVEP 数据也已完成跨受试者解码、拒识校准，并驱动同一 Harness/G1 仿真闭环。VLA 闭环任务效果、实时 EEG、真机集成及安全认证仍未完成。
 
 ## Development / 开发
 

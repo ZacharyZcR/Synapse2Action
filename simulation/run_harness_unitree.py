@@ -19,6 +19,20 @@ from synapse2action.unitree_simulation import (
 )
 
 
+def decoded_execution_intents(path: Path | None) -> tuple[IntentKind, IntentKind]:
+    if path is None:
+        return IntentKind.SELECT, IntentKind.CONFIRM
+    payload = json.loads(path.read_text())
+    replay = payload.get("harness_replay", {})
+    examples = replay.get("decoded_examples", {})
+    if payload.get("accepted") is not True or replay.get("accepted") is not True:
+        raise ValueError("public EEG benchmark was not accepted")
+    decoded = tuple(IntentKind(examples[name]["decoded_intent"]) for name in ("select", "confirm"))
+    if decoded != (IntentKind.SELECT, IntentKind.CONFIRM):
+        raise ValueError("public EEG did not decode the execution authorization sequence")
+    return decoded
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run confirmed navigation through SDK2 G1 MuJoCo")
     parser.add_argument("--task", choices=("navigation", "pick-place"), default="navigation")
@@ -26,6 +40,7 @@ def main() -> int:
     parser.add_argument("--target-x", type=float, default=0.8)
     parser.add_argument("--target-y", type=float, default=0.0)
     parser.add_argument("--target-yaw", type=float, default=0.0)
+    parser.add_argument("--decoded-intents", type=Path)
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
 
@@ -51,14 +66,16 @@ def main() -> int:
         harness = Harness(
             NavigateToPlanner(), robot, UnitreeSimulationVerifier(robot), policy=ScriptedPolicy()
         )
-    selected = harness.handle(Intent(IntentKind.SELECT, args.destination))
+    select_kind, confirm_kind = decoded_execution_intents(args.decoded_intents)
+    selected = harness.handle(Intent(select_kind, args.destination))
     if selected is not TaskState.AWAITING_CONFIRMATION:
         raise RuntimeError("selection did not reach confirmation gate")
-    harness.handle(Intent(IntentKind.CONFIRM))
+    harness.handle(Intent(confirm_kind))
     report = {
         "accepted": harness.state is TaskState.COMPLETED,
         "final_state": harness.state.value,
         "destination": args.destination,
+        "intent_source": str(args.decoded_intents) if args.decoded_intents else "scripted",
         "trace": [asdict(record) for record in harness.trace],
         "unitree_acceptance": robot.last_acceptance,
         "unitree_simulator": robot.last_simulator_report,
