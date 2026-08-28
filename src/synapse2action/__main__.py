@@ -18,6 +18,7 @@ from .navigation import (
     load_navigation_scenario,
     run_navigation_demo,
 )
+from .robot_http import EmbeddedRobotServer, HTTPRobotTransport
 from .robot_transport import LoopbackRobotTransport, RobotTransport
 from .navigation_suite import run_navigation_suite
 from .synthetic_intent import run_intent_suite
@@ -90,7 +91,9 @@ def main() -> int:
     parser.add_argument("--navigation-scenario", type=Path)
     parser.add_argument("--navigation-suite", type=Path)
     parser.add_argument("--navigation-episode-directory", type=Path)
-    parser.add_argument("--robot-transport", choices=("loopback",))
+    parser.add_argument("--robot-transport", choices=("loopback", "embedded-http", "http"))
+    parser.add_argument("--robot-base-url")
+    parser.add_argument("--robot-api-key-env", default="ROBOT_API_KEY")
     parser.add_argument("--robot-sensor-latency-ms", type=int, default=0)
     parser.add_argument("--robot-command-latency-ms", type=int, default=0)
     parser.add_argument("--vla-navigation-demo", action="store_true")
@@ -134,10 +137,16 @@ def main() -> int:
         parser.error("--navigation-episode-directory requires --navigation-suite")
     if args.robot_transport and not (args.navigation_demo or args.vla_navigation_demo):
         parser.error("--robot-transport requires a navigation demo")
+    if args.robot_transport == "http" and not args.robot_base_url:
+        parser.error("HTTP robot transport requires --robot-base-url")
+    if args.robot_base_url and args.robot_transport != "http":
+        parser.error("--robot-base-url requires --robot-transport http")
     if args.robot_sensor_latency_ms < 0 or args.robot_command_latency_ms < 0:
         parser.error("robot transport latency must be non-negative")
     if (args.robot_sensor_latency_ms or args.robot_command_latency_ms) and not args.robot_transport:
         parser.error("robot transport latency requires --robot-transport")
+    if (args.robot_sensor_latency_ms or args.robot_command_latency_ms) and args.robot_transport == "http":
+        parser.error("latency simulation requires loopback or embedded HTTP robot transport")
     if bool(args.export_vla_dataset) != bool(args.vla_dataset_output):
         parser.error("--export-vla-dataset and --vla-dataset-output must be provided together")
     if args.train_vla_baseline and not args.vla_checkpoint:
@@ -197,7 +206,7 @@ def main() -> int:
 
     navigation_scenario = load_navigation_scenario(args.navigation_scenario) if args.navigation_scenario else None
     active_navigation_scenario = navigation_scenario or DEFAULT_NAVIGATION_SCENARIO
-    robot_transport = (
+    loopback_robot = (
         LoopbackRobotTransport(
             active_navigation_scenario.start,
             active_navigation_scenario.obstacles,
@@ -206,9 +215,24 @@ def main() -> int:
             sensor_latency_ms=args.robot_sensor_latency_ms,
             command_latency_ms=args.robot_command_latency_ms,
         )
-        if args.robot_transport == "loopback"
+        if args.robot_transport in {"loopback", "embedded-http"}
         else None
     )
+    robot_server = None
+    robot_transport: RobotTransport | None = loopback_robot
+    if args.robot_transport == "embedded-http":
+        robot_server = EmbeddedRobotServer(loopback_robot)
+        robot_server.start()
+        robot_transport = HTTPRobotTransport(
+            robot_server.base_url,
+            sensor_latency_ms=args.robot_sensor_latency_ms,
+            command_latency_ms=args.robot_command_latency_ms,
+        )
+    elif args.robot_transport == "http":
+        robot_transport = HTTPRobotTransport(
+            args.robot_base_url,
+            api_key=os.getenv(args.robot_api_key_env),
+        )
 
     if args.cross_validate_vla_baseline:
         report = run_leave_one_scenario_out(
@@ -331,6 +355,13 @@ def main() -> int:
         report = run_intent_suite(args.intent_directory)
     else:
         report = run_suite(args.directory)
+    if robot_server is not None:
+        report["robot_http_requests"] = len(robot_server.requests)
+        report["robot_http_operations"] = [request.operation for request in robot_server.requests]
+    if isinstance(robot_transport, HTTPRobotTransport):
+        robot_transport.close()
+    if robot_server is not None:
+        robot_server.close()
     rendered = json.dumps(report, ensure_ascii=False, indent=2) + "\n"
     if args.output:
         args.output.write_text(rendered, encoding="utf-8")
