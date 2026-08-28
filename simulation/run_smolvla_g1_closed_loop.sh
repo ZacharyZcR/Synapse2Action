@@ -59,6 +59,7 @@ docker run --detach --name "${simulator}" --network "${network}" --cpu-shares 20
   --vla-frequency-hz 3 --vla-stale-after-seconds 20 \
   --vla-refresh-lookahead-actions 50 --release-timeout-seconds 19.8 \
   --vla-typed-skill-passthrough \
+  --visualization-directory /workspace/reports/simulation/g1-smolvla-frames \
   --output /workspace/reports/simulation/g1-smolvla-closed-loop.json >/dev/null
 simulator_exit="$(docker wait "${simulator}")"
 docker logs "${policy}" >"${report_dir}/g1-smolvla-policy.log" 2>&1

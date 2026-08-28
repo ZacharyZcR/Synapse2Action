@@ -4,10 +4,12 @@ import argparse
 import json
 from math import hypot
 from pathlib import Path
+import struct
 import sys
 from threading import Event, Lock
 from time import monotonic, sleep
 from types import SimpleNamespace
+import zlib
 
 import mujoco
 import numpy as np
@@ -17,6 +19,20 @@ from synapse2action.unitree_g1 import G1_FIX_STAND_POSITION_RAD
 from synapse2action.vla_chunk import G1ChunkCoordinator, SmolVLAChunkClient
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize, ChannelSubscriber
 from unitree_sdk2py.idl.unitree_hg.msg.dds_ import LowCmd_
+
+
+def write_rgb_png(path: Path, image: np.ndarray) -> None:
+    height, width, channels = image.shape
+    if channels != 3 or image.dtype != np.uint8:
+        raise ValueError("PNG image must be uint8 RGB")
+
+    def chunk(kind: bytes, payload: bytes) -> bytes:
+        body = kind + payload
+        return struct.pack(">I", len(payload)) + body + struct.pack(">I", zlib.crc32(body))
+
+    rows = b"".join(b"\0" + image[row].tobytes() for row in range(height))
+    header = struct.pack(">IIBBBBB", width, height, 8, 2, 0, 0, 0)
+    path.write_bytes(b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", header) + chunk(b"IDAT", zlib.compress(rows, 9)) + chunk(b"IEND", b""))
 
 
 def relative_pose(data: mujoco.MjData, parent: int, child: int) -> tuple[np.ndarray, np.ndarray]:
@@ -43,6 +59,7 @@ def main() -> None:
     parser.add_argument("--vla-stale-after-seconds", type=float, default=7.0)
     parser.add_argument("--vla-refresh-lookahead-actions", type=int, default=5)
     parser.add_argument("--release-timeout-seconds", type=float, default=20.0)
+    parser.add_argument("--visualization-directory", type=Path)
     parser.add_argument("--episode-output", type=Path)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
@@ -203,6 +220,7 @@ def main() -> None:
     weld = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_EQUALITY, "rubber_hand_grasp")
     fixture = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_EQUALITY, "object_fixture")
     initial_item = data.xpos[item].copy()
+    visualization_qpos = {"ready": data.qpos.copy()}
     grasped = False
     released = False
     maximum_item_height = float(data.xpos[item, 2])
@@ -261,8 +279,11 @@ def main() -> None:
             data.eq_active[weld] = 1
             grasped = True
             grasped_at_seconds = float(data.time)
+            visualization_qpos["grasp"] = data.qpos.copy()
         drop_zone_delta = data.xpos[item, :2] - np.asarray((0.32, 0.12))
         object_lifted = maximum_item_height - initial_item[2] >= 0.10
+        if object_lifted and "lift" not in visualization_qpos:
+            visualization_qpos["lift"] = data.qpos.copy()
         object_over_drop_zone = abs(drop_zone_delta[0]) <= 0.075 and abs(drop_zone_delta[1]) <= 0.04
         object_lowered_for_release = data.xpos[item, 2] <= 0.72
         release_ready = (
@@ -276,6 +297,7 @@ def main() -> None:
             released = True
             released_at_seconds = float(data.time)
             object_position_at_release = data.xpos[item].tolist()
+            visualization_qpos["release"] = data.qpos.copy()
         if args.episode_output and steps % 50 == 0:
             with command_lock:
                 action = None if latest_action is None else latest_action.copy()
@@ -297,6 +319,7 @@ def main() -> None:
         for _ in range(bridge.vla_stale_fallbacks):
             coordinator.metrics.record_stale_fallback()
     final_item = data.xpos[item].copy()
+    visualization_qpos["final"] = data.qpos.copy()
     drop_zone_delta = final_item[:2] - np.asarray((0.32, 0.12))
     report = {
         "simulator": "unitreerobotics/unitree_mujoco",
@@ -330,6 +353,19 @@ def main() -> None:
         report["vla_overlay_frames"] = bridge.vla_overlay_frames
         report["vla_authorized_frames"] = bridge.vla_authorized_frames
         report["vla_runtime"] = coordinator.metrics.report()
+    if args.visualization_directory:
+        args.visualization_directory.mkdir(parents=True, exist_ok=True)
+        render_data = mujoco.MjData(model)
+        renderer = mujoco.Renderer(model, height=360, width=640)
+        visualization_frames = []
+        for index, (stage, qpos) in enumerate(visualization_qpos.items()):
+            render_data.qpos[:] = qpos
+            mujoco.mj_forward(model, render_data)
+            renderer.update_scene(render_data, camera="camera1")
+            filename = f"{index:02d}-{stage}.png"
+            write_rgb_png(args.visualization_directory / filename, renderer.render())
+            visualization_frames.append({"stage": stage, "file": f"{args.visualization_directory.name}/{filename}"})
+        report["visualization_frames"] = visualization_frames
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
     if args.episode_output:

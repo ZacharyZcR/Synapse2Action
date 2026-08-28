@@ -190,7 +190,12 @@ SmolVLA 不直接写入力矩、关节目标或 DDS 指令。纯 CPU 部署将�
 PYTHONPATH=src python3 simulation/run_harness_unitree.py \
   --task pick-place --policy smolvla --destination red_cube \
   --output reports/simulation/harness-unitree-smolvla-pick-place.json
+PYTHONPATH=src python3 simulation/render_g1_dashboard.py
 ```
+
+The final command produces a standalone, offline HTML evidence console at `reports/simulation/synapse2action-dashboard.html`. It embeds actual MuJoCo camera keyframes and combines the EEG replay, Harness trace, VLA timing, control ownership, physical checks, and held-out model metrics without external web dependencies.
+
+最后一条命令会在 `reports/simulation/synapse2action-dashboard.html` 生成可离线打开的单文件证据控制台。页面嵌入真实 MuJoCo 相机关键帧，并统一展示 EEG 回放、Harness 事件、VLA 时延、控制权归属、物理验收和留出集指标，不依赖外部网页资源。
 
 The accepted local run used decoded `select` and `confirm` intents from the BrainFlow/LSL synthetic-live report, received three real SmolVLA chunks, measured maximum end-to-end chunk latency of 10.17 seconds against 16.67 seconds of coverage, recorded zero stale fallbacks, and independently passed standing, grasp, lift, release, and drop-zone checks. The bridge recorded 16,265 VLA-authorized frames and zero generative joint-overlay frames. These numbers describe the current CPU/Docker host and are not physical-G1 performance claims.
 

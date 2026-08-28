@@ -81,6 +81,7 @@ class SmolVLAAssetsTests(unittest.TestCase):
         self.assertIn("S2A_MANIPULATION_START_DELAY_SECONDS=12", runner)
         self.assertIn("--vla-typed-skill-passthrough", runner)
         self.assertIn("--vla-endpoint", runner)
+        self.assertIn("--visualization-directory", runner)
         self.assertIn('"functional_accepted"', validator)
         self.assertIn('"realtime_accepted"', validator)
 
