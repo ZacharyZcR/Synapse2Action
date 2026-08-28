@@ -46,6 +46,18 @@ class SmolVLAAssetsTests(unittest.TestCase):
         self.assertIn('"arm_waist_mse"', source)
         self.assertIn("policy.config.chunk_size", source)
 
+    def test_g1_dataset_suite_records_independent_timing_variations(self) -> None:
+        runner = (ROOT / "simulation" / "run_lerobot_dataset_suite.sh").read_text()
+        self.assertIn("S2A_MANIPULATION_TIME_SCALE", runner)
+        self.assertIn("S2A_EPISODE_NAME", runner)
+        self.assertIn("g1-pick-place-sim-suite", runner)
+
+    def test_pick_place_uses_rectangular_drop_zone_geometry(self) -> None:
+        simulator = (ROOT / "simulation" / "g1_mujoco_pick_place.py").read_text()
+        runner = (ROOT / "simulation" / "run_unitree_pick_place.sh").read_text()
+        self.assertIn('"drop_zone_half_extents_xy_m": [0.12, 0.22]', simulator)
+        self.assertIn('simulator["final_object_center_in_drop_zone"]', runner)
+
 
 if __name__ == "__main__":
     unittest.main()

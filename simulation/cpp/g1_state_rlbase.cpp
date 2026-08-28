@@ -61,6 +61,11 @@ Pose interpolate(const Pose& from, const Pose& to, float ratio)
 
 Pose manipulation_pose(float seconds)
 {
+    static const float time_scale = [] {
+        const char* value = std::getenv("S2A_MANIPULATION_TIME_SCALE");
+        return value == nullptr ? 1.0f : std::clamp(std::stof(value), 0.5f, 1.5f);
+    }();
+    seconds /= time_scale;
     if (seconds < 1.0f) return stand;
     if (seconds < 5.0f) return interpolate(stand, grasp, (seconds - 1.0f) / 4.0f);
     if (seconds < 9.0f) return interpolate(grasp, lift, (seconds - 5.0f) / 4.0f);

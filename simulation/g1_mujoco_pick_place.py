@@ -158,6 +158,7 @@ def main() -> None:
             sleep(remaining)
 
     final_item = data.xpos[item].copy()
+    drop_zone_delta = final_item[:2] - np.asarray((0.32, 0.12))
     report = {
         "simulator": "unitreerobotics/unitree_mujoco",
         "model": "g1_29dof",
@@ -168,7 +169,11 @@ def main() -> None:
         "final_object_position_xyz_m": final_item.tolist(),
         "object_planar_displacement_m": hypot(float(final_item[0] - initial_item[0]), float(final_item[1] - initial_item[1])),
         "drop_zone_center_xy_m": [0.32, 0.12],
-        "final_drop_zone_error_m": hypot(float(final_item[0] - 0.32), float(final_item[1] - 0.12)),
+        "drop_zone_half_extents_xy_m": [0.12, 0.22],
+        "final_drop_zone_error_m": hypot(float(drop_zone_delta[0]), float(drop_zone_delta[1])),
+        "final_object_center_in_drop_zone": bool(
+            abs(drop_zone_delta[0]) <= 0.12 and abs(drop_zone_delta[1]) <= 0.22
+        ),
         "maximum_object_height_m": maximum_item_height,
         "minimum_base_height_m": minimum_base_height,
         "fell_at_seconds": fell_at_seconds,

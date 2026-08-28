@@ -10,7 +10,7 @@ import numpy as np
 from lerobot.datasets.lerobot_dataset import LeRobotDataset
 
 
-def wait_for_local_metadata(root: Path, timeout: float = 10.0) -> None:
+def wait_for_local_metadata(root: Path, timeout: float = 60.0) -> None:
     required = (
         root / "meta/info.json",
         root / "meta/tasks.parquet",
@@ -53,6 +53,8 @@ def validate_dataset(
         "accepted": all(checks.values()),
         "checks": checks,
         "dataset_format": "LeRobotDataset v3",
+        "total_episodes": reopened.meta.total_episodes,
+        "total_frames": len(reopened),
         "repo_id": repo_id,
         "root": str(root),
     }

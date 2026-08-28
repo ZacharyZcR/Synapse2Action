@@ -147,6 +147,18 @@ The report separates full 29-DOF error from the waist and shoulder/elbow joints
 that manipulation controls. Passing checkpoint-shape validation alone is not a
 closed-loop task-quality result.
 
+Generate the five-episode manipulation suite with independently timed SDK2
+trajectories using:
+
+```bash
+./simulation/run_lerobot_dataset_suite.sh
+```
+
+Every trajectory must independently pass the MuJoCo grasp, lift, transport,
+rectangular tray, and unsupported-standing checks before conversion. The suite
+contains 700 frames across five LeRobot episodes; it is intended for an
+episode-level train/evaluation split, not a random frame split.
+
 ## Public offline SSVEP gate
 
 Run a subject-independent benchmark on the open PhysioNet MAMEM SSVEP

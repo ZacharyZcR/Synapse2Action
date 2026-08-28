@@ -4,11 +4,14 @@ set -euo pipefail
 project_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 report_dir="${project_dir}/reports/simulation"
 simulator_image="synapse2action-unitree-render:locked-v3"
-controller_image="synapse2action-unitree-controller:locked-v17"
+controller_image="synapse2action-unitree-controller:locked-v18"
 record_episode="${S2A_RECORD_EPISODE:-0}"
+episode_name="${S2A_EPISODE_NAME:-g1-pick-place-episode.npz}"
+time_scale="${S2A_MANIPULATION_TIME_SCALE:-1.0}"
+[[ "${episode_name}" != */* ]] || { echo "S2A_EPISODE_NAME must be a filename" >&2; exit 2; }
 episode_args=()
 if [[ "${record_episode}" == "1" ]]; then
-  episode_args=(--episode-output /workspace/reports/simulation/g1-pick-place-episode.npz)
+  episode_args=(--episode-output "/workspace/reports/simulation/${episode_name}")
 fi
 run_id="$$"
 network="synapse2action-pick-place-${run_id}"
@@ -34,6 +37,7 @@ docker network create "${network}" >/dev/null
 docker run --detach --name "${controller}" --network "${network}" \
   --env S2A_TARGET_X_M=0.0 --env S2A_TARGET_Y_M=0.0 --env S2A_TARGET_YAW_RAD=0.0 \
   --env S2A_MAX_SPEED_MPS=0.3 --env S2A_PICK_PLACE=1 \
+  --env "S2A_MANIPULATION_TIME_SCALE=${time_scale}" \
   "${controller_image}" ./build/g1_ctrl -n eth0 >/dev/null
 docker run --detach --name "${simulator}" --network "${network}" \
   --workdir /workspace/current --env PYTHONPATH=/workspace/current/src --env MUJOCO_GL=osmesa \
@@ -66,7 +70,7 @@ checks = {
     "object_released": simulator["released"],
     "object_lifted": simulator["maximum_object_height_m"] - simulator["initial_object_position_xyz_m"][2] >= 0.10,
     "object_transported": simulator["object_planar_displacement_m"] >= 0.05,
-    "object_in_drop_zone": simulator["final_drop_zone_error_m"] <= 0.15,
+    "object_in_drop_zone": simulator["final_object_center_in_drop_zone"],
     "g1_remained_standing": simulator["minimum_base_height_m"] >= 0.65 and simulator["final_base_height_m"] >= 0.65,
     "no_external_support": simulator["external_support"] is False,
 }
