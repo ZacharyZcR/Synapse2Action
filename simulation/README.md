@@ -159,6 +159,14 @@ rectangular tray, and unsupported-standing checks before conversion. The suite
 contains 700 frames across five LeRobot episodes; it is intended for an
 episode-level train/evaluation split, not a random frame split.
 
+Train for one full pass over the 560 frames in the first four episodes with the
+final 140-frame episode held out, then reload the checkpoint and report its
+held-out manipulation-joint error:
+
+```bash
+./simulation/run_smolvla_g1_suite_train.sh
+```
+
 ## Public offline SSVEP gate
 
 Run a subject-independent benchmark on the open PhysioNet MAMEM SSVEP

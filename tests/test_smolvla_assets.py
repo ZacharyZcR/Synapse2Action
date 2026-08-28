@@ -58,6 +58,12 @@ class SmolVLAAssetsTests(unittest.TestCase):
         self.assertIn('"drop_zone_half_extents_xy_m": [0.12, 0.22]', simulator)
         self.assertIn('simulator["final_object_center_in_drop_zone"]', runner)
 
+    def test_suite_training_uses_episode_level_holdout(self) -> None:
+        runner = (ROOT / "simulation" / "run_smolvla_g1_suite_train.sh").read_text()
+        self.assertIn("--dataset.eval_split=0.2", runner)
+        self.assertIn("g1-pick-place-1.05.npz", runner)
+        self.assertIn("evaluate_smolvla_g1_offline.py", runner)
+
 
 if __name__ == "__main__":
     unittest.main()
