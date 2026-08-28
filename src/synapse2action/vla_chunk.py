@@ -17,6 +17,7 @@ class G1ActionChunk:
     sequence: int
     actions: tuple[tuple[float, ...], ...]
     inference_ms: float
+    round_trip_ms: float = 0.0
 
 
 class SmolVLAChunkClient:
@@ -55,9 +56,17 @@ class SmolVLAChunkClient:
             headers={"Content-Type": "application/json"},
             method="POST",
         )
+        started = monotonic()
         with self._opener(request, timeout=self.timeout_s) as response:
             result = json.loads(response.read())
-        return parse_g1_action_chunk(result, session_id=session_id, sequence=sequence)
+        chunk = parse_g1_action_chunk(result, session_id=session_id, sequence=sequence)
+        return G1ActionChunk(
+            chunk.session_id,
+            chunk.sequence,
+            chunk.actions,
+            chunk.inference_ms,
+            (monotonic() - started) * 1000,
+        )
 
 
 def parse_g1_action_chunk(
@@ -111,3 +120,38 @@ class G1ActionChunkPlayer:
         elapsed = max(0.0, (monotonic() if now_s is None else now_s) - self.started_at_s)
         index = int(elapsed * self.frequency_hz)
         return index >= len(self.chunk.actions) - lookahead_actions
+
+
+class G1ChunkRuntimeMetrics:
+    def __init__(self, *, frequency_hz: float = 10.0) -> None:
+        self.frequency_hz = frequency_hz
+        self.chunks: list[G1ActionChunk] = []
+        self.stale_fallbacks = 0
+
+    def record_chunk(self, chunk: G1ActionChunk) -> None:
+        self.chunks.append(chunk)
+
+    def record_stale_fallback(self) -> None:
+        self.stale_fallbacks += 1
+
+    def report(self) -> dict[str, object]:
+        inference = [chunk.inference_ms for chunk in self.chunks]
+        round_trip = [chunk.round_trip_ms for chunk in self.chunks]
+        coverage = [len(chunk.actions) / self.frequency_hz * 1000 for chunk in self.chunks]
+        latency_within_coverage = bool(self.chunks) and all(
+            latency <= duration for latency, duration in zip(round_trip, coverage, strict=True)
+        )
+        checks = {
+            "chunks_received": bool(self.chunks),
+            "latency_within_chunk_coverage": latency_within_coverage,
+            "no_stale_fallback": self.stale_fallbacks == 0,
+        }
+        return {
+            "accepted": all(checks.values()),
+            "checks": checks,
+            "chunks_received": len(self.chunks),
+            "maximum_inference_ms": max(inference, default=None),
+            "maximum_round_trip_ms": max(round_trip, default=None),
+            "minimum_chunk_coverage_ms": min(coverage, default=None),
+            "stale_fallbacks": self.stale_fallbacks,
+        }

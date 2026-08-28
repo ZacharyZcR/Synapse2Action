@@ -1,7 +1,13 @@
 import json
 import unittest
 
-from synapse2action.vla_chunk import G1ActionChunk, G1ActionChunkPlayer, SmolVLAChunkClient, parse_g1_action_chunk
+from synapse2action.vla_chunk import (
+    G1ActionChunk,
+    G1ActionChunkPlayer,
+    G1ChunkRuntimeMetrics,
+    SmolVLAChunkClient,
+    parse_g1_action_chunk,
+)
 
 
 class Response:
@@ -59,6 +65,18 @@ class VLAChunkTests(unittest.TestCase):
         for chunk in (G1ActionChunk("run", 2, action, 1.0), G1ActionChunk("other", 3, action, 1.0)):
             with self.assertRaisesRegex(ValueError, "ordered"):
                 player.load(chunk, now_s=1.0)
+
+    def test_runtime_gate_separates_functional_and_realtime_results(self) -> None:
+        action = ((0.0,) * 29,) * 50
+        metrics = G1ChunkRuntimeMetrics()
+        metrics.record_chunk(G1ActionChunk("run", 0, action, 4500, 4800))
+        self.assertTrue(metrics.report()["accepted"])
+        metrics.record_chunk(G1ActionChunk("run", 1, action, 6100, 6400))
+        metrics.record_stale_fallback()
+        report = metrics.report()
+        self.assertFalse(report["accepted"])
+        self.assertFalse(report["checks"]["latency_within_chunk_coverage"])
+        self.assertEqual(report["stale_fallbacks"], 1)
 
 
 if __name__ == "__main__":
