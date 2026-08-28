@@ -1,5 +1,39 @@
 # Simulation
 
+## GR00T + SONIC whole-body VLA transition
+
+The next G1 control path replaces the task-specific C++ pick-and-place fixture
+with NVIDIA's open-source Isaac-GR00T N1.7 and GEAR-SONIC whole-body controller.
+The VLA emits a 78-dimensional action: a 64-dimensional SONIC motion token and
+14 hand-joint targets. SONIC owns the 50 Hz whole-body rollout and balance layer;
+it is a controller, not a hard-coded task trajectory.
+
+Source commits and SONIC v1.1 ONNX checksums are pinned in
+`groot_sonic.lock.json`. On Ubuntu, fetch the exact sources and approximately
+200 MB of deployment weights with:
+
+```bash
+./simulation/bootstrap_groot_sonic.sh
+```
+
+Current status: both upstream repositories and the verified SONIC v1.1 ONNX
+weights have been staged locally. Python entry points compile, and the official
+G1 simulation/VLA interfaces have been inspected. The full GR00T PolicyServer
+to SONIC to MuJoCo loop has **not** yet been accepted because the staging host
+is Apple Silicon macOS while the upstream C++ deployment requires Ubuntu with
+CUDA/TensorRT. Continue on the Ubuntu GPU host in this order:
+
+1. build the upstream SONIC deployment and run its MuJoCo sim2sim quick start;
+2. inject controlled 64-dimensional motion tokens and record measured joints;
+3. run a `UNITREE_G1_SONIC` fine-tuned GR00T PolicyServer;
+4. adapt the project's `TaskSpec` and stage telemetry to the official ZMQ path;
+5. compare GR00T-on and GR00T-off rollouts before removing the SmolVLA baseline.
+
+The public GR00T base checkpoint is not a task-ready G1 SONIC policy. A
+`UNITREE_G1_SONIC` fine-tuned checkpoint is still required for manipulation.
+Neither the upstream checkouts nor model binaries are committed to this
+repository; `simulation/vendor/` remains an ignored, reproducible cache.
+
 ## Unitree G1 through the official SDK2 contract
 
 The G1 path uses Unitree's real `unitree_sdk2_python` DDS types and Unitree's

@@ -1,0 +1,22 @@
+{
+  "schema_version": 1,
+  "isaac_groot": {
+    "commit": "51d4c89f72fda44cbf77285c6a8114b52676b8a1",
+    "repository": "https://github.com/NVIDIA/Isaac-GR00T.git"
+  },
+  "groot_whole_body_control": {
+    "commit": "a0732b642c0333077e127a2f56ab0014c196bca4",
+    "repository": "https://github.com/NVlabs/GR00T-WholeBodyControl.git"
+  },
+  "sonic_v1_1": {
+    "repository": "nvidia/GEAR-SONIC",
+    "files": {
+      "sonic_v1_1/model_decoder.onnx": {
+        "sha256": "34bae8570d4a4421a5391a5c2befd745d4a02d182ec539e5f9da44c091c67509"
+      },
+      "sonic_v1_1/model_encoder.onnx": {
+        "sha256": "fb97de22819b2057b41459802128d91723d91a25f0ad73e7bfc41a9cf8365bae"
+      }
+    }
+  }
+}
