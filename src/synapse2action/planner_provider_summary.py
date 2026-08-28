@@ -15,7 +15,9 @@ def _load_report(path: Path) -> dict[str, Any]:
     required = {
         "schema_version",
         "benchmark",
+        "provider",
         "model",
+        "output_mode",
         "accepted",
         "passed",
         "failed",
@@ -25,14 +27,19 @@ def _load_report(path: Path) -> dict[str, Any]:
     }
     if not isinstance(report, dict) or set(report) != required:
         raise ValueError(f"planner report has unexpected fields: {path}")
-    if report["schema_version"] != 1 or report["benchmark"] != "live_planner_provider":
+    if report["schema_version"] != 2 or report["benchmark"] != "live_planner_provider":
         raise ValueError(f"unsupported planner report: {path}")
-    if not isinstance(report["model"], str) or not report["model"]:
-        raise ValueError(f"planner report has no model: {path}")
+    if not all(isinstance(report[key], str) and report[key] for key in ("provider", "model")):
+        raise ValueError(f"planner report has no provider or model: {path}")
+    if report["output_mode"] not in {"json-schema", "prompt-json"}:
+        raise ValueError(f"planner report has invalid output mode: {path}")
     if type(report["accepted"]) is not bool:
         raise ValueError(f"planner report has invalid acceptance: {path}")
     return {
+        "provider": report["provider"],
         "model": report["model"],
+        "identity": f'{report["provider"]}/{report["model"].lstrip("/")}',
+        "output_mode": report["output_mode"],
         "accepted": report["accepted"],
         "passed": report["passed"],
         "failed": report["failed"],
@@ -50,12 +57,12 @@ def summarize_planner_providers(
     required_models: list[str] | None = None,
 ) -> dict[str, Any]:
     providers = [_load_report(path) for path in paths]
-    models = [provider["model"] for provider in providers]
-    if len(models) != len(set(models)):
-        raise ValueError("planner provider reports must use unique model names")
+    identities = [provider["identity"] for provider in providers]
+    if len(identities) != len(set(identities)):
+        raise ValueError("planner provider reports must use unique identities")
     required = sorted(set(required_models or ()))
-    missing = sorted(set(required) - set(models))
-    rejected = sorted(provider["model"] for provider in providers if not provider["accepted"])
+    missing = sorted(set(required) - set(identities))
+    rejected = sorted(provider["identity"] for provider in providers if not provider["accepted"])
     accepted = bool(providers) and not missing and not rejected
     return {
         "schema_version": 1,
@@ -64,5 +71,5 @@ def summarize_planner_providers(
         "required_models": required,
         "missing_models": missing,
         "rejected_models": rejected,
-        "providers": sorted(providers, key=lambda provider: provider["model"]),
+        "providers": sorted(providers, key=lambda provider: provider["identity"]),
     }

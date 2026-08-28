@@ -115,6 +115,31 @@ class LLMPlannerTests(unittest.TestCase):
 
         self.assertFalse(called)
 
+    def test_prompt_json_mode_omits_provider_schema_but_keeps_contract(self) -> None:
+        captured = {}
+
+        def transport(url, headers, payload, timeout):
+            captured.update(payload)
+            return {"choices": [{"message": {"content": json.dumps({
+                "schema_version": 2,
+                "decision": "execute",
+                "skill": "pick_and_place",
+                "arguments": {"target": "red_cube", "destination": "drop_zone"},
+                "reason": None,
+            })}}]}
+
+        planner = OpenAICompatiblePlanner(
+            "http://localhost:8000/v1",
+            "test-model",
+            output_mode="prompt-json",
+            transport=transport,
+        )
+
+        planner.plan("red_cube")
+
+        self.assertNotIn("response_format", captured)
+        self.assertIn('"schema_version"', captured["messages"][0]["content"])
+
     def test_adapter_runs_complete_hardware_free_pipeline(self) -> None:
         planner = OpenAICompatiblePlanner(
             "http://localhost:8000/v1",

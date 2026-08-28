@@ -8,11 +8,13 @@ import unittest
 from synapse2action.planner_provider_summary import summarize_planner_providers
 
 
-def provider_report(model: str, accepted: bool = True) -> dict:
+def provider_report(model: str, accepted: bool = True, provider: str = "test") -> dict:
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "benchmark": "live_planner_provider",
+        "provider": provider,
         "model": model,
+        "output_mode": "json-schema",
         "accepted": accepted,
         "passed": 6 if accepted else 5,
         "failed": 0 if accepted else 1,
@@ -38,11 +40,11 @@ class PlannerProviderSummaryTests(unittest.TestCase):
 
             report = summarize_planner_providers(
                 [qwen, deepseek],
-                ["deepseek", "qwen", "glm"],
+                ["test/deepseek", "test/qwen", "test/glm"],
             )
 
         self.assertFalse(report["accepted"])
-        self.assertEqual(report["missing_models"], ["glm"])
+        self.assertEqual(report["missing_models"], ["test/glm"])
         self.assertEqual([item["model"] for item in report["providers"]], ["deepseek", "qwen"])
         self.assertTrue(all(len(item["sha256"]) == 64 for item in report["providers"]))
 
@@ -51,10 +53,10 @@ class PlannerProviderSummaryTests(unittest.TestCase):
             path = Path(directory) / "glm.json"
             path.write_text(json.dumps(provider_report("glm", accepted=False)))
 
-            report = summarize_planner_providers([path], ["glm"])
+            report = summarize_planner_providers([path], ["test/glm"])
 
         self.assertFalse(report["accepted"])
-        self.assertEqual(report["rejected_models"], ["glm"])
+        self.assertEqual(report["rejected_models"], ["test/glm"])
 
     def test_duplicate_models_are_rejected(self) -> None:
         with TemporaryDirectory() as directory:
@@ -62,7 +64,7 @@ class PlannerProviderSummaryTests(unittest.TestCase):
             for path in paths:
                 path.write_text(json.dumps(provider_report("same-model")))
 
-            with self.assertRaisesRegex(ValueError, "unique model names"):
+            with self.assertRaisesRegex(ValueError, "unique identities"):
                 summarize_planner_providers(paths)
 
 

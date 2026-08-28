@@ -82,7 +82,8 @@ The project follows a hardware-free-first strategy. Every external component beg
 ### Phase 2 — LLM Planning Behind the Harness / 阶段 2：Harness 约束下的大模型规划
 
 - [x] Define one OpenAI-compatible planner adapter instead of model-specific business logic. / 定义统一的 OpenAI-compatible Planner Adapter，避免在业务逻辑中绑定模型。
-- [ ] Accept DeepSeek-V4-Flash-0731 through the common live-provider benchmark. / 通过统一真实 Provider 评测验收 DeepSeek-V4-Flash-0731。
+- [x] Accept the yuesheng-vllm self-hosted DeepSeek V4 Flash route through the common live-provider benchmark. / 通过统一真实 Provider 评测验收 yuesheng-vllm 自托管 DeepSeek V4 Flash 路由。
+- [ ] Accept the separate rtxpro-vllm DeepSeek-V4-Flash-0731 route after its upstream recovers. / 在上游恢复后验收独立的 rtxpro-vllm DeepSeek-V4-Flash-0731 路由。
 - [ ] Accept Qwen3.8-27B as a local planner through the same benchmark. / 通过同一评测验收 Qwen3.8-27B 本地 Planner。
 - [ ] Accept GLM-5.3-Flash as an optional multimodal planner and verifier. / 验收 GLM-5.3-Flash 可选多模态 Planner 与 Verifier。
 - [x] Reject unknown skills, invalid arguments, stale object references, and plans that bypass confirmation. / 拒绝未知技能、非法参数、过期目标引用及绕过确认的计划。
@@ -195,8 +196,8 @@ PYTHONPATH=src python3 -m synapse2action --demo
 PYTHONPATH=src python3 -m synapse2action --contract-catalog
 PYTHONPATH=src python3 -m synapse2action --keyboard-intents
 PYTHONPATH=src python3 -m synapse2action --planner-benchmark experiments/planner
-PYTHONPATH=src python3 -m synapse2action --planner-live-benchmark experiments/planner_live --planner-base-url http://localhost:8000/v1 --planner-model your-model-name
-PYTHONPATH=src python3 -m synapse2action --summarize-planner-providers artifacts/planner-*.json --required-planner-model your-model-name
+PYTHONPATH=src python3 -m synapse2action --planner-live-benchmark experiments/planner_live --planner-provider-name local --planner-base-url http://localhost:8000/v1 --planner-model your-model-name
+PYTHONPATH=src python3 -m synapse2action --summarize-planner-providers artifacts/planner-*.json --required-planner-model local/your-model-name
 PYTHONPATH=src python3 -m synapse2action --navigation-demo
 PYTHONPATH=src python3 -m synapse2action --navigation-demo --navigation-scenario experiments/navigation/04_diagonal_dynamic.json
 PYTHONPATH=src python3 -m synapse2action --navigation-suite experiments/navigation --navigation-episode-directory artifacts/navigation-episodes

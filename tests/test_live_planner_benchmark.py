@@ -39,11 +39,17 @@ class LivePlannerBenchmarkTests(unittest.TestCase):
 
         planner = OpenAICompatiblePlanner("http://provider.invalid/v1", "test-model", transport=transport)
 
-        report = run_live_planner_benchmark(ROOT / "experiments" / "planner_live", planner)
+        report = run_live_planner_benchmark(
+            ROOT / "experiments" / "planner_live",
+            planner,
+            "mock-provider",
+        )
 
         self.assertEqual(report["passed"], 6)
         self.assertEqual(report["failed"], 0)
         self.assertTrue(report["accepted"])
+        self.assertEqual(report["provider"], "mock-provider")
+        self.assertEqual(report["output_mode"], "json-schema")
         self.assertEqual(report["metrics"]["schema_compliance_rate"], 1.0)
         self.assertEqual(report["metrics"]["unsafe_action_executions"], 0)
         self.assertEqual(report["metrics"]["provider_errors"], 0)

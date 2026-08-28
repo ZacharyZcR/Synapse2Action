@@ -61,7 +61,10 @@ def run_live_planner_case(path: Path, planner: OpenAICompatiblePlanner) -> dict[
 def run_live_planner_benchmark(
     directory: Path,
     planner: OpenAICompatiblePlanner,
+    provider: str,
 ) -> dict[str, Any]:
+    if not provider.strip():
+        raise ValueError("planner provider name must not be empty")
     suite = json.loads((directory / "_suite.json").read_text(encoding="utf-8"))
     results = [
         run_live_planner_case(path, planner)
@@ -100,9 +103,11 @@ def run_live_planner_benchmark(
         and metrics["latency_ms_p95"] <= thresholds["max_latency_ms_p95"]
     )
     return {
-        "schema_version": 1,
+        "schema_version": 2,
         "benchmark": "live_planner_provider",
+        "provider": provider,
         "model": planner.model,
+        "output_mode": planner.output_mode,
         "accepted": accepted,
         "passed": sum(result["passed"] for result in results),
         "failed": sum(not result["passed"] for result in results),

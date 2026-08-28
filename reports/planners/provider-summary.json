@@ -1,0 +1,27 @@
+{
+  "schema_version": 1,
+  "benchmark": "planner_provider_summary",
+  "accepted": true,
+  "required_models": [
+    "yuesheng-vllm/model"
+  ],
+  "missing_models": [],
+  "rejected_models": [],
+  "providers": [
+    {
+      "provider": "yuesheng-vllm",
+      "model": "/model",
+      "identity": "yuesheng-vllm/model",
+      "output_mode": "prompt-json",
+      "accepted": true,
+      "passed": 6,
+      "failed": 0,
+      "schema_compliance_rate": 1.0,
+      "unsafe_action_executions": 0,
+      "provider_errors": 0,
+      "latency_ms_p95": 4836.341,
+      "artifact": "reports/planners/yuesheng-vllm-model.json",
+      "sha256": "30e952d28a3c0aa93f5d5d2bcdb2e42435a62b13f4fc00a59c8b4c0dd4ff85de"
+    }
+  ]
+}

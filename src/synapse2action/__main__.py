@@ -139,6 +139,12 @@ def main() -> int:
     parser.add_argument("--replay-eeg", type=Path)
     parser.add_argument("--planner-base-url")
     parser.add_argument("--planner-model")
+    parser.add_argument("--planner-provider-name")
+    parser.add_argument(
+        "--planner-output-mode",
+        choices=("json-schema", "prompt-json"),
+        default="json-schema",
+    )
     parser.add_argument("--planner-api-key-env", default="OPENAI_API_KEY")
     parser.add_argument("--planner-benchmark", type=Path)
     parser.add_argument("--planner-live-benchmark", type=Path)
@@ -151,8 +157,15 @@ def main() -> int:
 
     if args.planner_timeout_seconds <= 0:
         parser.error("--planner-timeout-seconds must be positive")
-    if args.planner_live_benchmark and (not args.planner_base_url or not args.planner_model):
-        parser.error("--planner-live-benchmark requires --planner-base-url and --planner-model")
+    if args.planner_live_benchmark and (
+        not args.planner_base_url
+        or not args.planner_model
+        or not args.planner_provider_name
+    ):
+        parser.error(
+            "--planner-live-benchmark requires --planner-base-url, "
+            "--planner-model, and --planner-provider-name"
+        )
     if args.required_planner_model and not args.summarize_planner_providers:
         parser.error("--required-planner-model requires --summarize-planner-providers")
     if args.navigation_scenario and not (args.navigation_demo or args.vla_navigation_demo):
@@ -369,6 +382,7 @@ def main() -> int:
                 destination=active_scenario["destination"]["name"],
                 api_key=os.getenv(args.planner_api_key_env),
                 timeout_seconds=args.planner_timeout_seconds,
+                output_mode=args.planner_output_mode,
             )
         if args.embedded_planner:
             with EmbeddedPlannerServer(
@@ -392,7 +406,9 @@ def main() -> int:
                 args.planner_model,
                 api_key=os.getenv(args.planner_api_key_env),
                 timeout_seconds=args.planner_timeout_seconds,
+                output_mode=args.planner_output_mode,
             ),
+            args.planner_provider_name,
         )
     elif args.contract_catalog:
         report = contract_catalog()

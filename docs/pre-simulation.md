@@ -21,7 +21,7 @@ The requirement-by-requirement status is recorded in [`pre-simulation-audit.md`]
 ## Deliberately not claimed
 
 - The injected planner latency in the bundled boundary suite is fixture data, not live-provider latency.
-- DeepSeek, Qwen, and GLM are supported through one provider-neutral adapter but have not been accepted on current live endpoints.
+- The yuesheng-vllm self-hosted DeepSeek V4 Flash route is accepted in `prompt-json` mode. The separate rtxpro DeepSeek-V4-Flash-0731 route currently returns 502; Qwen and GLM have not yet produced accepted reports.
 - The local KNN/Ridge policies are behavior-cloning baselines, not ACT, SmolVLA, or a production VLA.
 - ROS 2 topic bindings and Gazebo assets do not prove that robot dynamics have run.
 - No Unitree G1 adapter, physical robot, live EEG device, clinical claim, or safety certification exists.
@@ -31,7 +31,7 @@ The requirement-by-requirement status is recorded in [`pre-simulation-audit.md`]
 ```bash
 PYTHONPATH=src python3 -m synapse2action --contract-catalog --output artifacts/contracts.json
 PYTHONPATH=src python3 -m synapse2action --planner-benchmark experiments/planner --output artifacts/planner-boundary.json
-PYTHONPATH=src python3 -m synapse2action --planner-live-benchmark experiments/planner_live --planner-base-url http://localhost:8000/v1 --planner-model your-model-name --output artifacts/planner-live.json
+PYTHONPATH=src python3 -m synapse2action --planner-live-benchmark experiments/planner_live --planner-provider-name local --planner-base-url http://localhost:8000/v1 --planner-model your-model-name --output artifacts/planner-live.json
 PYTHONPATH=src python3 -m synapse2action --keyboard-intents --output artifacts/keyboard-session.json
 PYTHONPATH=src python3 -m synapse2action --demo-suite experiments/demos --artifact-directory artifacts/demo-suite --output artifacts/demo-suite.json
 ```

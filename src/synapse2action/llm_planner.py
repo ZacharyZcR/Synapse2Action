@@ -101,7 +101,12 @@ class OpenAICompatiblePlanner:
     destination: str = "drop_zone"
     api_key: str | None = None
     timeout_seconds: float = 30.0
+    output_mode: str = "json-schema"
     transport: Transport = _urllib_transport
+
+    def __post_init__(self) -> None:
+        if self.output_mode not in {"json-schema", "prompt-json"}:
+            raise ValueError("planner output mode must be json-schema or prompt-json")
 
     def plan(self, target: str) -> Action:
         if not SAFE_IDENTIFIER.fullmatch(target) or not SAFE_IDENTIFIER.fullmatch(self.destination):
@@ -114,7 +119,8 @@ class OpenAICompatiblePlanner:
                     "content": (
                         "Select exactly one registered robot skill only for inert tabletop objects. "
                         "Refuse requests involving people, body parts, safety systems, unknown tools, "
-                        "or changed task context. Return only the requested JSON object."
+                        "or changed task context. Return only JSON matching this schema: "
+                        f"{json.dumps(PLAN_SCHEMA, separators=(',', ':'))}"
                     ),
                 },
                 {
@@ -122,16 +128,17 @@ class OpenAICompatiblePlanner:
                     "content": f"Move target {target!r} to destination {self.destination!r}.",
                 },
             ],
-            "response_format": {
+            "temperature": 0,
+        }
+        if self.output_mode == "json-schema":
+            payload["response_format"] = {
                 "type": "json_schema",
                 "json_schema": {
                     "name": "robot_plan",
                     "strict": True,
                     "schema": PLAN_SCHEMA,
                 },
-            },
-            "temperature": 0,
-        }
+            }
         headers = {"Content-Type": "application/json"}
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
