@@ -1,0 +1,25 @@
+<?xml version="1.0"?>
+<package format="3">
+  <name>synapse2action_sim</name>
+  <version>0.1.0</version>
+  <description>Gazebo Harmonic navigation simulation for Synapse2Action.</description>
+  <maintainer email="maintainers@synapse2action.invalid">Synapse2Action maintainers</maintainer>
+  <license>Apache-2.0</license>
+
+  <buildtool_depend>ament_python</buildtool_depend>
+  <exec_depend>geometry_msgs</exec_depend>
+  <exec_depend>launch</exec_depend>
+  <exec_depend>launch_ros</exec_depend>
+  <exec_depend>nav_msgs</exec_depend>
+  <exec_depend>ros_gz_bridge</exec_depend>
+  <exec_depend>ros_gz_sim</exec_depend>
+  <exec_depend>rosgraph_msgs</exec_depend>
+  <exec_depend>rclpy</exec_depend>
+  <exec_depend>sensor_msgs</exec_depend>
+  <exec_depend>visualization_msgs</exec_depend>
+
+  <export>
+    <build_type>ament_python</build_type>
+    <gazebo_ros gazebo_model_path="${prefix}/worlds"/>
+  </export>
+</package>
