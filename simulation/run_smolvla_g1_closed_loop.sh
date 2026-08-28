@@ -7,7 +7,7 @@ cache="${project_dir}/simulation/vendor/huggingface"
 model="${project_dir}/reports/training/smolvla-g1-suite/checkpoints/last/pretrained_model"
 policy_image="synapse2action-smolvla:0.6.1"
 simulator_image="synapse2action-unitree-render:locked-v3"
-controller_image="synapse2action-unitree-controller:locked-v18"
+controller_image="synapse2action-unitree-controller:locked-v19"
 [[ -f "${model}/config.json" ]] || { echo "missing trained SmolVLA checkpoint: ${model}" >&2; exit 2; }
 
 run_id="$$"
@@ -21,6 +21,11 @@ cleanup() {
 }
 trap cleanup EXIT
 mkdir -p "${report_dir}"
+if ! docker image inspect "${controller_image}" >/dev/null 2>&1; then
+  docker build --platform linux/amd64 \
+    -f "${project_dir}/simulation/docker/Dockerfile.unitree-controller-amd64" \
+    -t "${controller_image}" "${project_dir}"
+fi
 docker network create "${network}" >/dev/null
 docker run --detach --name "${policy}" --network "${network}" --cpu-shares 256 \
   --env OMP_NUM_THREADS=8 --env MKL_NUM_THREADS=8 \
@@ -41,7 +46,8 @@ until docker exec "${policy}" python -c \
 done
 docker run --detach --name "${controller}" --network "${network}" --cpu-shares 4096 \
   --env S2A_TARGET_X_M=0.0 --env S2A_TARGET_Y_M=0.0 --env S2A_TARGET_YAW_RAD=0.0 \
-  --env S2A_MAX_SPEED_MPS=0.3 \
+  --env S2A_MAX_SPEED_MPS=0.3 --env S2A_PICK_PLACE=1 \
+  --env S2A_MANIPULATION_START_DELAY_SECONDS=12 \
   "${controller_image}" ./build/g1_ctrl -n eth0 >/dev/null
 docker run --detach --name "${simulator}" --network "${network}" --cpu-shares 2048 \
   --workdir /workspace/current --env PYTHONPATH=/workspace/current/src --env MUJOCO_GL=osmesa \
@@ -49,9 +55,10 @@ docker run --detach --name "${simulator}" --network "${network}" --cpu-shares 20
   --volume "${report_dir}:/workspace/reports/simulation" \
   "${simulator_image}" python3 simulation/g1_mujoco_pick_place.py \
   --unitree-mujoco /opt/unitree/unitree_mujoco --interface eth0 \
-  --duration-seconds 30 --vla-endpoint http://${policy}:8080 \
-  --vla-frequency-hz 3 --behavior-frequency-hz 10 --vla-stale-after-seconds 20 \
-  --vla-refresh-lookahead-actions 167 --release-timeout-seconds 28 \
+  --duration-seconds 20 --vla-endpoint http://${policy}:8080 \
+  --vla-frequency-hz 3 --vla-stale-after-seconds 20 \
+  --vla-refresh-lookahead-actions 50 --release-timeout-seconds 19.8 \
+  --vla-typed-skill-passthrough \
   --output /workspace/reports/simulation/g1-smolvla-closed-loop.json >/dev/null
 simulator_exit="$(docker wait "${simulator}")"
 docker logs "${policy}" >"${report_dir}/g1-smolvla-policy.log" 2>&1

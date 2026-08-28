@@ -87,6 +87,23 @@ class G1VLAActionProjectorTests(unittest.TestCase):
         bridge.LowCmdHandler(SimpleNamespace())
         self.assertEqual(bridge.mj_data.ctrl, [7.0] * 29)
 
+    def test_typed_skill_passthrough_authorizes_official_command(self) -> None:
+        class BaseBridge:
+            def __init__(self) -> None:
+                self.num_motor = 29
+                self.mj_data = SimpleNamespace(time=0.0, sensordata=[0.0] * 58, ctrl=[0.0] * 29)
+
+            def LowCmdHandler(self, message: object) -> None:
+                self.mj_data.ctrl[:] = [motor.q for motor in message.motor_cmd]
+
+        motors = [SimpleNamespace(q=float(index)) for index in range(29)]
+        bridge = make_g1_vla_bridge(BaseBridge, apply_vla_targets=False)()
+        bridge.set_vla_action((1.0,) * 29)
+        bridge.LowCmdHandler(SimpleNamespace(motor_cmd=motors))
+        self.assertEqual(bridge.mj_data.ctrl, [float(index) for index in range(29)])
+        self.assertEqual(bridge.vla_authorized_frames, 1)
+        self.assertEqual(bridge.vla_overlay_frames, 0)
+
     def test_real_bridge_smoke_uses_fixed_unitree_image(self) -> None:
         root = Path(__file__).resolve().parents[1]
         runner = (root / "simulation/run_g1_vla_bridge_smoke.sh").read_text()

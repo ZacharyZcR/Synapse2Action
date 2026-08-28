@@ -107,6 +107,7 @@ def make_g1_vla_bridge(
     *,
     action_frequency_hz: float = 10.0,
     stale_after_s: float = 7.0,
+    apply_vla_targets: bool = True,
 ) -> type:
     """Wrap Unitree's bridge at its LowCmd callback without changing DDS messages."""
 
@@ -120,6 +121,7 @@ def make_g1_vla_bridge(
             )
             self._vla_lock = Lock()
             self.vla_overlay_frames = 0
+            self.vla_authorized_frames = 0
             self.vla_stale_fallbacks = 0
             self._vla_was_active = False
             super().__init__(*args, **kwargs)
@@ -163,6 +165,9 @@ def make_g1_vla_bridge(
                     self.vla_stale_fallbacks += 1
                 self._vla_was_active = action is not None
                 if action is None:
+                    return super().LowCmdHandler(message)
+                self.vla_authorized_frames += 1
+                if not apply_vla_targets:
                     return super().LowCmdHandler(message)
                 rl_command = tuple(float(message.motor_cmd[i].q) for i in range(self.num_motor))
                 target = self._vla_projector.project(rl_command, action)

@@ -37,6 +37,7 @@ def main() -> None:
     parser.add_argument("--duration-seconds", type=float, default=14.0)
     parser.add_argument("--vla-endpoint")
     parser.add_argument("--vla-block-on-refresh", action="store_true")
+    parser.add_argument("--vla-typed-skill-passthrough", action="store_true")
     parser.add_argument("--vla-frequency-hz", type=float, default=10.0)
     parser.add_argument("--behavior-frequency-hz", type=float, default=10.0)
     parser.add_argument("--vla-stale-after-seconds", type=float, default=7.0)
@@ -86,8 +87,13 @@ def main() -> None:
     bridge_class = (
         make_g1_vla_bridge(
             UnitreeSdk2Bridge,
-            action_frequency_hz=args.behavior_frequency_hz,
+            action_frequency_hz=(
+                args.vla_frequency_hz
+                if args.vla_typed_skill_passthrough
+                else args.behavior_frequency_hz
+            ),
             stale_after_s=args.vla_stale_after_seconds,
+            apply_vla_targets=not args.vla_typed_skill_passthrough,
         )
         if args.vla_endpoint
         else UnitreeSdk2Bridge
@@ -108,7 +114,8 @@ def main() -> None:
             name: mujoco.Renderer(model, height=256, width=256)
             for name in ("camera1", "camera2", "camera3")
         }
-        behavior = G1PickPlaceBehaviorExecutor()
+        if not args.vla_typed_skill_passthrough:
+            behavior = G1PickPlaceBehaviorExecutor()
 
     first_command = Event()
     command_count = 0
@@ -321,6 +328,7 @@ def main() -> None:
     }
     if coordinator is not None:
         report["vla_overlay_frames"] = bridge.vla_overlay_frames
+        report["vla_authorized_frames"] = bridge.vla_authorized_frames
         report["vla_runtime"] = coordinator.metrics.report()
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
