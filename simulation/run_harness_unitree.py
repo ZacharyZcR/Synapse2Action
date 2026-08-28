@@ -10,12 +10,15 @@ from typing import Any, Callable
 
 from synapse2action.components import MockPlanner, ScriptedPolicy
 from synapse2action.contracts import Action, Intent, IntentKind, Planner, TaskState
+from synapse2action.groot import GrootPolicy
 from synapse2action.harness import Harness
 from synapse2action.llm_planner import OpenAICompatiblePlanner
 from synapse2action.navigation import Pose2D
 from synapse2action.task_spec import load_task_spec
 from synapse2action.unitree_simulation import (
     NavigateToPlanner,
+    GrootPickPlaceSimulationRobot,
+    GrootPickPlaceVerifier,
     UnitreePickPlaceSimulationRobot,
     UnitreePickPlaceVerifier,
     UnitreeSimulationRobot,
@@ -68,7 +71,7 @@ def decoded_execution_intents(path: Path | None) -> tuple[IntentKind, IntentKind
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run confirmed navigation through SDK2 G1 MuJoCo")
     parser.add_argument("--task", choices=("navigation", "pick-place"), default="navigation")
-    parser.add_argument("--policy", choices=("scripted", "smolvla"), default="scripted")
+    parser.add_argument("--policy", choices=("scripted", "smolvla", "groot"), default="scripted")
     parser.add_argument("--destination", default="point_b")
     parser.add_argument(
         "--task-spec",
@@ -88,6 +91,9 @@ def main() -> int:
     parser.add_argument("--progress-output", type=Path)
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
+    default_pick_place_spec = Path("experiments/tasks/g1_pick_place.json")
+    if args.policy == "groot" and args.task_spec == default_pick_place_spec:
+        args.task_spec = Path("experiments/tasks/g1_groot_apple_to_plate.json")
     if args.planner == "live" and (not args.planner_base_url or not args.planner_model):
         parser.error("--planner live requires --planner-base-url and --planner-model")
 
@@ -139,21 +145,32 @@ def main() -> int:
     )
     if args.task == "pick-place":
         smolvla = args.policy == "smolvla"
-        robot = UnitreePickPlaceSimulationRobot(
-            project / "simulation" / (
-                "run_smolvla_g1_closed_loop.sh" if smolvla else "run_unitree_pick_place.sh"
-            ),
+        groot = args.policy == "groot"
+        robot_type = GrootPickPlaceSimulationRobot if groot else UnitreePickPlaceSimulationRobot
+        runner = (
+            "run_groot_g1_pick_place.py"
+            if groot
+            else "run_smolvla_g1_closed_loop.sh" if smolvla else "run_unitree_pick_place.sh"
+        )
+        robot = robot_type(
+            project / "simulation" / runner,
             project / "reports" / "simulation",
-            timeout_seconds=120.0 if smolvla else 30.0,
-            report_stem="g1-smolvla-closed-loop" if smolvla else "g1-pick-place",
+            timeout_seconds=600.0 if groot else 120.0 if smolvla else 30.0,
+            report_stem=(
+                "g1-groot-closed-loop"
+                if groot
+                else "g1-smolvla-closed-loop" if smolvla else "g1-pick-place"
+            ),
             task_spec_path=task_spec_path,
         )
         harness = Harness(
             observable_planner,
             robot,
-            UnitreePickPlaceVerifier(robot),
-            skills=unitree_pick_place_skill_registry(timeout_ms=120_000 if smolvla else 30_000),
-            policy=ScriptedPolicy(),
+            GrootPickPlaceVerifier(robot) if groot else UnitreePickPlaceVerifier(robot),
+            skills=unitree_pick_place_skill_registry(
+                timeout_ms=600_000 if groot else 120_000 if smolvla else 30_000
+            ),
+            policy=GrootPolicy(task_spec) if groot else ScriptedPolicy(),
         )
     else:
         robot = UnitreeSimulationRobot(
@@ -184,7 +201,7 @@ def main() -> int:
     report = {
         "accepted": harness.state is TaskState.COMPLETED,
         "final_state": harness.state.value,
-        "destination": args.destination,
+        "destination": task_spec.destination if task_spec else args.destination,
         "task_spec": str(task_spec_path) if task_spec else None,
         "task": ({"id": task_spec.task_id, "skill": task_spec.skill, "arguments": task_spec.arguments,
                   "instruction": task_spec.instruction, "display": task_spec.display} if task_spec else None),
@@ -214,23 +231,47 @@ def main() -> int:
         },
         {
             "id": "vla",
-            "mode": "live" if args.policy == "smolvla" else "scripted",
-            "status": "completed" if simulator.get("vla_runtime") else "not_used",
-            "input": "3 camera frames + 29-DoF joint state + task text" if args.policy == "smolvla" else None,
-            "output": f"{simulator.get('vla_runtime', {}).get('chunks_received', 0)} action chunks",
-            "role": "bounded manipulation-joint action chunks" if args.policy == "smolvla" else "scripted policy",
+            "mode": "live" if args.policy in {"smolvla", "groot"} else "scripted",
+            "status": (
+                "completed"
+                if simulator.get("vla_runtime") or simulator.get("official_contact_success") is not None
+                else "not_used"
+            ),
+            "input": (
+                "2 camera streams + G1 state + task text"
+                if args.policy == "groot"
+                else "3 camera frames + 29-DoF joint state + task text" if args.policy == "smolvla" else None
+            ),
+            "output": (
+                "GR00T whole-body action sequence"
+                if args.policy == "groot"
+                else f"{simulator.get('vla_runtime', {}).get('chunks_received', 0)} action chunks"
+            ),
+            "role": (
+                "public VLA with official whole-body control"
+                if args.policy == "groot"
+                else "bounded manipulation-joint action chunks" if args.policy == "smolvla" else "scripted policy"
+            ),
         },
         {
             "id": "skill_executor",
             "mode": "deterministic",
-            "status": "completed" if simulator.get("sdk2_lowcmd_frames", 0) else "failed",
+            "status": (
+                "completed"
+                if simulator.get("sdk2_lowcmd_frames", 0) or simulator.get("official_contact_success") is not None
+                else "failed"
+            ),
             "input": task_spec.action_text() if task_spec else harness.pending_action.skill,
             "output": "validated C++ manipulation targets",
         },
         {
             "id": "motion_control",
             "mode": "real_sdk",
-            "status": "completed" if simulator.get("sdk2_lowcmd_frames", 0) else "failed",
+            "status": (
+                "completed"
+                if simulator.get("sdk2_lowcmd_frames", 0) or simulator.get("official_contact_success") is not None
+                else "failed"
+            ),
             "input": "bounded VLA manipulation targets + RL whole-body command + proprioception",
             "output": f"{simulator.get('sdk2_lowcmd_frames', 0)} SDK2 LowCmd frames",
         },

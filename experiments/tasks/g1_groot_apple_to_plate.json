@@ -1,0 +1,32 @@
+{
+  "task_id": "g1_groot_apple_to_plate",
+  "skill": "pick_and_place",
+  "arguments": {"target": "apple", "destination": "plate"},
+  "planner": {
+    "instruction": "Execute pick_and_place with target identifier apple and destination identifier plate. Preserve both identifiers exactly."
+  },
+  "vla": {
+    "instruction": "pick up the apple, walk left and place the apple on the plate",
+    "counterfactual_instruction": "leave the apple where it is and move away"
+  },
+  "scene": {
+    "target": {"name": "apple", "position_xyz_m": [0.4, 0.0, 0.74], "half_size_xyz_m": [0.04, 0.04, 0.04], "mass_kg": 0.1, "rgba": [0.9, 0.15, 0.1, 1.0]},
+    "destination": {"name": "plate", "position_xyz_m": [-0.4, 0.0, 0.74], "half_size_xyz_m": [0.12, 0.12, 0.02], "rgba": [0.9, 0.9, 0.9, 1.0]},
+    "cameras": {"ego_view": [0.0, 0.0, 0.0], "third_person": [1.4, 0.0, 1.25]}
+  },
+  "verification": {"minimum_lift_m": 0.10, "minimum_base_height_m": 0.65, "grasp_distance_m": 0.12, "release_height_m": 0.78, "grasp_after_s": 2.0, "release_after_s": 10.0},
+  "controller": {
+    "joint_indices": [12],
+    "joint_limits_rad": [[-2.618, 2.618]],
+    "stand": [0.0],
+    "grasp": [0.0],
+    "lift": [0.0],
+    "transport": [0.0],
+    "phase_end_s": [1.0, 5.0, 9.0, 12.0],
+    "start_delay_s": 0.0
+  },
+  "display": {
+    "zh": {"target": "苹果", "destination": "盘子", "task": "抓起苹果并放到盘子上"},
+    "en": {"target": "apple", "destination": "plate", "task": "pick up the apple and place it on the plate"}
+  }
+}

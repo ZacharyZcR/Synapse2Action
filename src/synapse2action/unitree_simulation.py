@@ -194,6 +194,46 @@ class UnitreePickPlaceVerifier:
         )
 
 
+@dataclass(slots=True)
+class GrootPickPlaceSimulationRobot(UnitreePickPlaceSimulationRobot):
+    """Run a public GR00T checkpoint behind the existing Robot contract."""
+
+    report_stem: str = "g1-groot-closed-loop"
+
+    def execute(self, action: Action) -> ExecutionResult:
+        result = UnitreePickPlaceSimulationRobot.execute(self, action)
+        if self.last_simulator_report is None:
+            return result
+        report = self.last_simulator_report or {}
+        official = report.get("official_contact_success") is True
+        detail = (
+            "GR00T rollout reached the official contact criterion"
+            if official
+            else "GR00T rollout did not reach the official contact criterion"
+        )
+        return ExecutionResult(official, detail, result.duration_ms)
+
+
+class GrootPickPlaceVerifier:
+    """Require completed placement, not GR00T's contact-only benchmark flag."""
+
+    def __init__(self, robot: GrootPickPlaceSimulationRobot) -> None:
+        self.robot = robot
+
+    def verify(self, result: ExecutionResult) -> bool:
+        report = self.robot.last_simulator_report
+        return bool(
+            result.success
+            and report
+            and report.get("official_contact_success") is True
+            and report.get("grasped") is True
+            and report.get("lifted") is True
+            and report.get("released") is True
+            and report.get("stable_on_target") is True
+            and report.get("remained_standing") is True
+        )
+
+
 def unitree_pick_place_skill_registry(*, timeout_ms: int = 30_000) -> SkillRegistry:
     if timeout_ms <= 0:
         raise ValueError("pick-and-place timeout must be positive")
