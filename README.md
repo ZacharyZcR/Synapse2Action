@@ -232,10 +232,11 @@ Audit whether a generated LLM plan actually reached and conditioned the VLA:
 ```bash
 PYTHONPATH=src python3 -m synapse2action \
   --llm-vla-benchmark reports/simulation/harness-live-eeg-smolvla-g1.json \
+  --llm-vla-counterfactual reports/simulation/g1-smolvla-plan-counterfactual.json \
   --output reports/simulation/llm-vla-boundary.json
 ```
 
-该边界要求结构化 Plan→VLA Task 绑定、有效 Action Chunk、首 Chunk 延迟、无 Stale Fallback 和 Plan 反事实响应。VLA 仅仅“运行过”不算通过。
+先运行 `simulation/run_smolvla_plan_counterfactual.sh` 生成同观测、同随机种子的 Plan A/B 证据。该边界要求结构化 Plan→VLA Task 绑定、有效 Action Chunk、首 Chunk 延迟、无 Stale Fallback 和 Plan 反事实响应。VLA 仅仅“运行过”不算通过。
 
 ```bash
 PYTHONPATH=src S2A_PLANNER_API_KEY=... python3 simulation/experiment_console.py \

@@ -46,6 +46,15 @@ class SmolVLAAssetsTests(unittest.TestCase):
         self.assertIn('"arm_waist_mse"', source)
         self.assertIn("policy.config.chunk_size", source)
 
+    def test_plan_counterfactual_holds_observation_and_seed_constant(self) -> None:
+        source = (ROOT / "simulation" / "evaluate_smolvla_plan_counterfactual.py").read_text()
+        runner = (ROOT / "simulation" / "run_smolvla_plan_counterfactual.sh").read_text()
+        self.assertIn("torch.manual_seed(seed)", source)
+        self.assertIn('"same_observation": True', source)
+        self.assertIn('"same_seed": True', source)
+        self.assertIn("policy.config.chunk_size", source)
+        self.assertIn("evaluate_smolvla_plan_counterfactual.py", runner)
+
     def test_g1_dataset_suite_records_independent_timing_variations(self) -> None:
         runner = (ROOT / "simulation" / "run_lerobot_dataset_suite.sh").read_text()
         self.assertIn("S2A_MANIPULATION_TIME_SCALE", runner)
@@ -72,6 +81,8 @@ class SmolVLAAssetsTests(unittest.TestCase):
         self.assertIn("make_g1_vla_bridge", source)
         self.assertIn("bridge.set_vla_chunk", source)
         self.assertIn('report["vla_runtime"]', source)
+        self.assertIn('report["vla_task_binding"]', source)
+        self.assertIn('report["vla_first_chunk_latency_ms"]', source)
 
     def test_closed_loop_runner_uses_real_policy_sdk_and_simulator(self) -> None:
         runner = (ROOT / "simulation" / "run_smolvla_g1_closed_loop.sh").read_text()
@@ -81,6 +92,7 @@ class SmolVLAAssetsTests(unittest.TestCase):
         self.assertIn("S2A_MANIPULATION_START_DELAY_SECONDS=12", runner)
         self.assertNotIn("--vla-typed-skill-passthrough", runner)
         self.assertIn("--vla-endpoint", runner)
+        self.assertIn("--vla-plan-source", runner)
         self.assertIn("--visualization-directory", runner)
         self.assertIn('"functional_accepted"', validator)
         self.assertIn('"realtime_accepted"', validator)

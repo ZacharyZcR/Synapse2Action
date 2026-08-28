@@ -2,6 +2,9 @@
 set -euo pipefail
 
 project_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+target="${1:-red_cube}"
+destination="${2:-drop_tray}"
+plan_source="${3:-standalone_default}"
 report_dir="${project_dir}/reports/simulation"
 cache="${project_dir}/simulation/vendor/huggingface"
 model="${project_dir}/reports/training/smolvla-g1-suite/checkpoints/last/pretrained_model"
@@ -56,6 +59,8 @@ docker run --detach --name "${simulator}" --network "${network}" --cpu-shares 40
   "${simulator_image}" python3 simulation/g1_mujoco_pick_place.py \
   --unitree-mujoco /opt/unitree/unitree_mujoco --interface eth0 \
   --duration-seconds 20 --vla-endpoint http://${policy}:8080 \
+  --vla-skill pick_and_place --vla-target "${target}" \
+  --vla-destination "${destination}" --vla-plan-source "${plan_source}" \
   --vla-frequency-hz 3 --vla-stale-after-seconds 20 \
   --vla-refresh-lookahead-actions 50 --release-timeout-seconds 19.8 \
   --visualization-directory /workspace/reports/simulation/g1-smolvla-frames \

@@ -128,10 +128,14 @@ class UnitreePickPlaceSimulationRobot:
             return ExecutionResult(False, "robot is stopped")
         if action.skill != "pick_and_place":
             return ExecutionResult(False, f"unsupported Unitree simulation skill: {action.skill}")
+        target = action.arguments.get("target")
+        destination = action.arguments.get("destination")
+        if not isinstance(target, str) or not isinstance(destination, str):
+            return ExecutionResult(False, "pick-and-place requires target and destination")
         self.executed.append(action)
         try:
             completed = self.run(
-                (str(self.runner_path),),
+                (str(self.runner_path), target, destination, "planner_action"),
                 check=False,
                 capture_output=True,
                 text=True,

@@ -5,7 +5,10 @@ from pathlib import Path
 from typing import Any
 
 
-def run_llm_vla_benchmark(report_path: Path) -> dict[str, Any]:
+def run_llm_vla_benchmark(
+    report_path: Path,
+    counterfactual_path: Path | None = None,
+) -> dict[str, Any]:
     source = json.loads(report_path.read_text(encoding="utf-8"))
     planner = source.get("planner")
     simulator = source.get("unitree_simulator")
@@ -26,6 +29,7 @@ def run_llm_vla_benchmark(report_path: Path) -> dict[str, Any]:
         and isinstance(binding, dict)
         and binding.get("skill") == plan.get("skill")
         and binding.get("arguments") == arguments
+        and binding.get("source") == "planner_action"
     )
     chunks_received = (
         int(runtime.get("chunks_received", 0))
@@ -49,6 +53,15 @@ def run_llm_vla_benchmark(report_path: Path) -> dict[str, Any]:
         if isinstance(runtime, dict)
         else 0
     )
+    counterfactual = simulator.get("vla_plan_counterfactual")
+    if counterfactual_path is not None:
+        counterfactual = json.loads(counterfactual_path.read_text(encoding="utf-8"))
+    counterfactual_measured = bool(
+        isinstance(counterfactual, dict)
+        and counterfactual.get("changed") is True
+        and counterfactual.get("same_observation") is True
+        and counterfactual.get("same_seed") is True
+    )
     metrics = {
         "plan_contract_valid": plan_available,
         "task_binding_proven": task_binding_proven,
@@ -60,9 +73,7 @@ def run_llm_vla_benchmark(report_path: Path) -> dict[str, Any]:
         "first_chunk_latency_within_coverage": latency_within_budget,
         "stale_fallbacks": stale_fallbacks,
         "runtime_accepted": bool(isinstance(runtime, dict) and runtime.get("accepted") is True),
-        "counterfactual_plan_responsiveness_measured": bool(
-            simulator.get("vla_plan_counterfactual")
-        ),
+        "counterfactual_plan_responsiveness_measured": counterfactual_measured,
     }
     acceptance = {
         "require_plan_contract": True,
@@ -86,6 +97,7 @@ def run_llm_vla_benchmark(report_path: Path) -> dict[str, Any]:
         "benchmark": "llm_to_vla_boundary",
         "accepted": accepted,
         "source_report": str(report_path),
+        "counterfactual_report": str(counterfactual_path) if counterfactual_path else None,
         "planner": {
             "provider": planner.get("provider"),
             "model": planner.get("model"),

@@ -154,6 +154,7 @@ class G1ChunkRuntimeMetrics:
             "accepted": all(checks.values()),
             "checks": checks,
             "chunks_received": len(self.chunks),
+            "first_chunk_round_trip_ms": round_trip[0] if round_trip else None,
             "maximum_inference_ms": max(inference, default=None),
             "maximum_round_trip_ms": max(round_trip, default=None),
             "minimum_chunk_coverage_ms": min(coverage, default=None),

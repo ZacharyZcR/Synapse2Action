@@ -73,6 +73,7 @@ class VLAChunkTests(unittest.TestCase):
         metrics = G1ChunkRuntimeMetrics()
         metrics.record_chunk(G1ActionChunk("run", 0, action, 4500, 4800))
         self.assertTrue(metrics.report()["accepted"])
+        self.assertEqual(metrics.report()["first_chunk_round_trip_ms"], 4800)
         metrics.record_chunk(G1ActionChunk("run", 1, action, 6100, 6400))
         metrics.record_stale_fallback()
         report = metrics.report()

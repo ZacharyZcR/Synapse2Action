@@ -52,6 +52,10 @@ def main() -> None:
     parser.add_argument("--interface", default="lo")
     parser.add_argument("--duration-seconds", type=float, default=14.0)
     parser.add_argument("--vla-endpoint")
+    parser.add_argument("--vla-skill")
+    parser.add_argument("--vla-target")
+    parser.add_argument("--vla-destination")
+    parser.add_argument("--vla-plan-source")
     parser.add_argument("--vla-block-on-refresh", action="store_true")
     parser.add_argument("--vla-typed-skill-passthrough", action="store_true")
     parser.add_argument("--vla-frequency-hz", type=float, default=10.0)
@@ -64,6 +68,15 @@ def main() -> None:
     args = parser.parse_args()
     if args.vla_frequency_hz <= 0:
         parser.error("VLA frequency must be positive")
+    plan_values = (args.vla_skill, args.vla_target, args.vla_destination, args.vla_plan_source)
+    if args.vla_endpoint and not all(plan_values):
+        parser.error("VLA endpoint requires structured skill, target, destination, and plan source")
+    if args.vla_endpoint and (
+        args.vla_skill != "pick_and_place"
+        or args.vla_target != "red_cube"
+        or args.vla_destination != "drop_tray"
+    ):
+        parser.error("the current MuJoCo scene only supports pick_and_place(red_cube, drop_tray)")
 
     source = args.unitree_mujoco / "unitree_robots" / "g1" / "scene.xml"
     additions = """
@@ -117,10 +130,11 @@ def main() -> None:
     coordinator = None
     online_renderers = None
     if args.vla_endpoint:
+        vla_task = "pick the red block and place it in the green tray"
         coordinator = G1ChunkCoordinator(
             SmolVLAChunkClient(args.vla_endpoint),
             session_id="g1-pick-place",
-            task="pick the red block and place it in the green tray",
+            task=vla_task,
             frequency_hz=args.vla_frequency_hz,
         )
         online_renderers = {
@@ -353,6 +367,18 @@ def main() -> None:
         report["maximum_vla_joint_delta_rad"] = bridge.maximum_vla_joint_delta_rad
         report["vla_authorized_frames"] = bridge.vla_authorized_frames
         report["vla_runtime"] = coordinator.metrics.report()
+        report["vla_task"] = vla_task
+        report["vla_task_binding"] = {
+            "skill": args.vla_skill,
+            "arguments": {
+                "target": args.vla_target,
+                "destination": args.vla_destination,
+            },
+            "source": args.vla_plan_source,
+        }
+        report["vla_first_chunk_latency_ms"] = report["vla_runtime"][
+            "first_chunk_round_trip_ms"
+        ]
     if args.visualization_directory:
         render_data = mujoco.MjData(model)
         renderer = mujoco.Renderer(model, height=360, width=640)

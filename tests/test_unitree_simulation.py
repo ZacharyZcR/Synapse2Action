@@ -72,8 +72,10 @@ class UnitreeSimulationTests(unittest.TestCase):
     def test_acceptance_report_cannot_self_report_success_without_pose_evidence(self) -> None:
         with TemporaryDirectory() as directory:
             reports = Path(directory)
+            calls: list[tuple[str, ...]] = []
 
             def run(command, **kwargs):
+                calls.append(tuple(command))
                 (reports / "acceptance.json").write_text(json.dumps({"accepted": True}))
                 (reports / "g1-mujoco.json").write_text(
                     json.dumps({"final_position_error_m": 0.2, "final_yaw_error_rad": 0.0})
@@ -91,8 +93,10 @@ class UnitreeSimulationTests(unittest.TestCase):
     def test_confirmed_pick_place_uses_physical_report_evidence(self) -> None:
         with TemporaryDirectory() as directory:
             reports = Path(directory)
+            calls: list[tuple[str, ...]] = []
 
             def run(command, **kwargs):
+                calls.append(tuple(command))
                 (reports / "vla-acceptance.json").write_text(json.dumps({"accepted": True}))
                 (reports / "vla.json").write_text(json.dumps({
                     "grasped": True,
@@ -118,6 +122,10 @@ class UnitreeSimulationTests(unittest.TestCase):
 
             self.assertEqual(state, TaskState.COMPLETED)
             self.assertEqual(len(robot.executed), 1)
+            self.assertEqual(
+                calls,
+                [("runner", "red_cube", "drop_tray", "planner_action")],
+            )
 
     def test_failed_runner_keeps_physical_report_for_observability(self) -> None:
         with TemporaryDirectory() as directory:
@@ -129,7 +137,9 @@ class UnitreeSimulationTests(unittest.TestCase):
                 return subprocess.CompletedProcess(command, 1, "", "acceptance failed")
 
             robot = UnitreePickPlaceSimulationRobot(Path("runner"), reports, report_stem="vla", run=run)
-            result = robot.execute(Action("pick_and_place", {"target": "red_cube"}))
+            result = robot.execute(
+                Action("pick_and_place", {"target": "red_cube", "destination": "drop_tray"})
+            )
 
             self.assertFalse(result.success)
             self.assertEqual(robot.last_acceptance, {"accepted": False})

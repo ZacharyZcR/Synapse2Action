@@ -53,6 +53,7 @@ class LLMVLABenchmarkTests(unittest.TestCase):
         binding = {
             "skill": "pick_and_place",
             "arguments": {"target": "red_cube", "destination": "drop_tray"},
+            "source": "planner_action",
         }
         with TemporaryDirectory() as directory:
             path = write_report(
@@ -60,7 +61,11 @@ class LLMVLABenchmarkTests(unittest.TestCase):
                 {
                     "vla_task_binding": binding,
                     "vla_first_chunk_latency_ms": 900,
-                    "vla_plan_counterfactual": {"changed": True},
+                    "vla_plan_counterfactual": {
+                        "changed": True,
+                        "same_observation": True,
+                        "same_seed": True,
+                    },
                     "vla_runtime": {
                         "accepted": True,
                         "chunks_received": 3,
@@ -74,6 +79,36 @@ class LLMVLABenchmarkTests(unittest.TestCase):
         self.assertTrue(report["accepted"])
         self.assertTrue(report["metrics"]["task_binding_proven"])
         self.assertTrue(report["metrics"]["first_chunk_latency_within_coverage"])
+
+    def test_accepts_separate_counterfactual_artifact(self) -> None:
+        with TemporaryDirectory() as directory:
+            path = write_report(
+                directory,
+                {
+                    "vla_task_binding": {
+                        "skill": "pick_and_place",
+                        "arguments": {"target": "red_cube", "destination": "drop_tray"},
+                        "source": "planner_action",
+                    },
+                    "vla_first_chunk_latency_ms": 900,
+                    "vla_runtime": {
+                        "accepted": True,
+                        "chunks_received": 1,
+                        "minimum_chunk_coverage_ms": 10_000,
+                        "stale_fallbacks": 0,
+                    },
+                },
+            )
+            counterfactual = Path(directory) / "counterfactual.json"
+            counterfactual.write_text(json.dumps({
+                "changed": True,
+                "same_observation": True,
+                "same_seed": True,
+            }))
+            report = run_llm_vla_benchmark(path, counterfactual)
+
+        self.assertTrue(report["accepted"])
+        self.assertEqual(report["counterfactual_report"], str(counterfactual))
 
     def test_rejects_unrelated_report(self) -> None:
         with TemporaryDirectory() as directory:

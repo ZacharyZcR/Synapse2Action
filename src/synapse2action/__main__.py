@@ -151,6 +151,7 @@ def main() -> int:
     parser.add_argument("--planner-benchmark", type=Path)
     parser.add_argument("--eeg-planner-benchmark", type=Path)
     parser.add_argument("--llm-vla-benchmark", type=Path)
+    parser.add_argument("--llm-vla-counterfactual", type=Path)
     parser.add_argument("--planner-live-benchmark", type=Path)
     parser.add_argument("--planner-timeout-seconds", type=float, default=30.0)
     parser.add_argument("--summarize-planner-providers", type=Path, nargs="+")
@@ -437,7 +438,10 @@ def main() -> int:
             args.planner_provider_name or "mock",
         )
     elif args.llm_vla_benchmark:
-        report = run_llm_vla_benchmark(args.llm_vla_benchmark)
+        report = run_llm_vla_benchmark(
+            args.llm_vla_benchmark,
+            args.llm_vla_counterfactual,
+        )
     elif args.contract_catalog:
         report = contract_catalog()
     elif args.planner_benchmark:
