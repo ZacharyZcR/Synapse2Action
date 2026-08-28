@@ -7,6 +7,10 @@ Synapse2Action is an open-source research framework for integrating EEG-based br
 
 Synapse2Action（念动）是一个集成 EEG 脑机接口、视觉-语言-动作模型（VLA）与机器人控制的开源研究框架。项目将 EEG 视为稀疏的高层意图通道，把环境感知、任务规划与运动执行交给 AI 和机器人系统完成。
 
+Its engineering philosophy is biomimetic: EEG senses biological intent, the LLM forms synthetic cognition, VLA action chunks and local controllers form an artificial spinal system, and the Unitree robot acts as the musculoskeletal body. See [Engineering Philosophy](docs/engineering-philosophy.md).
+
+项目采用仿生工程思想：EEG 感知生物意图，LLM 形成人工认知，VLA Action Chunk 与局部 Controller 共同构成人工脊髓系统，宇树机器人承担肌肉骨骼身体。详见[工程哲学](docs/engineering-philosophy.md)。
+
 ## Vision / 项目愿景
 
 The goal is not to continuously drive every robot joint with noisy EEG signals. The goal is to build a practical shared-autonomy system in which a person can select, confirm, cancel, or stop an action while the robot completes the physical task safely.

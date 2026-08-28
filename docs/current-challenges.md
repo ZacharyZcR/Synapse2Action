@@ -94,16 +94,16 @@ No result currently establishes physical G1 safety, network timing, joint mappin
 
 ## Decisions required before more implementation / 继续实现前必须作出的决策
 
-### 1. Define the primary research claim / 明确首要研究命题
+### 1. Fix the primary engineering claim / 固定首要工程命题
 
-Choose exactly one primary claim for the next milestone:
+The project-level claim is now fixed: reconstruct the functional path from biological intent through synthetic cognition and an artificial spinal system to embodied action. The next milestone must still select one interface of that path as its primary engineering target:
 
 1. EEG reliably selects and confirms robot tasks.
 2. An LLM safely plans multi-step tasks behind the Harness.
 3. A VLA policy improves manipulation under visual variation.
 4. A whole-body controller stably executes manipulation on G1.
 
-下一阶段只能选择一个首要命题。四条同时推进会让每一层都停留在演示状态。
+项目级命题已经明确：重建从生物意图、人工认知、人工脊髓到具身行动的功能链路。下一阶段仍必须只选择其中一个接口作为首要工程目标；四条同时推进会让每一层都停留在演示状态。
 
 ### 2. Choose the control architecture / 选择控制架构
 
@@ -134,4 +134,3 @@ Single successful runs are no longer sufficient. The next controller must pass a
 Do not add another model or frontend feature yet. First write a one-page experiment thesis that selects the primary claim, then choose the matching control architecture. If G1 whole-body manipulation remains the target, the next implementation should be a reproducible controller-training and repeated-rollout evaluation project, not another end-to-end demo run.
 
 暂时不要继续增加模型或前端功能。先用一页纸确定首要研究命题，再选择与之匹配的控制架构。如果目标仍然是 G1 全身操作，那么下一项实现应该是可复现的 Controller 训练与重复 rollout 评测，而不是再运行一次端到端演示。
-
