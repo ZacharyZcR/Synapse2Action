@@ -96,12 +96,12 @@ The alternate `rtxpro-vllm/DeepSeek-V4-Flash-0731` Pi route currently returns 50
 
 ### Phase 3 — Unitree G1 Simulation / 阶段 3：宇树 G1 仿真
 
-- [ ] Implement a stable `Robot` adapter for Unitree G1 observations and bounded actions. / 为宇树 G1 的观测与受限动作实现稳定 Robot Adapter。
+- [x] Implement a stable `Robot` adapter for Unitree G1 observations and bounded actions. / 为宇树 G1 的观测与受限动作实现稳定 Robot Adapter。
 - [ ] Integrate the LeRobot Unitree G1 MuJoCo environment for task-level simulation. / 接入 LeRobot 的 Unitree G1 MuJoCo 环境进行任务级仿真。
 - [x] Use `unitree_mujoco` separately to verify SDK2 messages and low-level controller compatibility. / 单独使用 unitree_mujoco 验证 SDK2 消息和低层控制器兼容性。
 - [ ] Normalize joint naming, units, coordinate frames, timestamps, and action limits at the adapter boundary. / 在 Adapter 边界统一关节命名、单位、坐标系、时间戳与动作范围。
 - [ ] Add watchdog, stale-state detection, action clipping, timeout, and safe-stop behavior. / 加入看门狗、状态过期检测、动作裁剪、超时与安全停止。
-- [ ] Complete a scripted pick-and-place task in simulation. / 在仿真中完成固定策略抓取放置。
+- [x] Complete a scripted pick-and-place task in simulation. / 在仿真中完成固定策略抓取放置。
 
 **Exit criterion / 完成标准:** the Harness controls a simulated G1 through the same high-level interface reserved for the physical robot, while low-level safety remains outside the LLM. / Harness 通过为真机预留的同一高层接口控制仿真 G1，低层安全完全独立于 LLM。
 

@@ -64,6 +64,10 @@ class UnitreeG1Tests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "loopback"):
             UnitreeG1Sdk(interface="eth0")
 
+    def test_accepts_explicit_isolated_container_network(self) -> None:
+        sdk = UnitreeG1Sdk(interface="eth0", container_network=True)
+        self.assertEqual(sdk.interface, "eth0")
+
     def test_joint_target_limits_are_enforced(self) -> None:
         self.sdk._validate_target(G1JointTarget(1.0, 40.0, 1.0))
         with self.assertRaisesRegex(ValueError, "position"):

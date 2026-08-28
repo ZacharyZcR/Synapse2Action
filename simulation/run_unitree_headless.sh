@@ -4,7 +4,7 @@ set -euo pipefail
 project_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 report_dir="${project_dir}/reports/simulation"
 simulator_image="synapse2action-unitree:locked-v2"
-controller_image="synapse2action-unitree-controller:locked-v12"
+controller_image="synapse2action-unitree-controller:locked-v17"
 scenario="${1:-balance}"
 if [[ "${scenario}" != "balance" && "${scenario}" != "locomotion" && "${scenario}" != "obstacle" && "${scenario}" != "dynamic-obstacle" ]]; then
   echo "usage: $0 [balance|locomotion|obstacle|dynamic-obstacle [target-x-m target-y-m target-yaw-rad]]" >&2

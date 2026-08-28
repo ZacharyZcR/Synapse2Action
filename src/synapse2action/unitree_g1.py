@@ -117,12 +117,13 @@ class UnitreeG1Sdk:
         *,
         domain_id: int = 1,
         interface: str = "lo",
+        container_network: bool = False,
         max_abs_position_rad: float = 3.2,
         max_kp: float = 200.0,
         max_kd: float = 10.0,
         max_abs_torque_nm: float = 10.0,
     ) -> None:
-        if interface != "lo":
+        if interface != "lo" and not container_network:
             raise ValueError("simulation adapter requires the loopback interface 'lo'")
         self.domain_id = domain_id
         self.interface = interface

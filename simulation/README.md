@@ -71,6 +71,27 @@ The collision box enters the route after motion starts. Its SDK2 range reading
 triggers the controller's online detour; no obstacle position is supplied to
 the controller beforehand.
 
+Run the scripted G1 pick-and-place acceptance:
+
+```bash
+./simulation/run_unitree_pick_place.sh
+```
+
+The official velocity policy continues to balance the lower body while a
+bounded trajectory overrides the waist and arm joint targets. The 29-DOF model
+has rubber hands rather than actuated fingers, so the scene activates a MuJoCo
+weld only after both wrists reach the object. Acceptance requires a physical
+grasp, at least 10 cm of measured lift, transport, release into the collision
+tray, and an unsupported standing G1. Object position is never teleported.
+
+Run the same task through selection and confirmation in the Harness:
+
+```bash
+PYTHONPATH=src python3 simulation/run_harness_unitree.py \
+  --task pick-place --destination red_cube \
+  --output reports/simulation/harness-unitree-pick-place.json
+```
+
 On an Ubuntu machine with a working Python development toolchain, prepare the
 official sources and Python dependencies:
 

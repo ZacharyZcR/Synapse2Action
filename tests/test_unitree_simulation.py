@@ -6,14 +6,17 @@ import subprocess
 from tempfile import TemporaryDirectory
 import unittest
 
-from synapse2action.components import ScriptedPolicy
+from synapse2action.components import MockPlanner, ScriptedPolicy
 from synapse2action.contracts import Action, Intent, IntentKind, TaskState
 from synapse2action.harness import Harness
 from synapse2action.navigation import Pose2D
 from synapse2action.unitree_simulation import (
     NavigateToPlanner,
+    UnitreePickPlaceSimulationRobot,
+    UnitreePickPlaceVerifier,
     UnitreeSimulationRobot,
     UnitreeSimulationVerifier,
+    unitree_pick_place_skill_registry,
 )
 
 
@@ -84,6 +87,36 @@ class UnitreeSimulationTests(unittest.TestCase):
 
             self.assertTrue(result.success)
             self.assertFalse(UnitreeSimulationVerifier(robot).verify(result))
+
+    def test_confirmed_pick_place_uses_physical_report_evidence(self) -> None:
+        with TemporaryDirectory() as directory:
+            reports = Path(directory)
+
+            def run(command, **kwargs):
+                (reports / "g1-pick-place-acceptance.json").write_text(json.dumps({"accepted": True}))
+                (reports / "g1-pick-place.json").write_text(json.dumps({
+                    "grasped": True,
+                    "released": True,
+                    "initial_object_position_xyz_m": [0.15, 0.0, 0.68],
+                    "maximum_object_height_m": 0.81,
+                    "final_drop_zone_error_m": 0.08,
+                    "minimum_base_height_m": 0.78,
+                }))
+                return subprocess.CompletedProcess(command, 0, "", "")
+
+            robot = UnitreePickPlaceSimulationRobot(Path("runner"), reports, run=run)
+            harness = Harness(
+                MockPlanner(arguments={"target": "red_cube", "destination": "drop_tray"}),
+                robot,
+                UnitreePickPlaceVerifier(robot),
+                skills=unitree_pick_place_skill_registry(),
+            )
+            harness.handle(Intent(IntentKind.SELECT, "red_cube"))
+
+            state = harness.handle(Intent(IntentKind.CONFIRM))
+
+            self.assertEqual(state, TaskState.COMPLETED)
+            self.assertEqual(len(robot.executed), 1)
 
 
 if __name__ == "__main__":
