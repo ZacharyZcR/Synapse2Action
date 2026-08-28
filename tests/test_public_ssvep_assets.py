@@ -31,6 +31,9 @@ class PublicSSVEPAssetsTests(unittest.TestCase):
         self.assertIn("--task pick-place", runner)
         self.assertIn("--decoded-intents", runner)
         self.assertIn("public EEG did not decode the execution authorization sequence", harness)
+        self.assertIn('choices=("mock", "live")', harness)
+        self.assertIn("OpenAICompatiblePlanner", harness)
+        self.assertIn('"intelligence_stages"', harness)
 
 
 if __name__ == "__main__":

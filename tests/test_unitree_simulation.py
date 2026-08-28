@@ -100,6 +100,7 @@ class UnitreeSimulationTests(unittest.TestCase):
                     "initial_object_position_xyz_m": [0.15, 0.0, 0.68],
                     "maximum_object_height_m": 0.81,
                     "final_drop_zone_error_m": 0.08,
+                    "final_object_center_in_drop_zone": True,
                     "minimum_base_height_m": 0.78,
                 }))
                 return subprocess.CompletedProcess(command, 0, "", "")

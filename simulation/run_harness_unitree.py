@@ -3,11 +3,15 @@ from __future__ import annotations
 import argparse
 from dataclasses import asdict
 import json
+import os
 from pathlib import Path
+from time import perf_counter_ns
+from typing import Any
 
 from synapse2action.components import MockPlanner, ScriptedPolicy
-from synapse2action.contracts import Intent, IntentKind, TaskState
+from synapse2action.contracts import Action, Intent, IntentKind, Planner, TaskState
 from synapse2action.harness import Harness
+from synapse2action.llm_planner import OpenAICompatiblePlanner
 from synapse2action.navigation import Pose2D
 from synapse2action.unitree_simulation import (
     NavigateToPlanner,
@@ -17,6 +21,28 @@ from synapse2action.unitree_simulation import (
     UnitreeSimulationVerifier,
     unitree_pick_place_skill_registry,
 )
+
+
+class ObservablePlanner:
+    def __init__(self, planner: Planner, metadata: dict[str, Any]) -> None:
+        self.planner = planner
+        self.report = {**metadata, "status": "not_run", "latency_ms": None, "input": None, "output": None}
+
+    def plan(self, target: str) -> Action:
+        self.report["input"] = {"target": target}
+        started = perf_counter_ns()
+        try:
+            action = self.planner.plan(target)
+        except Exception as exc:
+            self.report.update(status="failed", error=type(exc).__name__)
+            raise
+        finally:
+            self.report["latency_ms"] = round((perf_counter_ns() - started) / 1_000_000, 3)
+        self.report.update(
+            status="completed",
+            output={"skill": action.skill, "arguments": dict(action.arguments)},
+        )
+        return action
 
 
 def decoded_execution_intents(path: Path | None) -> tuple[IntentKind, IntentKind]:
@@ -42,10 +68,41 @@ def main() -> int:
     parser.add_argument("--target-y", type=float, default=0.0)
     parser.add_argument("--target-yaw", type=float, default=0.0)
     parser.add_argument("--decoded-intents", type=Path)
+    parser.add_argument("--planner", choices=("mock", "live"), default="mock")
+    parser.add_argument("--planner-base-url")
+    parser.add_argument("--planner-model")
+    parser.add_argument("--planner-provider", default="unspecified")
+    parser.add_argument("--planner-output-mode", choices=("json-schema", "prompt-json"), default="prompt-json")
+    parser.add_argument("--planner-api-key-env", default="OPENAI_API_KEY")
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
+    if args.planner == "live" and (not args.planner_base_url or not args.planner_model):
+        parser.error("--planner live requires --planner-base-url and --planner-model")
 
     project = Path(__file__).resolve().parents[1]
+    if args.planner == "live":
+        active_planner: Planner = OpenAICompatiblePlanner(
+            args.planner_base_url,
+            args.planner_model,
+            destination="drop_tray",
+            api_key=os.getenv(args.planner_api_key_env),
+            output_mode=args.planner_output_mode,
+        )
+        planner_metadata = {
+            "component": "OpenAICompatiblePlanner",
+            "mode": "live",
+            "provider": args.planner_provider,
+            "model": args.planner_model,
+        }
+    else:
+        active_planner = MockPlanner(arguments={"target": args.destination, "destination": "drop_tray"})
+        planner_metadata = {
+            "component": "MockPlanner",
+            "mode": "mock",
+            "provider": None,
+            "model": None,
+        }
+    observable_planner = ObservablePlanner(active_planner, planner_metadata)
     if args.task == "pick-place":
         smolvla = args.policy == "smolvla"
         robot = UnitreePickPlaceSimulationRobot(
@@ -57,7 +114,7 @@ def main() -> int:
             report_stem="g1-smolvla-closed-loop" if smolvla else "g1-pick-place",
         )
         harness = Harness(
-            MockPlanner(arguments={"target": args.destination, "destination": "drop_tray"}),
+            observable_planner,
             robot,
             UnitreePickPlaceVerifier(robot),
             skills=unitree_pick_place_skill_registry(timeout_ms=120_000 if smolvla else 30_000),
@@ -83,10 +140,51 @@ def main() -> int:
         "destination": args.destination,
         "intent_source": str(args.decoded_intents) if args.decoded_intents else "scripted",
         "policy": args.policy,
+        "planner": observable_planner.report,
         "trace": [asdict(record) for record in harness.trace],
         "unitree_acceptance": robot.last_acceptance,
         "unitree_simulator": robot.last_simulator_report,
     }
+    simulator = robot.last_simulator_report or {}
+    report["intelligence_stages"] = [
+        {
+            "id": "intent",
+            "mode": "synthetic" if args.decoded_intents else "scripted",
+            "status": "completed",
+            "input": str(args.decoded_intents) if args.decoded_intents else "scripted select + confirm",
+            "output": f"select({args.destination}) + confirm",
+        },
+        {"id": "llm_planner", **observable_planner.report},
+        {
+            "id": "vla",
+            "mode": "live" if args.policy == "smolvla" else "scripted",
+            "status": "completed" if simulator.get("vla_runtime") else "not_used",
+            "input": "3 camera frames + 29-DoF joint state + task text" if args.policy == "smolvla" else None,
+            "output": f"{simulator.get('vla_runtime', {}).get('chunks_received', 0)} action chunks",
+            "role": "typed-skill authorization" if args.policy == "smolvla" else "scripted policy",
+        },
+        {
+            "id": "skill_executor",
+            "mode": "deterministic",
+            "status": "completed" if harness.state is TaskState.COMPLETED else "failed",
+            "input": "pick_and_place(red_cube, drop_tray)",
+            "output": "validated C++ manipulation targets",
+        },
+        {
+            "id": "motion_control",
+            "mode": "real_sdk",
+            "status": "completed" if simulator.get("sdk2_lowcmd_frames", 0) else "failed",
+            "input": "behavior targets + proprioception",
+            "output": f"{simulator.get('sdk2_lowcmd_frames', 0)} SDK2 LowCmd frames",
+        },
+        {
+            "id": "physical_verification",
+            "mode": "measured",
+            "status": "completed" if harness.state is TaskState.COMPLETED else "failed",
+            "input": "MuJoCo robot and object state",
+            "output": "standing + grasp + lift + release + drop-zone checks",
+        },
+    ]
     if isinstance(robot, UnitreeSimulationRobot):
         report["target_pose"] = asdict(robot.destinations[args.destination])
     rendered = json.dumps(report, indent=2, sort_keys=True) + "\n"

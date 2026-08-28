@@ -197,6 +197,20 @@ The final command produces a standalone, offline HTML evidence console at `repor
 
 最后一条命令会在 `reports/simulation/synapse2action-dashboard.html` 生成可离线打开的单文件证据控制台。页面嵌入真实 MuJoCo 相机关键帧，并统一展示 EEG 回放、Harness 事件、VLA 时延、控制权归属、物理验收和留出集指标，不依赖外部网页资源。
 
+The G1 Harness defaults to `MockPlanner`. A real OpenAI-compatible LLM is opt-in and records provider, model, latency, structured input/output, and stage provenance in the report. The dashboard renders six explicit stages—intent, LLM planning, VLA, skill execution, motion control, and physical verification—and remains renderable for failed runs or missing camera frames.
+
+G1 Harness 默认使用 `MockPlanner`。真实 OpenAI-compatible LLM 必须显式启用，并在报告中记录 Provider、模型、耗时、结构化输入输出和阶段来源。控制台明确展示意图、LLM 规划、VLA、技能执行、运动控制和物理验证六个阶段；即使运行失败或没有相机帧，也能显示失败证据。
+
+```bash
+S2A_PLANNER_API_KEY=... PYTHONPATH=src python3 simulation/run_harness_unitree.py \
+  --task pick-place --policy smolvla --destination red_cube \
+  --decoded-intents reports/eeg/live-eeg-lsl.json \
+  --planner live --planner-provider your-provider \
+  --planner-base-url http://your-openai-compatible-endpoint/v1 \
+  --planner-model your-model --planner-api-key-env S2A_PLANNER_API_KEY \
+  --output reports/simulation/harness-live-eeg-smolvla-g1.json
+```
+
 The accepted local run used decoded `select` and `confirm` intents from the BrainFlow/LSL synthetic-live report, received three real SmolVLA chunks, measured maximum end-to-end chunk latency of 10.17 seconds against 16.67 seconds of coverage, recorded zero stale fallbacks, and independently passed standing, grasp, lift, release, and drop-zone checks. The bridge recorded 16,265 VLA-authorized frames and zero generative joint-overlay frames. These numbers describe the current CPU/Docker host and are not physical-G1 performance claims.
 
 本地验收使用 BrainFlow/LSL 合成实时报告解码出的 `select` 与 `confirm` 意图，实际接收 3 个 SmolVLA chunk，最大端到端 chunk 时延为 10.17 秒，低于 16.67 秒覆盖窗口；stale fallback 为 0，并独立通过站立、抓取、抬升、释放和落盘检查。Bridge 记录 16,265 个 VLA 授权帧、0 个生成式关节覆盖帧。该数据仅描述当前 CPU/Docker 主机，不代表 G1 真机性能。

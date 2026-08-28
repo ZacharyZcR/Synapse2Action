@@ -24,6 +24,15 @@ class VisualizationTests(unittest.TestCase):
                     "accepted": True,
                     "final_state": "completed",
                     "trace": [{"event": "result", "state": "completed", "detail": "accepted"}],
+                    "intelligence_stages": [
+                        {
+                            "id": "llm_planner",
+                            "mode": "live",
+                            "input": {"target": "red_cube"},
+                            "output": {"skill": "pick_and_place"},
+                            "latency_ms": 123.4,
+                        }
+                    ],
                 },
                 "acceptance": {
                     "runtime": {
@@ -60,6 +69,9 @@ class VisualizationTests(unittest.TestCase):
         self.assertIn("navigator.language", html)
         self.assertIn("s2a-language", html)
         self.assertIn('id="language"', html)
+        self.assertIn("Intelligence pipeline stages", html)
+        self.assertIn("智能链路阶段", html)
+        self.assertIn("Every stage exposes provenance and evidence", html)
         self.assertIn("prefers-reduced-motion", html)
         self.assertIn('class="skip"', html)
         self.assertNotIn("https://", html)

@@ -177,7 +177,7 @@ class UnitreePickPlaceVerifier:
             and report.get("grasped") is True
             and report.get("released") is True
             and float(report.get("maximum_object_height_m", 0)) - float(initial[2]) >= 0.10
-            and float(report.get("final_drop_zone_error_m", 99)) <= 0.15
+            and report.get("final_object_center_in_drop_zone") is True
             and float(report.get("minimum_base_height_m", 0)) >= 0.65
         )
 

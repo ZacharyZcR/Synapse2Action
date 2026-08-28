@@ -22,12 +22,9 @@ def main() -> None:
     args = parser.parse_args()
 
     harness = load_json(args.harness)
-    simulator = harness["unitree_simulator"]
-    if not harness["accepted"] or not simulator.get("visualization_frames"):
-        parser.error("the harness report must be accepted and contain visualization frames")
-
+    simulator = harness.get("unitree_simulator") or {}
     frames = []
-    for frame in simulator["visualization_frames"]:
+    for frame in simulator.get("visualization_frames", []):
         image_path = args.harness.parent / frame["file"]
         encoded = base64.b64encode(image_path.read_bytes()).decode("ascii")
         frames.append({"stage": frame["stage"], "data": f"data:image/png;base64,{encoded}"})
@@ -37,8 +34,16 @@ def main() -> None:
             "accepted": harness["accepted"],
             "final_state": harness["final_state"],
             "trace": harness["trace"],
+            "intelligence_stages": harness.get("intelligence_stages", []),
         },
-        "acceptance": harness["unitree_acceptance"],
+        "acceptance": harness.get("unitree_acceptance") or {
+            "runtime": {
+                "maximum_round_trip_ms": 0,
+                "minimum_chunk_coverage_ms": 0,
+                "stale_fallbacks": 0,
+                "chunks_received": 0,
+            }
+        },
         "simulator": simulator,
         "eeg": load_json(args.eeg),
         "training": load_json(args.training),
@@ -46,7 +51,7 @@ def main() -> None:
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(render_g1_dashboard_html(dashboard))
-    print(json.dumps({"accepted": True, "frames": len(frames), "output": str(args.output)}))
+    print(json.dumps({"accepted": harness["accepted"], "frames": len(frames), "output": str(args.output)}))
 
 
 if __name__ == "__main__":
