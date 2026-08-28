@@ -22,56 +22,26 @@ G1_MANIPULATION_LIMITS_RAD = (
     (-1.0472, 2.0944),
 )
 
-_PICK_PLACE_STAND = (0.0, 0.0, 0.25, 0.0, 0.97, 0.0, -0.25, 0.0, 0.97)
-_PICK_PLACE_GRASP = (0.0, -0.36445, -0.02471, 0.78152, 1.45247, -0.36455, 0.02455, -0.78133, 1.45280)
-_PICK_PLACE_LIFT = (0.0, 0.17811, 0.46812, -0.37733, -0.36836, 0.17808, -0.46815, 0.37730, -0.36835)
-_PICK_PLACE_TRANSPORT = (0.0, -0.21138, 0.44107, 0.14765, 0.97303, 0.17808, -0.46815, 0.37730, -0.36835)
-
-
-class G1PickPlaceBehaviorExecutor:
-    """Execute the validated joint path while a VLA chunk authorizes the skill."""
-
-    def __init__(self) -> None:
-        self._path = tuple(_pick_place_pose(index / 10.0) for index in range(161))
-        self._phase = 0
-
-    @property
-    def phase(self) -> int:
-        return self._phase
-
-    def project(self, action_rad: Sequence[float]) -> tuple[float, ...]:
-        action = _action(action_rad, "VLA action")
-        result = list(action)
-        for joint, target in zip(G1_MANIPULATION_JOINTS, self._path[self._phase], strict=True):
-            result[joint] = target
-        self._phase = min(self._phase + 1, len(self._path) - 1)
-        return tuple(result)
-
-
-def _pick_place_pose(seconds: float) -> tuple[float, ...]:
-    if seconds < 5.0:
-        return _interpolate(_PICK_PLACE_STAND, _PICK_PLACE_GRASP, (seconds - 1.0) / 4.0)
-    if seconds < 9.0:
-        return _interpolate(_PICK_PLACE_GRASP, _PICK_PLACE_LIFT, (seconds - 5.0) / 4.0)
-    if seconds < 12.0:
-        return _interpolate(_PICK_PLACE_LIFT, _PICK_PLACE_TRANSPORT, (seconds - 9.0) / 3.0)
-    return _interpolate(_PICK_PLACE_TRANSPORT, _PICK_PLACE_STAND, (seconds - 12.0) / 4.0)
-
-
-def _interpolate(start: Sequence[float], end: Sequence[float], ratio: float) -> tuple[float, ...]:
-    ratio = min(max(ratio, 0.0), 1.0)
-    ratio = ratio * ratio * (3.0 - 2.0 * ratio)
-    return tuple(left + (right - left) * ratio for left, right in zip(start, end, strict=True))
-
-
 class G1VLAActionProjector:
-    """Overlay bounded VLA manipulation targets on an RL whole-body command."""
+    """Blend bounded VLA residuals into an RL/behavior whole-body command."""
 
-    def __init__(self, *, frequency_hz: float = 10.0, maximum_speed_rad_s: float = 2.0) -> None:
-        if frequency_hz <= 0 or maximum_speed_rad_s <= 0:
-            raise ValueError("frequency and maximum speed must be positive")
+    def __init__(
+        self,
+        *,
+        frequency_hz: float = 10.0,
+        maximum_speed_rad_s: float = 2.0,
+        blend_weight: float = 0.1,
+        maximum_residual_rad: float = 0.05,
+    ) -> None:
+        if frequency_hz <= 0 or maximum_speed_rad_s <= 0 or maximum_residual_rad <= 0:
+            raise ValueError("frequency, speed, and residual limit must be positive")
+        if not 0 < blend_weight <= 1:
+            raise ValueError("blend weight must be in (0, 1]")
         self.maximum_delta_rad = maximum_speed_rad_s / frequency_hz
+        self.blend_weight = blend_weight
+        self.maximum_residual_rad = maximum_residual_rad
         self._previous: tuple[float, ...] | None = None
+        self.last_contribution_rad = 0.0
 
     def reset(self, joint_position_rad: Sequence[float]) -> None:
         self._previous = _action(joint_position_rad, "joint position")
@@ -85,11 +55,18 @@ class G1VLAActionProjector:
         predicted = _action(vla_action_rad, "VLA action")
         previous = self._previous or base
         result = list(base)
+        contribution = 0.0
         for joint, limits in zip(G1_MANIPULATION_JOINTS, G1_MANIPULATION_LIMITS_RAD, strict=True):
-            target = min(max(predicted[joint], limits[0]), limits[1])
+            residual = self.blend_weight * (predicted[joint] - base[joint])
+            residual = min(max(residual, -self.maximum_residual_rad), self.maximum_residual_rad)
+            target = min(max(base[joint] + residual, limits[0]), limits[1])
             target = min(max(target, previous[joint] - self.maximum_delta_rad), previous[joint] + self.maximum_delta_rad)
+            baseline = min(max(base[joint], limits[0]), limits[1])
+            baseline = min(max(baseline, previous[joint] - self.maximum_delta_rad), previous[joint] + self.maximum_delta_rad)
+            contribution = max(contribution, abs(target - baseline))
             result[joint] = target
         self._previous = tuple(result)
+        self.last_contribution_rad = contribution
         return self._previous
 
 
@@ -106,6 +83,7 @@ def make_g1_vla_bridge(
     base_bridge: type,
     *,
     action_frequency_hz: float = 10.0,
+    control_frequency_hz: float = 500.0,
     stale_after_s: float = 7.0,
     apply_vla_targets: bool = True,
 ) -> type:
@@ -113,7 +91,7 @@ def make_g1_vla_bridge(
 
     class G1VLAUnitreeBridge(base_bridge):
         def __init__(self, *args: object, **kwargs: object) -> None:
-            self._vla_projector = G1VLAActionProjector()
+            self._vla_projector = G1VLAActionProjector(frequency_hz=control_frequency_hz)
             self._vla_action: tuple[float, ...] | None = None
             self._vla_chunks = G1ActionChunkPlayer(
                 frequency_hz=action_frequency_hz,
@@ -121,6 +99,7 @@ def make_g1_vla_bridge(
             )
             self._vla_lock = Lock()
             self.vla_overlay_frames = 0
+            self.maximum_vla_joint_delta_rad = 0.0
             self.vla_authorized_frames = 0
             self.vla_stale_fallbacks = 0
             self._vla_was_active = False
@@ -171,7 +150,10 @@ def make_g1_vla_bridge(
                     return super().LowCmdHandler(message)
                 rl_command = tuple(float(message.motor_cmd[i].q) for i in range(self.num_motor))
                 target = self._vla_projector.project(rl_command, action)
-                self.vla_overlay_frames += 1
+                contribution = self._vla_projector.last_contribution_rad
+                if contribution > 1e-6:
+                    self.vla_overlay_frames += 1
+                    self.maximum_vla_joint_delta_rad = max(self.maximum_vla_joint_delta_rad, contribution)
             for index in range(self.num_motor):
                 motor = message.motor_cmd[index]
                 self.mj_data.ctrl[index] = (

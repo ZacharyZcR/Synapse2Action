@@ -15,7 +15,9 @@ def main() -> None:
     functional_checks = {
         "sdk2_commands": simulator["sdk2_lowcmd_frames"] >= 1000,
         "vla_chunks": runtime["chunks_received"] >= 2,
-        "vla_reached_bridge": simulator.get("vla_authorized_frames", simulator["vla_overlay_frames"]) > 0,
+        "vla_reached_bridge": simulator.get("vla_authorized_frames", 0) > 0,
+        "vla_changed_joint_targets": simulator.get("vla_overlay_frames", 0) > 0
+        and simulator.get("maximum_vla_joint_delta_rad", 0.0) > 1e-6,
         "object_grasped": simulator["grasped"],
         "object_lifted": simulator["maximum_object_height_m"] - simulator["initial_object_position_xyz_m"][2] >= 0.10,
         "object_released": simulator["released"],

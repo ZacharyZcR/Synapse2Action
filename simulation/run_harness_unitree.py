@@ -182,7 +182,7 @@ def main() -> int:
             "status": "completed" if simulator.get("vla_runtime") else "not_used",
             "input": "3 camera frames + 29-DoF joint state + task text" if args.policy == "smolvla" else None,
             "output": f"{simulator.get('vla_runtime', {}).get('chunks_received', 0)} action chunks",
-            "role": "typed-skill authorization" if args.policy == "smolvla" else "scripted policy",
+            "role": "bounded manipulation-joint action chunks" if args.policy == "smolvla" else "scripted policy",
         },
         {
             "id": "skill_executor",
@@ -195,7 +195,7 @@ def main() -> int:
             "id": "motion_control",
             "mode": "real_sdk",
             "status": "completed" if simulator.get("sdk2_lowcmd_frames", 0) else "failed",
-            "input": "behavior targets + proprioception",
+            "input": "bounded VLA manipulation targets + RL whole-body command + proprioception",
             "output": f"{simulator.get('sdk2_lowcmd_frames', 0)} SDK2 LowCmd frames",
         },
         {

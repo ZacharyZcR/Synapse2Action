@@ -14,7 +14,7 @@ import zlib
 import mujoco
 import numpy as np
 
-from synapse2action.g1_vla import G1PickPlaceBehaviorExecutor, make_g1_vla_bridge
+from synapse2action.g1_vla import make_g1_vla_bridge
 from synapse2action.unitree_g1 import G1_FIX_STAND_POSITION_RAD
 from synapse2action.vla_chunk import G1ChunkCoordinator, SmolVLAChunkClient
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize, ChannelSubscriber
@@ -55,7 +55,6 @@ def main() -> None:
     parser.add_argument("--vla-block-on-refresh", action="store_true")
     parser.add_argument("--vla-typed-skill-passthrough", action="store_true")
     parser.add_argument("--vla-frequency-hz", type=float, default=10.0)
-    parser.add_argument("--behavior-frequency-hz", type=float, default=10.0)
     parser.add_argument("--vla-stale-after-seconds", type=float, default=7.0)
     parser.add_argument("--vla-refresh-lookahead-actions", type=int, default=5)
     parser.add_argument("--release-timeout-seconds", type=float, default=20.0)
@@ -63,8 +62,8 @@ def main() -> None:
     parser.add_argument("--episode-output", type=Path)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
-    if args.vla_frequency_hz <= 0 or args.behavior_frequency_hz <= 0:
-        parser.error("VLA and behavior frequencies must be positive")
+    if args.vla_frequency_hz <= 0:
+        parser.error("VLA frequency must be positive")
 
     source = args.unitree_mujoco / "unitree_robots" / "g1" / "scene.xml"
     additions = """
@@ -106,11 +105,7 @@ def main() -> None:
     bridge_class = (
         make_g1_vla_bridge(
             UnitreeSdk2Bridge,
-            action_frequency_hz=(
-                args.vla_frequency_hz
-                if args.vla_typed_skill_passthrough
-                else args.behavior_frequency_hz
-            ),
+            action_frequency_hz=args.vla_frequency_hz,
             stale_after_s=args.vla_stale_after_seconds,
             apply_vla_targets=not args.vla_typed_skill_passthrough,
         )
@@ -121,7 +116,6 @@ def main() -> None:
     bridge.low_state.mode_machine = 5
     coordinator = None
     online_renderers = None
-    behavior = None
     if args.vla_endpoint:
         coordinator = G1ChunkCoordinator(
             SmolVLAChunkClient(args.vla_endpoint),
@@ -133,8 +127,6 @@ def main() -> None:
             name: mujoco.Renderer(model, height=256, width=256)
             for name in ("camera1", "camera2", "camera3")
         }
-        if not args.vla_typed_skill_passthrough:
-            behavior = G1PickPlaceBehaviorExecutor()
 
     first_command = Event()
     command_count = 0
@@ -174,29 +166,7 @@ def main() -> None:
         )
 
     def adapt_chunk(chunk):
-        if behavior is None:
-            return chunk
-        action_count = round(
-            len(chunk.actions) * args.behavior_frequency_hz / args.vla_frequency_hz
-        )
-        if action_count < 1:
-            raise ValueError("VLA chunk must cover at least one behavior action")
-        source_actions = (
-            chunk.actions[
-                min(
-                    int(index * args.vla_frequency_hz / args.behavior_frequency_hz),
-                    len(chunk.actions) - 1,
-                )
-            ]
-            for index in range(action_count)
-        )
-        return type(chunk)(
-            chunk.session_id,
-            chunk.sequence,
-            tuple(behavior.project(action) for action in source_actions),
-            chunk.inference_ms,
-            chunk.round_trip_ms,
-        )
+        return chunk
 
     def wait_for_chunk() -> None:
         inference_deadline = monotonic() + 30.0
@@ -380,6 +350,7 @@ def main() -> None:
     }
     if coordinator is not None:
         report["vla_overlay_frames"] = bridge.vla_overlay_frames
+        report["maximum_vla_joint_delta_rad"] = bridge.maximum_vla_joint_delta_rad
         report["vla_authorized_frames"] = bridge.vla_authorized_frames
         report["vla_runtime"] = coordinator.metrics.report()
     if args.visualization_directory:

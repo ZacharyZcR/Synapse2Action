@@ -176,13 +176,13 @@ Synapse2Action 面向科研、教学与有人监督的原型验证，不属于�
 
 The project now has accepted Unitree G1 navigation, scripted manipulation, and SmolVLA-authorized manipulation paths through the official SDK2, RL controller, and MuJoCo bridge. The official LeRobot 0.6.1 pipeline trains SmolVLA on five independently simulated episodes and evaluates a held-out episode before deployment. A confirmation-gated Harness run completes `select → confirm → plan → policy → execute → verify`; measured robot and object state independently determines success. Live synthetic BrainFlow/LSL input also reaches the same simulation boundary. Physical EEG acquisition, human-subject metrics, physical G1 integration, and safety certification are not yet claimed.
 
-项目目前已通过官方 SDK2、RL Controller 与 MuJoCo Bridge 验收 Unitree G1 导航、固定策略抓放和 SmolVLA 授权抓放链路。官方 LeRobot 0.6.1 管线使用五条独立仿真 episode 训练 SmolVLA，并在部署前评估完全留出的 episode。确认门控 Harness 已跑通 `选择 → 确认 → 规划 → 策略 → 执行 → 验证`，成功状态由机器人与物体实测状态独立判定。BrainFlow/LSL 合成实时输入也已抵达同一仿真边界。真实 EEG 采集、受试者指标、G1 真机接入和安全认证仍未完成。
+项目目前已通过官方 SDK2、RL Controller 与 MuJoCo Bridge 验收 Unitree G1 导航、固定策略抓放和 SmolVLA 受限残差动作抓放链路。官方 LeRobot 0.6.1 管线使用五条独立仿真 episode 训练 SmolVLA，并在部署前评估完全留出的 episode。确认门控 Harness 已跑通 `选择 → 确认 → 规划 → 策略 → 执行 → 验证`，成功状态由机器人与物体实测状态独立判定。BrainFlow/LSL 合成实时输入也已抵达同一仿真边界。真实 EEG 采集、受试者指标、G1 真机接入和安全认证仍未完成。
 
 ### SmolVLA G1 closed loop / SmolVLA G1 闭环
 
-SmolVLA is not allowed to write motor torques, joint targets, or DDS commands directly. The CPU deployment profile treats its 50-action chunk as a 3 Hz, 16.67-second typed-skill authorization window. The validated C++ pick-and-place behavior inside the Unitree controller generates manipulation targets, the official RL policy retains balance control, and the SDK2 MuJoCo bridge alone applies low-level commands. VLA authorization is established before the behavior clock starts; subsequent chunks are inferred concurrently and buffered.
+SmolVLA does not write motor torques or DDS commands directly. Its 50-action chunk runs at 3 Hz and contributes bounded residual joint targets for the waist and both arms at the SDK2 bridge boundary. The validated C++ pick-and-place behavior remains the baseline trajectory, while a 500 Hz projector blends 10% of the VLA deviation, limits the residual to 0.05 rad, enforces joint limits and slew rate, and leaves all other joints under the official RL policy. Subsequent chunks are inferred concurrently and buffered.
 
-SmolVLA 不直接写入力矩、关节目标或 DDS 指令。纯 CPU 部署将其 50-action chunk 作为 3Hz、覆盖 16.67 秒的类型化技能授权窗口；Unitree Controller 内已验证的 C++ 抓放 Behavior 生成操作目标，官方 RL Policy 继续负责平衡，只有 SDK2 MuJoCo Bridge 能施加低层命令。VLA 授权建立后行为时钟才启动，后续 chunk 会并发推理并缓冲。
+SmolVLA 不直接写入力矩或 DDS 指令。其 50-action chunk 以 3Hz 运行，并在 SDK2 Bridge 边界为腰部和双臂贡献受限关节目标残差。经过验证的 C++ 抓放 Behavior 保留为基线轨迹；500Hz 投影器混入 10% 的 VLA 偏差，将残差限制在 0.05rad，并执行关节范围和变化率约束。其余关节仍完全归官方 RL Policy 控制，后续 chunk 会并发推理并缓冲。
 
 ```bash
 ./simulation/run_smolvla_g1_suite_train.sh
@@ -221,9 +221,9 @@ S2A_PLANNER_API_KEY=... PYTHONPATH=src python3 simulation/run_harness_unitree.py
   --output reports/simulation/harness-live-eeg-smolvla-g1.json
 ```
 
-The accepted local run used decoded `select` and `confirm` intents from the BrainFlow/LSL synthetic-live report, received three real SmolVLA chunks, measured maximum end-to-end chunk latency of 10.17 seconds against 16.67 seconds of coverage, recorded zero stale fallbacks, and independently passed standing, grasp, lift, release, and drop-zone checks. The bridge recorded 16,265 VLA-authorized frames and zero generative joint-overlay frames. These numbers describe the current CPU/Docker host and are not physical-G1 performance claims.
+The accepted local action-control run received three real SmolVLA chunks, measured maximum end-to-end chunk latency of 10.62 seconds against 16.67 seconds of coverage, and recorded zero stale fallbacks. The bridge measured 17,392 frames with a non-zero counterfactual VLA contribution and a maximum 0.008 rad joint-target difference. Independent MuJoCo checks passed standing, grasp, lift, release, and drop-zone placement. These numbers describe the current CPU/Docker host and are not physical-G1 performance claims.
 
-本地验收使用 BrainFlow/LSL 合成实时报告解码出的 `select` 与 `confirm` 意图，实际接收 3 个 SmolVLA chunk，最大端到端 chunk 时延为 10.17 秒，低于 16.67 秒覆盖窗口；stale fallback 为 0，并独立通过站立、抓取、抬升、释放和落盘检查。Bridge 记录 16,265 个 VLA 授权帧、0 个生成式关节覆盖帧。该数据仅描述当前 CPU/Docker 主机，不代表 G1 真机性能。
+本地动作控制验收实际接收 3 个 SmolVLA chunk，最大端到端 chunk 时延为 10.62 秒，低于 16.67 秒覆盖窗口，stale fallback 为 0。Bridge 测得 17,392 个具有非零 VLA 反事实贡献的控制帧，最大关节目标差为 0.008rad；MuJoCo 独立通过站立、抓取、抬升、释放和落盘检查。该数据仅描述当前 CPU/Docker 主机，不代表 G1 真机性能。
 
 ## Development / 开发
 

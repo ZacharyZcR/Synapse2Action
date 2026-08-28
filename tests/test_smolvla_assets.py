@@ -79,11 +79,12 @@ class SmolVLAAssetsTests(unittest.TestCase):
         self.assertIn("smolvla_g1_chunk_server.py", runner)
         self.assertIn("unitree-controller:locked-v19", runner)
         self.assertIn("S2A_MANIPULATION_START_DELAY_SECONDS=12", runner)
-        self.assertIn("--vla-typed-skill-passthrough", runner)
+        self.assertNotIn("--vla-typed-skill-passthrough", runner)
         self.assertIn("--vla-endpoint", runner)
         self.assertIn("--visualization-directory", runner)
         self.assertIn('"functional_accepted"', validator)
         self.assertIn('"realtime_accepted"', validator)
+        self.assertIn('"vla_changed_joint_targets"', validator)
 
 
 if __name__ == "__main__":
