@@ -94,3 +94,9 @@ The online acceptance keeps three boundaries separate: SmolVLA provides 3 Hz act
 Authoritative local artifacts are `reports/training/smolvla-g1-suite-heldout.json`, `reports/simulation/g1-smolvla-closed-loop-acceptance.json`, and `reports/simulation/harness-live-eeg-smolvla-g1.json`. Reports are generated artifacts and are intentionally not treated as portable physical-hardware evidence.
 
 本地权威产物为 `reports/training/smolvla-g1-suite-heldout.json`、`reports/simulation/g1-smolvla-closed-loop-acceptance.json` 和 `reports/simulation/harness-live-eeg-smolvla-g1.json`。这些报告属于生成产物，不能当作可迁移到真机的证据。
+
+## Public EEG decoding / 公开 EEG 解析
+
+`simulation/run_public_ssvep.sh` reads PhysioNet MAMEM experiment 3 through WFDB and keeps subjects 001/002 for training, 003 for threshold calibration, and 004 for testing. The primary decoder is Filter-Bank CCA; single-band CCA and the spectral MLP remain comparison baselines. Acceptance uses all held-out windows in recorded order and never depends on the selected-example Harness smoke test. Because experiment 3 contains only active SSVEP trials, its incorrect-event rate is not an idle false-activation rate.
+
+`simulation/run_public_ssvep.sh` 通过 WFDB 读取 PhysioNet MAMEM Experiment 3，并固定使用受试者 001/002 训练、003 校准阈值、004 测试。主解析器为 Filter-Bank CCA；单频带 CCA 和 Spectral MLP 仅作为对照。验收使用全部留出窗口的原始顺序，不依赖挑选样本的 Harness 冒烟测试。由于 Experiment 3 只有主动 SSVEP Trial，其错误事件率不等同于 Idle 状态下的误触发率。

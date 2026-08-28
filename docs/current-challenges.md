@@ -74,6 +74,10 @@ The public SSVEP dataset proves decoding and replay, but it does not prove that 
 
 公开 SSVEP 数据证明了解码和回放，但没有证明真人在 MuJoCo 场景中选择了某个可见物体。未来实验必须把视觉刺激、场景 Object ID、EEG 时间窗、置信度和确认绑定到同一个带时间戳会话。
 
+The current subject-independent MAMEM experiment uses Filter-Bank CCA. On subject 004 it reaches 82.5% raw accuracy and 92.6% accepted accuracy at 67.5% coverage. All 40 test windows are also evaluated in recorded order: 25 of 27 accepted events are correct, or 0.6 accepted misclassifications per minute. The decision latency is still five seconds, and this dataset has no idle class, so it cannot measure idle false activations. The selected-example Harness replay is retained only as an interface smoke test and is not execution evidence.
+
+当前跨受试者 MAMEM 实验使用 Filter-Bank CCA。在受试者 004 上，原始准确率为 82.5%，67.5% Coverage 下的接受后准确率为 92.6%。全部 40 个测试窗口还会按记录顺序评估：27 次接受事件中 25 次正确，即每分钟 0.6 次接受后误分类。决策延迟仍为 5 秒，而且该数据集没有 Idle 类，因此无法测量空闲误触发。挑选正确样本的 Harness 回放仅保留为接口冒烟测试，不再作为执行证据。
+
 ### LLM value / LLM 的必要性
 
 For a fixed `red_cube → drop_tray` task, an LLM adds little beyond a deterministic skill lookup. The project must decide whether the research question is complex task planning, brain-authorized autonomy, or VLA control. Otherwise every model is present, but no model has a necessary role.

@@ -32,6 +32,7 @@ SESSIONS = ("a", "b")
 SAMPLE_RATE = 128
 WINDOW_SAMPLES = 5 * SAMPLE_RATE
 OCCIPITAL_CHANNELS = (5, 6, 7, 8)  # P7, O1, O2, P8 on Emotiv EPOC
+FILTER_BANKS = ((5.0, 35.0), (10.0, 35.0), (15.0, 35.0), (20.0, 35.0))
 
 
 def download(root: Path) -> None:
@@ -100,7 +101,7 @@ def normalize(windows: np.ndarray) -> np.ndarray:
 
 
 def cca_scores(windows: np.ndarray) -> np.ndarray:
-    time = np.arange(WINDOW_SAMPLES) / SAMPLE_RATE
+    time = np.arange(windows.shape[2]) / SAMPLE_RATE
     references = []
     for target in FREQUENCY_TO_INTENT:
         references.append(np.stack([
@@ -115,6 +116,21 @@ def cca_scores(windows: np.ndarray) -> np.ndarray:
             x_c, y_c = CCA(n_components=1, max_iter=1000).fit_transform(x, reference)
             result[row, column] = abs(float(np.corrcoef(x_c[:, 0], y_c[:, 0])[0, 1]))
     return result
+
+
+def filter_bank_cca_scores(windows: np.ndarray) -> np.ndarray:
+    combined = np.zeros((len(windows), len(FREQUENCY_TO_INTENT)), dtype=np.float64)
+    for index, band in enumerate(FILTER_BANKS, start=1):
+        filtered = sosfiltfilt(
+            butter(4, band, btype="bandpass", fs=SAMPLE_RATE, output="sos"),
+            windows,
+            axis=2,
+        )
+        centered = filtered - filtered.mean(axis=2, keepdims=True)
+        scaled = centered / np.maximum(centered.std(axis=2, keepdims=True), 1e-6)
+        weight = index ** -1.25 + 0.25
+        combined += weight * np.square(cca_scores(scaled))
+    return combined
 
 
 def spectral_features(windows: np.ndarray) -> np.ndarray:
@@ -168,11 +184,15 @@ def probabilities(scores: np.ndarray, temperature: float = 0.1) -> np.ndarray:
     return values / values.sum(axis=1, keepdims=True)
 
 
-def threshold(calibration_probabilities: np.ndarray, labels: np.ndarray) -> float:
+def threshold(
+    calibration_probabilities: np.ndarray,
+    labels: np.ndarray,
+    minimum_coverage: float = 0.50,
+) -> float:
     confidence = calibration_probabilities.max(axis=1)
     prediction = calibration_probabilities.argmax(axis=1)
     candidates = sorted(set(confidence.tolist()))
-    candidates = [candidate for candidate in candidates if (confidence >= candidate).mean() >= 0.20]
+    candidates = [candidate for candidate in candidates if (confidence >= candidate).mean() >= minimum_coverage]
     if not candidates:
         return 1.0
     return max(
@@ -197,6 +217,42 @@ def metrics(probability: np.ndarray, labels: np.ndarray, abstain_at: float) -> d
         "abstention_rate": float(1.0 - accepted.mean()),
         "threshold": abstain_at,
         "confusion_matrix": confusion_matrix(labels, prediction, labels=range(4)).tolist(),
+    }
+
+
+def continuous_stream_metrics(
+    probability: np.ndarray,
+    labels: np.ndarray,
+    abstain_at: float,
+) -> dict[str, object]:
+    confidence = probability.max(axis=1)
+    prediction = probability.argmax(axis=1)
+    accepted = confidence >= abstain_at
+    false_events = int(np.count_nonzero(accepted & (prediction != labels)))
+    duration_minutes = len(labels) * WINDOW_SAMPLES / SAMPLE_RATE / 60.0
+    events = [
+        {
+            "window": index,
+            "expected": tuple(FREQUENCY_TO_INTENT.values())[int(labels[index])],
+            "decoded": tuple(FREQUENCY_TO_INTENT.values())[int(prediction[index])] if accepted[index] else "abstain",
+            "confidence": float(confidence[index]),
+            "correct": bool(accepted[index] and prediction[index] == labels[index]),
+        }
+        for index in range(len(labels))
+    ]
+    return {
+        "selection_policy": "all test windows in recorded order",
+        "idle_false_activation_rate": None,
+        "limitation": "MAMEM experiment 3 has no idle class; false events are accepted misclassifications during active trials.",
+        "window_count": len(labels),
+        "window_seconds": WINDOW_SAMPLES / SAMPLE_RATE,
+        "duration_minutes": duration_minutes,
+        "accepted_events": int(accepted.sum()),
+        "correct_events": int(np.count_nonzero(accepted & (prediction == labels))),
+        "false_events": false_events,
+        "false_events_per_minute": false_events / duration_minutes if duration_minutes else 0.0,
+        "decision_latency_seconds": WINDOW_SAMPLES / SAMPLE_RATE,
+        "events": events,
     }
 
 
@@ -247,6 +303,8 @@ def harness_replay(probability: np.ndarray, labels: np.ndarray, abstain_at: floa
     }
     return {
         "accepted": states == {"select_confirm": "completed", "select_cancel": "cancelled", "stop": "emergency_stopped"},
+        "evidence_scope": "diagnostic_only_selected_examples",
+        "warning": "This interface smoke test selects correct examples and is not continuous EEG evidence.",
         "decoded_examples": {kind.value: value for kind, value in examples.items()},
         "states": states,
         "interface": "synapse2action.harness.Harness.handle(Intent)",
@@ -261,8 +319,8 @@ def main() -> None:
     random.seed(17)
     np.random.seed(17)
     download(args.data)
-    windows, labels, subjects = load_dataset(args.data)
-    windows = normalize(windows)
+    raw_windows, labels, subjects = load_dataset(args.data)
+    windows = normalize(raw_windows)
     train = np.isin(subjects, ["001", "002"])
     calibration = subjects == "003"
     test = subjects == "004"
@@ -270,6 +328,10 @@ def main() -> None:
     cca_calibration = probabilities(cca_scores(windows[calibration]))
     cca_test = probabilities(cca_scores(windows[test]))
     cca_threshold = threshold(cca_calibration, labels[calibration])
+
+    fbcca_calibration = probabilities(filter_bank_cca_scores(raw_windows[calibration]))
+    fbcca_test = probabilities(filter_bank_cca_scores(raw_windows[test]))
+    fbcca_threshold = threshold(fbcca_calibration, labels[calibration])
 
     features = spectral_features(windows)
     feature_mean = features[train].mean(axis=0, keepdims=True)
@@ -283,7 +345,8 @@ def main() -> None:
     cnn_test = probabilities(test_logits, temperature=1.0)
     cnn_threshold = threshold(cnn_calibration, labels[calibration])
 
-    replay = harness_replay(cca_test, labels[test], cca_threshold)
+    replay = harness_replay(fbcca_test, labels[test], fbcca_threshold)
+    stream = continuous_stream_metrics(fbcca_test, labels[test], fbcca_threshold)
     report = {
         "accepted": True,
         "dataset": "PhysioNet MAMEM SSVEP Database v1.0.0 experiment 3",
@@ -296,16 +359,18 @@ def main() -> None:
         "window_counts": {"train": int(train.sum()), "calibration": int(calibration.sum()), "test": int(test.sum())},
         "quality_gate": {"finite": True, "non_flat_channels": True, "absolute_amplitude_limit": 1e5},
         "cca": metrics(cca_test, labels[test], cca_threshold),
+        "fbcca": metrics(fbcca_test, labels[test], fbcca_threshold),
+        "spectral_mlp": metrics(cnn_test, labels[test], cnn_threshold),
         "cnn": metrics(cnn_test, labels[test], cnn_threshold),
+        "continuous_stream": stream,
         "harness_replay": replay,
     }
     report["accepted"] = bool(
         train.sum() > 0 and calibration.sum() > 0 and test.sum() > 0
-        and report["cca"]["accuracy"] >= 0.40
-        and report["cnn"]["accuracy"] >= 0.35
-        and report["cca"]["coverage"] >= 0.20
-        and report["cnn"]["coverage"] >= 0.20
-        and replay["accepted"] is True
+        and report["fbcca"]["accuracy"] >= 0.40
+        and report["fbcca"]["coverage"] >= 0.50
+        and report["fbcca"]["accepted_accuracy"] >= 0.70
+        and stream["false_events_per_minute"] <= 1.0
     )
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
