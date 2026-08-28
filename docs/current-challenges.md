@@ -78,6 +78,10 @@ The current subject-independent MAMEM experiment uses Filter-Bank CCA. On subjec
 
 当前跨受试者 MAMEM 实验使用 Filter-Bank CCA。在受试者 004 上，原始准确率为 82.5%，67.5% Coverage 下的接受后准确率为 92.6%。全部 40 个测试窗口还会按记录顺序评估：27 次接受事件中 25 次正确，即每分钟 0.6 次接受后误分类。决策延迟仍为 5 秒，而且该数据集没有 Idle 类，因此无法测量空闲误触发。挑选正确样本的 Harness 回放仅保留为接口冒烟测试，不再作为执行证据。
 
+The first 256-channel MAMEM experiment-2 run adds protocol-defined Rest and two-second windows but fails its release gate. Subject-level FBCCA accuracy varies from 40% to 85%; held-out subject 004 reaches only 40%, and an Idle-safe calibration threshold abstains on every test window. The next valid experiment therefore needs same-person multi-session calibration and a later-session holdout. Selecting channels or thresholds from subject 004 would leak the test set.
+
+首轮 256 通道 MAMEM Experiment 2 已加入协议定义的 Rest 和 2 秒窗口，但未通过发布门。不同受试者的 FBCCA 准确率在 40% 至 85% 之间；留出受试者 004 只有 40%，满足 Idle 安全要求的校准阈值会在全部测试窗口上弃权。所以下一个有效实验必须采用同一受试者多 Session 校准、后续 Session 留出的设计；根据受试者 004 选择通道或阈值会造成测试集泄漏。
+
 ### LLM value / LLM 的必要性
 
 For a fixed `red_cube → drop_tray` task, an LLM adds little beyond a deterministic skill lookup. The project must decide whether the research question is complex task planning, brain-authorized autonomy, or VLA control. Otherwise every model is present, but no model has a necessary role.

@@ -213,6 +213,10 @@ G1 Harness 默认使用 `MockPlanner`。真实 OpenAI-compatible LLM 必须显�
 
 `simulation/experiment_console.py` 是交互实验入口。受访问 token 保护的运行 API 会依次执行公开 PhysioNet/WFDB MAMEM SSVEP 实验、真实 LLM 规划、SmolVLA、Unitree SDK2 和 MuJoCo。浏览器持续获取阶段状态，并在执行过程中显示不断更新的 MuJoCo 相机画面，不再用事后挑选的截图代替运行环境。
 
+The separate `./simulation/run_public_ssvep_256.sh` command runs the experimental MAMEM experiment-2 decoder with 256-channel source records, two-second windows, and protocol Rest. It currently produces a failed research report rather than replacing the accepted five-second experiment-3 baseline.
+
+独立命令 `./simulation/run_public_ssvep_256.sh` 会运行 MAMEM Experiment 2 实验解析器，使用 256 通道源记录、2 秒窗口和协议 Rest。它当前生成的是未通过的研究报告，不会替换已经验收的 5 秒 Experiment 3 基线。
+
 ```bash
 PYTHONPATH=src S2A_PLANNER_API_KEY=... python3 simulation/experiment_console.py \
   --host 127.0.0.1 --port 8765 --access-token your-random-token \
