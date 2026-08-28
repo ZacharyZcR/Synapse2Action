@@ -29,6 +29,19 @@ Run the A-to-B locomotion scenario with a bounded 0.3 m/s forward command:
 ./simulation/run_unitree_headless.sh locomotion 0.8 0.2 0.3
 ```
 
+Run the same physical scenario through the complete confirmation-gated Harness:
+
+```bash
+PYTHONPATH=src python3 simulation/run_harness_unitree.py \
+  --destination point_b --target-x 0.8 --target-y 0.0 --target-yaw 0.0 \
+  --output reports/simulation/harness-unitree.json
+```
+
+This single command executes `select -> confirm -> plan -> policy -> Robot`
+before starting the official SDK2 controller and MuJoCo bridge. The Harness only
+completes after the independent simulator acceptance and measured final pose
+checks pass.
+
 MuJoCo publishes the measured base pose on SDK2's standard
 `rt/sportmodestate` topic. The C++ controller computes velocity from the live
 target error into the robot frame and produces `vx`, `vy`, and `yaw_rate`. It

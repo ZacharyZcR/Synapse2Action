@@ -98,7 +98,7 @@ The alternate `rtxpro-vllm/DeepSeek-V4-Flash-0731` Pi route currently returns 50
 
 - [ ] Implement a stable `Robot` adapter for Unitree G1 observations and bounded actions. / 为宇树 G1 的观测与受限动作实现稳定 Robot Adapter。
 - [ ] Integrate the LeRobot Unitree G1 MuJoCo environment for task-level simulation. / 接入 LeRobot 的 Unitree G1 MuJoCo 环境进行任务级仿真。
-- [ ] Use `unitree_mujoco` separately to verify SDK2 messages and low-level controller compatibility. / 单独使用 unitree_mujoco 验证 SDK2 消息和低层控制器兼容性。
+- [x] Use `unitree_mujoco` separately to verify SDK2 messages and low-level controller compatibility. / 单独使用 unitree_mujoco 验证 SDK2 消息和低层控制器兼容性。
 - [ ] Normalize joint naming, units, coordinate frames, timestamps, and action limits at the adapter boundary. / 在 Adapter 边界统一关节命名、单位、坐标系、时间戳与动作范围。
 - [ ] Add watchdog, stale-state detection, action clipping, timeout, and safe-stop behavior. / 加入看门狗、状态过期检测、动作裁剪、超时与安全停止。
 - [ ] Complete a scripted pick-and-place task in simulation. / 在仿真中完成固定策略抓取放置。
@@ -174,9 +174,9 @@ Synapse2Action 面向科研、教学与有人监督的原型验证，不属于�
 
 ## Status / 当前状态
 
-The project now has a deterministic pre-simulation stack: versioned contracts, replaceable component interfaces, scripted/keyboard/synthetic intent sources, context-bound confirmation, a typed skill registry, an OpenAI-compatible planner boundary, deterministic planner-adversary experiments, VLA wire adapters and learned navigation baselines, plus HTTP and ROS 2 robot boundaries. A Gazebo package exists, but dynamic simulation, Unitree G1 integration, production model results, physical hardware, and safety certification are not yet claimed.
+The project now has a deterministic pre-simulation stack plus an accepted Unitree G1 navigation path through the official SDK2, RL controller, and MuJoCo bridge. Confirmation-gated Harness execution reaches the simulator through a high-level `Robot` adapter, and measured pose independently determines completion. G1 manipulation, production VLA results, live EEG, physical hardware, and safety certification are not yet claimed.
 
-项目目前已形成确定性的仿真前软件栈：版本化契约、可替换组件接口、脚本/键盘/合成意图源、上下文绑定确认、类型化 Skill Registry、OpenAI-compatible Planner 边界、确定性 Planner 对抗实验、VLA wire adapter 与学习型导航基线，以及 HTTP/ROS 2 机器人边界。Gazebo 包已经建立，但尚未宣称完成动态仿真、Unitree G1 接入、生产模型实测、真机集成或安全认证。
+项目目前已形成确定性的仿真前软件栈，并通过官方 SDK2、RL Controller 与 MuJoCo Bridge 验收了 Unitree G1 导航链路。确认门控后的 Harness 会经高层 `Robot` Adapter 进入仿真，最终完成状态由实测位姿独立判定。G1 操作任务、生产级 VLA 实测、实时 EEG、真机集成及安全认证仍未完成。
 
 ## Development / 开发
 
