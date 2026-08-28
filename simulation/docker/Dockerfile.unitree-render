@@ -1,0 +1,5 @@
+FROM synapse2action-unitree:locked-v2
+
+ARG DEBIAN_FRONTEND=noninteractive
+RUN apt-get update && apt-get install -y --no-install-recommends libosmesa6 \
+    && rm -rf /var/lib/apt/lists/*

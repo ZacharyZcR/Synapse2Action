@@ -109,7 +109,7 @@ The alternate `rtxpro-vllm/DeepSeek-V4-Flash-0731` Pi route currently returns 50
 
 - [ ] Define a common `Policy` adapter for scripted skills, ACT, SmolVLA, and future VLA models. / 为固定技能、ACT、SmolVLA 与后续 VLA 定义统一 Policy Adapter。
 - [x] Establish ACT or another deterministic imitation-learning baseline before VLA. / 在 VLA 前建立 ACT 或其他可控模仿学习基线。
-- [ ] Integrate LeRobot data, training, inference, and checkpoint metadata. / 集成 LeRobot 数据、训练、推理与检查点元数据。
+- [x] Integrate LeRobot data, training, inference, and checkpoint metadata. / 集成 LeRobot 数据、训练、推理与检查点元数据。
 - [ ] Integrate SmolVLA as the first language-conditioned action policy. / 以 SmolVLA 作为首个语言条件动作策略。
 - [ ] Validate action chunks against workspace, joint, velocity, acceleration, and duration limits. / 对动作块执行空间、关节、速度、加速度与持续时间校验。
 - [ ] Verify task outcomes using robot state and visual evidence instead of model self-reporting. / 使用机器人状态与视觉证据验证结果，而非相信模型自报成功。
@@ -176,7 +176,7 @@ Synapse2Action 面向科研、教学与有人监督的原型验证，不属于�
 
 The project now has a deterministic pre-simulation stack plus an accepted Unitree G1 navigation path through the official SDK2, RL controller, and MuJoCo bridge. Confirmation-gated Harness execution reaches the simulator through a high-level `Robot` adapter, and measured pose independently determines completion. G1 manipulation, production VLA results, live EEG, physical hardware, and safety certification are not yet claimed.
 
-项目目前已形成确定性的仿真前软件栈，并通过官方 SDK2、RL Controller 与 MuJoCo Bridge 验收了 Unitree G1 导航链路。确认门控后的 Harness 会经高层 `Robot` Adapter 进入仿真，最终完成状态由实测位姿独立判定。G1 操作任务、生产级 VLA 实测、实时 EEG、真机集成及安全认证仍未完成。
+项目目前已形成确定性的仿真前软件栈，并通过官方 SDK2、RL Controller 与 MuJoCo Bridge 验收了 Unitree G1 导航及固定策略抓取放置链路。确认门控后的 Harness 会经高层 `Robot` Adapter 进入仿真，最终完成状态由实测位姿独立判定。真实 LeRobot Dataset、SmolVLA 29 维训练及 checkpoint 推理链路已经通过集成验收；VLA 闭环任务效果、公开 EEG、实时 EEG、真机集成及安全认证仍未完成。
 
 ## Development / 开发
 

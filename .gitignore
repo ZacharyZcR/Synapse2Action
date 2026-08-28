@@ -7,3 +7,4 @@ dist/
 artifacts/
 simulation/vendor/
 reports/simulation/
+reports/training/

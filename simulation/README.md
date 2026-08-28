@@ -106,8 +106,27 @@ preprocessor and `SmolVLAPolicy.select_action`, and requires finite six-axis
 actions that change with the instruction. The first run downloads weights into
 the ignored `simulation/vendor/huggingface` cache. This proves real checkpoint
 loading and language-conditioned inference; it does not claim that the base
-SO100 action space controls G1. G1 dataset conversion and task-specific
-fine-tuning remain the next gate.
+SO100 action space controls G1.
+
+Record the physically verified SDK2/MuJoCo episode and convert its 29 joint
+states, 29 `LowCmd` targets, three rendered cameras, and task text into an
+official LeRobot Dataset v3 tree:
+
+```bash
+./simulation/run_lerobot_dataset.sh
+```
+
+Run the real SmolVLA training integration gate and then load the resulting
+checkpoint for a 29-dimensional inference check:
+
+```bash
+S2A_TRAIN_STEPS=1 ./simulation/run_smolvla_g1_train.sh
+```
+
+The one-step default proves dataset loading, feature inference, forward and
+backward passes, local checkpoint saving, and checkpoint inference without
+publishing to the Hub. It is not a task-quality claim. A useful manipulation
+policy requires varied training episodes and held-out closed-loop evaluation.
 
 On an Ubuntu machine with a working Python development toolchain, prepare the
 official sources and Python dependencies:

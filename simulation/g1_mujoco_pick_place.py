@@ -5,7 +5,7 @@ import json
 from math import hypot
 from pathlib import Path
 import sys
-from threading import Event
+from threading import Event, Lock
 from time import monotonic, sleep
 from types import SimpleNamespace
 
@@ -33,6 +33,7 @@ def main() -> None:
     parser.add_argument("--domain-id", type=int, default=1)
     parser.add_argument("--interface", default="lo")
     parser.add_argument("--duration-seconds", type=float, default=14.0)
+    parser.add_argument("--episode-output", type=Path)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
 
@@ -45,6 +46,9 @@ def main() -> None:
       <body name="drop_tray" pos="0.32 0.12 0.60">
         <geom name="drop_zone" type="box" size="0.12 0.22 0.03" rgba="0.1 0.8 0.2 0.5"/>
       </body>
+      <camera name="camera1" mode="targetbody" target="torso_link" pos="1.4 0 1.25"/>
+      <camera name="camera2" mode="targetbody" target="torso_link" pos="0.8 1.1 1.15"/>
+      <camera name="camera3" mode="targetbody" target="torso_link" pos="0.8 -1.1 1.15"/>
     """
     equality = """
       <equality>
@@ -73,10 +77,14 @@ def main() -> None:
 
     first_command = Event()
     command_count = 0
+    command_lock = Lock()
+    latest_action: np.ndarray | None = None
 
-    def record_command(_: LowCmd_) -> None:
-        nonlocal command_count
-        command_count += 1
+    def record_command(message: LowCmd_) -> None:
+        nonlocal command_count, latest_action
+        with command_lock:
+            command_count += 1
+            latest_action = np.array([float(motor.q) for motor in message.motor_cmd[:29]], dtype=np.float32)
         first_command.set()
 
     subscriber = ChannelSubscriber("rt/lowcmd", LowCmd_)
@@ -104,10 +112,16 @@ def main() -> None:
     released_at_seconds: float | None = None
     object_position_at_release: list[float] | None = None
     maximum_left_hand_height = float(data.xpos[left, 2])
+    episode_time: list[float] = []
+    episode_state: list[np.ndarray] = []
+    episode_action: list[np.ndarray] = []
+    episode_qpos: list[np.ndarray] = []
     started = monotonic()
     next_step = started
+    steps = 0
     while monotonic() - started < args.duration_seconds:
         mujoco.mj_step(model, data)
+        steps += 1
         minimum_base_height = min(minimum_base_height, float(data.qpos[2]))
         maximum_item_height = max(maximum_item_height, float(data.xpos[item, 2]))
         maximum_left_hand_height = max(maximum_left_hand_height, float(data.xpos[left, 2]))
@@ -130,6 +144,14 @@ def main() -> None:
             released = True
             released_at_seconds = float(data.time)
             object_position_at_release = data.xpos[item].tolist()
+        if args.episode_output and steps % 50 == 0:
+            with command_lock:
+                action = None if latest_action is None else latest_action.copy()
+            if action is not None:
+                episode_time.append(float(data.time))
+                episode_state.append(np.asarray(data.qpos[7:36], dtype=np.float32).copy())
+                episode_action.append(action)
+                episode_qpos.append(data.qpos.copy())
         next_step += model.opt.timestep
         remaining = next_step - monotonic()
         if remaining > 0:
@@ -162,6 +184,30 @@ def main() -> None:
     }
     args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
+    if args.episode_output:
+        render_data = mujoco.MjData(model)
+        renderers = {
+            name: mujoco.Renderer(model, height=256, width=256)
+            for name in ("camera1", "camera2", "camera3")
+        }
+        episode_images: dict[str, list[np.ndarray]] = {name: [] for name in renderers}
+        for qpos in episode_qpos:
+            render_data.qpos[:] = qpos
+            mujoco.mj_forward(model, render_data)
+            for name, renderer in renderers.items():
+                renderer.update_scene(render_data, camera=name)
+                episode_images[name].append(renderer.render().copy())
+        args.episode_output.parent.mkdir(parents=True, exist_ok=True)
+        np.savez_compressed(
+            args.episode_output,
+            timestamp=np.asarray(episode_time, dtype=np.float64),
+            observation_state=np.stack(episode_state),
+            action=np.stack(episode_action),
+            images_camera1=np.stack(episode_images["camera1"]),
+            images_camera2=np.stack(episode_images["camera2"]),
+            images_camera3=np.stack(episode_images["camera3"]),
+            task=np.asarray("pick the red block and place it in the green tray"),
+        )
 
 
 if __name__ == "__main__":

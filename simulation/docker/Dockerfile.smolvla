@@ -6,6 +6,6 @@ RUN python -m pip install --no-cache-dir \
     --index-url https://download.pytorch.org/whl/cpu \
     torch==2.7.1 torchvision==0.22.1
 RUN python -m pip install --no-cache-dir \
-    "lerobot[smolvla]==${LEROBOT_VERSION}"
+    "lerobot[dataset,smolvla]==${LEROBOT_VERSION}"
 
 WORKDIR /workspace/current

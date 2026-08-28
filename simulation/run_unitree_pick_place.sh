@@ -3,8 +3,13 @@ set -euo pipefail
 
 project_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 report_dir="${project_dir}/reports/simulation"
-simulator_image="synapse2action-unitree:locked-v2"
+simulator_image="synapse2action-unitree-render:locked-v3"
 controller_image="synapse2action-unitree-controller:locked-v17"
+record_episode="${S2A_RECORD_EPISODE:-0}"
+episode_args=()
+if [[ "${record_episode}" == "1" ]]; then
+  episode_args=(--episode-output /workspace/reports/simulation/g1-pick-place-episode.npz)
+fi
 run_id="$$"
 network="synapse2action-pick-place-${run_id}"
 simulator="synapse2action-pick-place-simulator-${run_id}"
@@ -16,6 +21,10 @@ cleanup() {
 }
 trap cleanup EXIT
 mkdir -p "${report_dir}"
+if ! docker image inspect "${simulator_image}" >/dev/null 2>&1; then
+  docker build -f "${project_dir}/simulation/docker/Dockerfile.unitree-render" \
+    -t "${simulator_image}" "${project_dir}"
+fi
 if ! docker image inspect "${controller_image}" >/dev/null 2>&1; then
   docker build --platform linux/amd64 \
     -f "${project_dir}/simulation/docker/Dockerfile.unitree-controller-amd64" \
@@ -27,11 +36,12 @@ docker run --detach --name "${controller}" --network "${network}" \
   --env S2A_MAX_SPEED_MPS=0.3 --env S2A_PICK_PLACE=1 \
   "${controller_image}" ./build/g1_ctrl -n eth0 >/dev/null
 docker run --detach --name "${simulator}" --network "${network}" \
-  --workdir /workspace/current --env PYTHONPATH=/workspace/current/src \
+  --workdir /workspace/current --env PYTHONPATH=/workspace/current/src --env MUJOCO_GL=osmesa \
   --volume "${project_dir}:/workspace/current:ro" \
   --volume "${report_dir}:/workspace/reports/simulation" \
   "${simulator_image}" python3 simulation/g1_mujoco_pick_place.py \
   --unitree-mujoco /opt/unitree/unitree_mujoco --interface eth0 \
+  "${episode_args[@]}" \
   --output /workspace/reports/simulation/g1-pick-place.json >/dev/null
 simulator_exit="$(docker wait "${simulator}")"
 docker logs "${controller}" >"${report_dir}/g1-pick-place-controller.log" 2>&1

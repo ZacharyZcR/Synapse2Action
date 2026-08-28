@@ -20,6 +20,20 @@ class SmolVLAAssetsTests(unittest.TestCase):
         self.assertIn("make_pre_post_processors", source)
         self.assertNotIn("DeterministicVLABackend", source)
 
+    def test_g1_training_uses_dataset_inferred_dimensions(self) -> None:
+        runner = (ROOT / "simulation" / "run_smolvla_g1_train.sh").read_text()
+        self.assertIn("lerobot-train", runner)
+        self.assertIn("--policy.input_features=null", runner)
+        self.assertIn("--policy.output_features=null", runner)
+        self.assertIn("--policy.push_to_hub=false", runner)
+        self.assertIn("validate_smolvla_g1_checkpoint.py", runner)
+
+    def test_g1_checkpoint_gate_requires_full_action_space(self) -> None:
+        source = (ROOT / "simulation" / "validate_smolvla_g1_checkpoint.py").read_text()
+        self.assertIn('== [29]', source)
+        self.assertIn('action.shape == (29,)', source)
+        self.assertIn('sum(key.startswith("observation.images.")', source)
+
 
 if __name__ == "__main__":
     unittest.main()
