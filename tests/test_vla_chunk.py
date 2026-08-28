@@ -1,7 +1,7 @@
 import json
 import unittest
 
-from synapse2action.vla_chunk import SmolVLAChunkClient, parse_g1_action_chunk
+from synapse2action.vla_chunk import G1ActionChunk, G1ActionChunkPlayer, SmolVLAChunkClient, parse_g1_action_chunk
 
 
 class Response:
@@ -41,6 +41,24 @@ class VLAChunkTests(unittest.TestCase):
         valid["actions"] = [[0.0] * 28]
         with self.assertRaisesRegex(ValueError, "29"):
             parse_g1_action_chunk(valid, session_id="run", sequence=2)
+
+    def test_chunk_player_consumes_at_ten_hz_and_expires(self) -> None:
+        actions = tuple((float(index),) * 29 for index in range(50))
+        player = G1ActionChunkPlayer(frequency_hz=10, stale_after_s=7)
+        player.load(G1ActionChunk("run", 0, actions, 1.0), now_s=5.0)
+        self.assertEqual(player.current(now_s=5.49), actions[4])
+        self.assertFalse(player.needs_refresh(now_s=9.4))
+        self.assertTrue(player.needs_refresh(now_s=9.5))
+        self.assertEqual(player.current(now_s=10.5), actions[-1])
+        self.assertIsNone(player.current(now_s=12.01))
+
+    def test_chunk_player_rejects_old_or_cross_session_chunk(self) -> None:
+        action = ((0.0,) * 29,)
+        player = G1ActionChunkPlayer()
+        player.load(G1ActionChunk("run", 2, action, 1.0), now_s=0.0)
+        for chunk in (G1ActionChunk("run", 2, action, 1.0), G1ActionChunk("other", 3, action, 1.0)):
+            with self.assertRaisesRegex(ValueError, "ordered"):
+                player.load(chunk, now_s=1.0)
 
 
 if __name__ == "__main__":

@@ -5,6 +5,7 @@ from threading import Lock
 from typing import Sequence
 
 from .unitree_g1 import G1_MOTOR_COUNT
+from .vla_chunk import G1ActionChunk, G1ActionChunkPlayer
 
 
 G1_MANIPULATION_JOINTS = (12, 15, 16, 17, 18, 22, 23, 24, 25)
@@ -66,6 +67,7 @@ def make_g1_vla_bridge(base_bridge: type) -> type:
         def __init__(self, *args: object, **kwargs: object) -> None:
             self._vla_projector = G1VLAActionProjector()
             self._vla_action: tuple[float, ...] | None = None
+            self._vla_chunks = G1ActionChunkPlayer()
             self._vla_lock = Lock()
             self.vla_overlay_frames = 0
             super().__init__(*args, **kwargs)
@@ -77,13 +79,25 @@ def make_g1_vla_bridge(base_bridge: type) -> type:
                     self._vla_projector.reset(self.mj_data.sensordata[: self.num_motor])
                 self._vla_action = action
 
+        def set_vla_chunk(self, chunk: G1ActionChunk) -> None:
+            with self._vla_lock:
+                if self._vla_action is None and self._vla_chunks.chunk is None:
+                    self._vla_projector.reset(self.mj_data.sensordata[: self.num_motor])
+                self._vla_action = None
+                self._vla_chunks.load(chunk)
+
+        def needs_vla_chunk(self) -> bool:
+            with self._vla_lock:
+                return self._vla_chunks.needs_refresh()
+
         def clear_vla_action(self) -> None:
             with self._vla_lock:
                 self._vla_action = None
+                self._vla_chunks = G1ActionChunkPlayer()
 
         def LowCmdHandler(self, message: object) -> None:  # noqa: N802 - official SDK callback name
             with self._vla_lock:
-                action = self._vla_action
+                action = self._vla_action or self._vla_chunks.current()
                 if action is None:
                     return super().LowCmdHandler(message)
                 rl_command = tuple(float(message.motor_cmd[i].q) for i in range(self.num_motor))

@@ -4,6 +4,7 @@ from base64 import b64encode
 from dataclasses import dataclass
 import json
 from math import isfinite
+from time import monotonic
 from typing import Callable, Mapping, Sequence
 from urllib.request import Request, urlopen
 
@@ -77,3 +78,36 @@ def parse_g1_action_chunk(
     if inference_ms < 0 or not isfinite(inference_ms) or not all(isfinite(value) for action in actions for value in action):
         raise ValueError("VLA response contains invalid numeric values")
     return G1ActionChunk(session_id, sequence, actions, inference_ms)
+
+
+class G1ActionChunkPlayer:
+    def __init__(self, *, frequency_hz: float = 10.0, stale_after_s: float = 7.0) -> None:
+        if frequency_hz <= 0 or stale_after_s <= 0:
+            raise ValueError("frequency and stale timeout must be positive")
+        self.frequency_hz = frequency_hz
+        self.stale_after_s = stale_after_s
+        self.chunk: G1ActionChunk | None = None
+        self.started_at_s = 0.0
+
+    def load(self, chunk: G1ActionChunk, *, now_s: float | None = None) -> None:
+        if self.chunk is not None:
+            if chunk.session_id != self.chunk.session_id or chunk.sequence <= self.chunk.sequence:
+                raise ValueError("VLA chunks must be ordered within one session")
+        self.chunk = chunk
+        self.started_at_s = monotonic() if now_s is None else now_s
+
+    def current(self, *, now_s: float | None = None) -> tuple[float, ...] | None:
+        if self.chunk is None:
+            return None
+        elapsed = max(0.0, (monotonic() if now_s is None else now_s) - self.started_at_s)
+        if elapsed > self.stale_after_s:
+            return None
+        index = min(int(elapsed * self.frequency_hz), len(self.chunk.actions) - 1)
+        return self.chunk.actions[index]
+
+    def needs_refresh(self, *, now_s: float | None = None, lookahead_actions: int = 5) -> bool:
+        if self.chunk is None:
+            return True
+        elapsed = max(0.0, (monotonic() if now_s is None else now_s) - self.started_at_s)
+        index = int(elapsed * self.frequency_hz)
+        return index >= len(self.chunk.actions) - lookahead_actions
