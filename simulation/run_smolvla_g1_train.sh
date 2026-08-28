@@ -15,7 +15,7 @@ mkdir -p "${project_dir}/reports/training"
 
 docker run --rm \
   --volume "${project_dir}:/workspace/current:ro" \
-  --volume "${cache}:/root/.cache/huggingface:ro" \
+  --volume "${cache}:/root/.cache/huggingface" \
   --volume "${project_dir}/reports/simulation:/workspace/reports/simulation:ro" \
   --volume "${project_dir}/reports/training:/workspace/reports/training" \
   --env HF_HUB_OFFLINE=1 --env TRANSFORMERS_OFFLINE=1 \
@@ -39,7 +39,7 @@ docker run --rm \
 
 docker run --rm \
   --volume "${project_dir}:/workspace/current:ro" \
-  --volume "${cache}:/root/.cache/huggingface:ro" \
+  --volume "${cache}:/root/.cache/huggingface" \
   --volume "${project_dir}/reports:/workspace/reports" \
   --env HF_HUB_OFFLINE=1 --env TRANSFORMERS_OFFLINE=1 \
   "${image}" python simulation/validate_smolvla_g1_checkpoint.py \

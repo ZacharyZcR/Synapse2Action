@@ -13,7 +13,7 @@ mkdir -p "${project_dir}/reports/training"
 
 docker run --rm \
   --volume "${project_dir}:/workspace/current:ro" \
-  --volume "${cache}:/root/.cache/huggingface:ro" \
+  --volume "${cache}:/root/.cache/huggingface" \
   --volume "${project_dir}/reports/simulation:/workspace/reports/simulation:ro" \
   --volume "${project_dir}/reports/training:/workspace/reports/training" \
   --env HF_HUB_OFFLINE=1 --env TRANSFORMERS_OFFLINE=1 \
@@ -40,7 +40,7 @@ docker run --rm \
 model=/workspace/reports/training/smolvla-g1-suite/checkpoints/last/pretrained_model
 docker run --rm \
   --volume "${project_dir}:/workspace/current:ro" \
-  --volume "${cache}:/root/.cache/huggingface:ro" \
+  --volume "${cache}:/root/.cache/huggingface" \
   --volume "${project_dir}/reports:/workspace/reports" \
   --env HF_HUB_OFFLINE=1 --env TRANSFORMERS_OFFLINE=1 \
   "${image}" python simulation/validate_smolvla_g1_checkpoint.py \
@@ -49,7 +49,7 @@ docker run --rm \
   --report /workspace/reports/training/smolvla-g1-suite.json
 docker run --rm \
   --volume "${project_dir}:/workspace/current:ro" \
-  --volume "${cache}:/root/.cache/huggingface:ro" \
+  --volume "${cache}:/root/.cache/huggingface" \
   --volume "${project_dir}/reports:/workspace/reports" \
   --env HF_HUB_OFFLINE=1 --env TRANSFORMERS_OFFLINE=1 \
   "${image}" python simulation/evaluate_smolvla_g1_offline.py \
