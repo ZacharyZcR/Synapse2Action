@@ -1,0 +1,11 @@
+FROM python:3.12.13-slim-bookworm
+
+ARG LEROBOT_VERSION=0.6.1
+
+RUN python -m pip install --no-cache-dir \
+    --index-url https://download.pytorch.org/whl/cpu \
+    torch==2.7.1 torchvision==0.22.1
+RUN python -m pip install --no-cache-dir \
+    "lerobot[smolvla]==${LEROBOT_VERSION}"
+
+WORKDIR /workspace/current

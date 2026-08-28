@@ -92,6 +92,23 @@ PYTHONPATH=src python3 simulation/run_harness_unitree.py \
   --output reports/simulation/harness-unitree-pick-place.json
 ```
 
+## Real SmolVLA inference boundary
+
+Run the official 450M `lerobot/smolvla_base` checkpoint on three synthetic
+camera views, six-dimensional state, and two different language instructions:
+
+```bash
+./simulation/run_smolvla_smoke.sh
+```
+
+The runner builds the pinned LeRobot 0.6.1 CPU image, uses the official
+preprocessor and `SmolVLAPolicy.select_action`, and requires finite six-axis
+actions that change with the instruction. The first run downloads weights into
+the ignored `simulation/vendor/huggingface` cache. This proves real checkpoint
+loading and language-conditioned inference; it does not claim that the base
+SO100 action space controls G1. G1 dataset conversion and task-specific
+fine-tuning remain the next gate.
+
 On an Ubuntu machine with a working Python development toolchain, prepare the
 official sources and Python dependencies:
 

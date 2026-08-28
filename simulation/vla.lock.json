@@ -1,0 +1,9 @@
+{
+  "container_base": "python:3.12.13-slim-bookworm",
+  "lerobot": "0.6.1",
+  "model": "lerobot/smolvla_base",
+  "parameter_count": 450046176,
+  "pytorch": "2.7.1+cpu",
+  "torchvision": "0.22.1",
+  "transformers": "5.5.4"
+}
