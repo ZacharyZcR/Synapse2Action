@@ -49,6 +49,7 @@ class TaskSpec:
     skill: str
     target: str
     destination: str
+    planner_instruction: str
     instruction: str
     counterfactual_instruction: str
     target_entity: SceneEntity
@@ -85,6 +86,7 @@ def load_task_spec(path: Path) -> TaskSpec:
         skill=str(raw["skill"]),
         target=str(raw["arguments"]["target"]),
         destination=str(raw["arguments"]["destination"]),
+        planner_instruction=str(raw["planner"]["instruction"]),
         instruction=str(raw["vla"]["instruction"]),
         counterfactual_instruction=str(raw["vla"]["counterfactual_instruction"]),
         target_entity=SceneEntity(

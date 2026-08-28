@@ -18,6 +18,8 @@ class TaskSpecTests(unittest.TestCase):
         task.validate_action(task.skill, task.arguments)
         self.assertEqual(len(task.controller.joint_indices), len(task.controller.joint_limits_rad))
         self.assertIn(task.target, task.action_text())
+        self.assertIn(task.target, task.planner_instruction)
+        self.assertIn(task.destination, task.planner_instruction)
         self.assertNotEqual(task.instruction, task.counterfactual_instruction)
 
     def test_mismatched_action_is_rejected(self) -> None:

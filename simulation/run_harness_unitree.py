@@ -101,7 +101,7 @@ def main() -> int:
             args.planner_model,
             destination=task_spec.destination if task_spec else args.destination,
             skill=task_spec.skill if task_spec else "navigate_to",
-            instruction=task_spec.instruction if task_spec else None,
+            instruction=task_spec.planner_instruction if task_spec else None,
             expected_arguments=task_spec.arguments if task_spec else {"destination": args.destination},
             api_key=os.getenv(args.planner_api_key_env),
             output_mode=args.planner_output_mode,

@@ -2,6 +2,9 @@
   "task_id": "g1_pick_place_red_to_green",
   "skill": "pick_and_place",
   "arguments": {"target": "red_cube", "destination": "drop_tray"},
+  "planner": {
+    "instruction": "Execute pick_and_place with target identifier red_cube and destination identifier drop_tray. Preserve both identifiers exactly."
+  },
   "vla": {
     "instruction": "pick the red block and place it in the green tray",
     "counterfactual_instruction": "leave the red block where it is and move away"

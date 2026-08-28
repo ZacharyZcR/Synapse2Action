@@ -432,7 +432,7 @@ def main() -> int:
                 args.planner_model,
                 destination=task_spec.destination,
                 skill=task_spec.skill,
-                instruction=task_spec.instruction,
+                instruction=task_spec.planner_instruction,
                 expected_arguments=task_spec.arguments,
                 api_key=os.getenv(args.planner_api_key_env),
                 timeout_seconds=args.planner_timeout_seconds,
