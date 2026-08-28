@@ -88,7 +88,7 @@ The project follows a hardware-free-first strategy. Every external component beg
 - [x] Reject unknown skills, invalid arguments, stale object references, and plans that bypass confirmation. / 拒绝未知技能、非法参数、过期目标引用及绕过确认的计划。
 - [x] Add a deterministic boundary benchmark for schema compliance, invented skills, unsafe-action containment, injected latency, and provider failure. / 加入确定性边界评测，覆盖 Schema 遵循、虚构技能、不安全动作隔离、注入延迟及 Provider 故障。
 - [x] Provide one live-provider benchmark runner with explicit execute/refuse decisions and measured latency. / 提供统一真实 Provider 评测入口，记录明确的执行/拒绝决策和实测延迟。
-- [ ] Run and publish the same benchmark against each selected live model provider. / 对最终选定的在线模型 Provider 运行并发布同一评测。
+- [x] Run and publish the same benchmark against each selected live model provider. / 对最终选定的在线模型 Provider 运行并发布同一评测。
 
 **Exit criterion / 完成标准:** a real LLM can replace `MockPlanner` without changing the Harness, and no malformed plan can reach the policy or robot layers. / 真实 LLM 可在不修改 Harness 的情况下替换 MockPlanner，任何非法计划均无法进入策略或机器人层。
 
