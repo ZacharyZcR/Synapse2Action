@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from math import isfinite
+from threading import Lock
 from typing import Sequence
 
 from .unitree_g1 import G1_MOTOR_COUNT
@@ -56,3 +57,45 @@ def _action(values: Sequence[float], label: str) -> tuple[float, ...]:
     if not all(isfinite(value) for value in action):
         raise ValueError(f"{label} contains a non-finite value")
     return action
+
+
+def make_g1_vla_bridge(base_bridge: type) -> type:
+    """Wrap Unitree's bridge at its LowCmd callback without changing DDS messages."""
+
+    class G1VLAUnitreeBridge(base_bridge):
+        def __init__(self, *args: object, **kwargs: object) -> None:
+            self._vla_projector = G1VLAActionProjector()
+            self._vla_action: tuple[float, ...] | None = None
+            self._vla_lock = Lock()
+            self.vla_overlay_frames = 0
+            super().__init__(*args, **kwargs)
+
+        def set_vla_action(self, action_rad: Sequence[float]) -> None:
+            action = _action(action_rad, "VLA action")
+            with self._vla_lock:
+                if self._vla_action is None:
+                    self._vla_projector.reset(self.mj_data.sensordata[: self.num_motor])
+                self._vla_action = action
+
+        def clear_vla_action(self) -> None:
+            with self._vla_lock:
+                self._vla_action = None
+
+        def LowCmdHandler(self, message: object) -> None:  # noqa: N802 - official SDK callback name
+            with self._vla_lock:
+                action = self._vla_action
+                if action is None:
+                    return super().LowCmdHandler(message)
+                rl_command = tuple(float(message.motor_cmd[i].q) for i in range(self.num_motor))
+                target = self._vla_projector.project(rl_command, action)
+                self.vla_overlay_frames += 1
+            for index in range(self.num_motor):
+                motor = message.motor_cmd[index]
+                self.mj_data.ctrl[index] = (
+                    motor.tau
+                    + motor.kp * (target[index] - self.mj_data.sensordata[index])
+                    + motor.kd
+                    * (motor.dq - self.mj_data.sensordata[index + self.num_motor])
+                )
+
+    return G1VLAUnitreeBridge
