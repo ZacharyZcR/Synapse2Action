@@ -17,6 +17,7 @@ from .monte_carlo import run_monte_carlo
 from .planner_benchmark import run_planner_benchmark
 from .planner_provider_summary import summarize_planner_providers
 from .llm_planner import OpenAICompatiblePlanner
+from .llm_vla_benchmark import run_llm_vla_benchmark
 from .harness import Harness
 from .intent_sources import KeyboardIntentSource, run_intent_source
 from .navigation import (
@@ -149,6 +150,7 @@ def main() -> int:
     parser.add_argument("--planner-api-key-env", default="OPENAI_API_KEY")
     parser.add_argument("--planner-benchmark", type=Path)
     parser.add_argument("--eeg-planner-benchmark", type=Path)
+    parser.add_argument("--llm-vla-benchmark", type=Path)
     parser.add_argument("--planner-live-benchmark", type=Path)
     parser.add_argument("--planner-timeout-seconds", type=float, default=30.0)
     parser.add_argument("--summarize-planner-providers", type=Path, nargs="+")
@@ -434,6 +436,8 @@ def main() -> int:
             planner,
             args.planner_provider_name or "mock",
         )
+    elif args.llm_vla_benchmark:
+        report = run_llm_vla_benchmark(args.llm_vla_benchmark)
     elif args.contract_catalog:
         report = contract_catalog()
     elif args.planner_benchmark:

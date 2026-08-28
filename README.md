@@ -227,6 +227,16 @@ PYTHONPATH=src python3 -m synapse2action \
 
 该指标只允许 `select` 调用 Planner，并统计 Select Precision/Recall、错误 Planner 调用、有效计划率、端到端 Plan Recall 与 P95 延迟；它不会自动确认或执行动作。
 
+Audit whether a generated LLM plan actually reached and conditioned the VLA:
+
+```bash
+PYTHONPATH=src python3 -m synapse2action \
+  --llm-vla-benchmark reports/simulation/harness-live-eeg-smolvla-g1.json \
+  --output reports/simulation/llm-vla-boundary.json
+```
+
+该边界要求结构化 Plan→VLA Task 绑定、有效 Action Chunk、首 Chunk 延迟、无 Stale Fallback 和 Plan 反事实响应。VLA 仅仅“运行过”不算通过。
+
 ```bash
 PYTHONPATH=src S2A_PLANNER_API_KEY=... python3 simulation/experiment_console.py \
   --host 127.0.0.1 --port 8765 --access-token your-random-token \

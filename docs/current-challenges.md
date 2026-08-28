@@ -88,6 +88,10 @@ For a fixed `red_cube → drop_tray` task, an LLM adds little beyond a determini
 
 对于固定的 `red_cube → drop_tray`，LLM 相比确定性技能查询没有体现明显必要性。项目必须决定研究问题究竟是复杂任务规划、脑意图授权自主执行，还是 VLA 控制；否则所有模型都出现了，但没有模型承担不可替代的职责。
 
+The current live report contains a valid LLM plan and three VLA chunks, but the simulator uses a hard-coded natural-language VLA task. It does not record structured plan-to-task binding, first-chunk latency, or a plan-change counterfactual. The new LLM-to-VLA boundary benchmark therefore rejects the report even though the VLA runtime itself passed.
+
+当前真实报告包含有效 LLM Plan 和三个 VLA Chunk，但模拟器使用硬编码的自然语言 VLA Task。报告没有记录结构化 Plan→Task 绑定、首 Chunk 延迟或 Plan 变化反事实。因此新的 LLM→VLA 边界会拒绝该报告，即使 VLA Runtime 自身已经通过。
+
 ### VLA claim / VLA 能力口径
 
 The current VLA contribution is deliberately bounded. That is appropriate for safety research, but a non-zero joint delta alone does not prove that VLA improves task performance. Future evaluation must compare VLA-on and VLA-off rollouts under controlled visual perturbations.

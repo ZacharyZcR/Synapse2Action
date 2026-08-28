@@ -110,3 +110,9 @@ Authoritative local artifacts are `reports/training/smolvla-g1-suite-heldout.jso
 `--eeg-planner-benchmark` consumes every event in an EEG report's `continuous_stream`. Only a decoded `select` may invoke the Planner; the benchmark never confirms or executes the generated plan. It reports selection precision, recall and F1, false Planner invocations per minute, conditional plan validity, end-to-end plan recall, unexpected executions, and EEG-window-plus-Planner P95 latency. With no Planner endpoint it uses `MockPlanner` to isolate the interface. Supplying `--planner-base-url`, `--planner-model`, and optionally `--planner-provider-name` measures the same boundary with a live OpenAI-compatible model.
 
 `--eeg-planner-benchmark` 会消费 EEG 报告 `continuous_stream` 中的全部事件。只有解析出的 `select` 可以调用 Planner；该实验不会确认或执行生成的计划。报告包含 Select Precision、Recall、F1、每分钟错误 Planner 调用、条件计划有效率、端到端 Plan Recall、非预期执行次数，以及 EEG 窗口加 Planner 的 P95 延迟。不提供 Planner Endpoint 时使用 `MockPlanner` 隔离接口；提供 `--planner-base-url`、`--planner-model` 和可选的 `--planner-provider-name` 后，会用真实 OpenAI-compatible 模型测量同一边界。
+
+## LLM-to-VLA boundary / LLM 到 VLA 边界
+
+`--llm-vla-benchmark` audits a completed Harness report rather than rerunning the expensive model and simulator. It requires a valid structured Planner output, exact structured proof that the same skill and arguments became the VLA task, at least one valid Action Chunk, measured first-chunk latency within chunk coverage, zero stale fallbacks, and a paired counterfactual proving that a changed plan changes VLA output. Aggregate chunk latency or a hard-coded task string cannot satisfy task binding.
+
+`--llm-vla-benchmark` 审计已完成的 Harness 报告，不会重复运行昂贵模型和模拟器。验收要求：Planner 结构化输出有效；同一 Skill 与 Arguments 被结构化证明已成为 VLA Task；至少收到一个有效 Action Chunk；首 Chunk 延迟已测且小于 Chunk 覆盖时间；没有 Stale Fallback；并通过成对反事实证明改变 Plan 会改变 VLA 输出。聚合 Chunk 延迟或硬编码 Task String 均不能证明任务绑定。
