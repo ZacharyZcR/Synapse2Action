@@ -140,13 +140,13 @@ class UnitreePickPlaceSimulationRobot:
         except subprocess.TimeoutExpired:
             self.stop()
             return UnitreeSimulationRobot._result(False, "Unitree pick-and-place timed out", started)
-        if completed.returncode != 0:
-            detail = completed.stderr.strip() or completed.stdout.strip() or "runner failed"
-            return UnitreeSimulationRobot._result(False, f"Unitree pick-and-place failed: {detail}", started)
         try:
             self.last_acceptance = self._load(f"{self.report_stem}-acceptance.json")
             self.last_simulator_report = self._load(f"{self.report_stem}.json")
         except (OSError, ValueError, TypeError) as exc:
+            if completed.returncode != 0:
+                detail = completed.stderr.strip() or completed.stdout.strip() or "runner failed"
+                return UnitreeSimulationRobot._result(False, f"Unitree pick-and-place failed: {detail}", started)
             return UnitreeSimulationRobot._result(False, f"invalid pick-and-place report: {exc}", started)
         accepted = self.last_acceptance.get("accepted") is True
         return UnitreeSimulationRobot._result(accepted, "Unitree pick-and-place independently accepted" if accepted else "Unitree pick-and-place acceptance failed", started)

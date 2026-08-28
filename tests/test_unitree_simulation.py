@@ -119,6 +119,22 @@ class UnitreeSimulationTests(unittest.TestCase):
             self.assertEqual(state, TaskState.COMPLETED)
             self.assertEqual(len(robot.executed), 1)
 
+    def test_failed_runner_keeps_physical_report_for_observability(self) -> None:
+        with TemporaryDirectory() as directory:
+            reports = Path(directory)
+
+            def run(command, **kwargs):
+                (reports / "vla-acceptance.json").write_text(json.dumps({"accepted": False}))
+                (reports / "vla.json").write_text(json.dumps({"grasped": False}))
+                return subprocess.CompletedProcess(command, 1, "", "acceptance failed")
+
+            robot = UnitreePickPlaceSimulationRobot(Path("runner"), reports, report_stem="vla", run=run)
+            result = robot.execute(Action("pick_and_place", {"target": "red_cube"}))
+
+            self.assertFalse(result.success)
+            self.assertEqual(robot.last_acceptance, {"accepted": False})
+            self.assertEqual(robot.last_simulator_report, {"grasped": False})
+
 
 if __name__ == "__main__":
     unittest.main()
