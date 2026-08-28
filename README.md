@@ -60,8 +60,8 @@ The project follows a hardware-free-first strategy. Every external component beg
 ### Phase 0 — Contracts and Safety Kernel / 阶段 0：契约与安全内核
 
 - [x] Adopt Python 3.12 as the primary implementation language. / 确定 Python 3.12 为主要实现语言。
-- [ ] Define versioned schemas for intent, world state, plan, skill, action, and result. / 定义意图、世界状态、计划、技能、动作与结果的版本化 Schema。
-- [ ] Define replaceable interfaces for `IntentSource`, `Planner`, `Policy`, `Robot`, and `Verifier`. / 为五类核心组件定义可替换接口。
+- [x] Define versioned schemas for intent, world state, plan, skill, action, and result. / 定义意图、世界状态、计划、技能、动作与结果的版本化 Schema。
+- [x] Define replaceable interfaces for `IntentSource`, `Planner`, `Policy`, `Robot`, and `Verifier`. / 为五类核心组件定义可替换接口。
 - [x] Implement the explicit task states: idle, target selected, awaiting confirmation, armed, executing, verifying, completed, failed, cancelled, and emergency stopped. / 实现完整的显式任务状态机。
 - [x] Specify invariants: no execution without confirmation, stop preempts every state, invalid model output never reaches a robot, and uncertainty defaults to no action. / 定义未确认不得执行、停止可抢占任意状态、非法模型输出不得到达机器人、不确定时默认不动作等不变量。
 - [x] Define structured trace records and replay semantics. / 定义结构化执行轨迹与重放语义。
@@ -70,11 +70,11 @@ The project follows a hardware-free-first strategy. Every external component beg
 
 ### Phase 1 — Deterministic Hardware-Free Core / 阶段 1：确定性无设备核心
 
-- [ ] Implement scripted and keyboard intent sources for select, confirm, cancel, and stop. / 实现选择、确认、取消和停止的脚本与键盘意图源。
+- [x] Implement scripted and keyboard intent sources for select, confirm, cancel, and stop. / 实现选择、确认、取消和停止的脚本与键盘意图源。
 - [x] Implement `MockPlanner`, `ScriptedPolicy`, `FakeRobot`, and `RuleBasedVerifier`. / 实现四个确定性替身组件。
 - [x] Build a typed skill registry with argument validation, preconditions, timeouts, and success conditions. / 建立包含参数校验、前置条件、超时和成功条件的类型化技能注册表。
 - [x] Add scenario files for success, rejection, cancellation, timeout, malformed plans, and emergency stop. / 为成功、拒绝、取消、超时、非法计划和急停建立场景文件。
-- [ ] Add property-based tests for illegal state transitions and adversarial inputs. / 为非法状态迁移和对抗输入加入性质测试。
+- [x] Add property-style exhaustive tests for short illegal state-transition and stop-preemption sequences. / 对短非法状态迁移序列与停止抢占加入穷举性质测试。
 - [x] Provide one-command scenario execution and deterministic replay. / 提供单命令场景执行与确定性重放。
 
 **Exit criterion / 完成标准:** all safety tests pass on CPU, and the same scenario produces the same trace on every run. / 全部安全测试可在 CPU 上通过，同一场景每次生成一致轨迹。
@@ -86,7 +86,8 @@ The project follows a hardware-free-first strategy. Every external component beg
 - [ ] Integrate Qwen3.8-27B as the local planner option. / 接入 Qwen3.8-27B 本地规划器。
 - [ ] Add GLM-5.3-Flash as an optional multimodal planner and verifier. / 将 GLM-5.3-Flash 作为可选多模态规划器与验证器。
 - [x] Reject unknown skills, invalid arguments, stale object references, and plans that bypass confirmation. / 拒绝未知技能、非法参数、过期目标引用及绕过确认的计划。
-- [ ] Benchmark schema compliance, invented-skill rate, dangerous-action refusal, latency, and recovery after provider failure. / 评测 Schema 遵循、虚构技能、危险动作拒绝、延迟与服务故障恢复。
+- [x] Add a deterministic boundary benchmark for schema compliance, invented skills, unsafe-action containment, injected latency, and provider failure. / 加入确定性边界评测，覆盖 Schema 遵循、虚构技能、不安全动作隔离、注入延迟及 Provider 故障。
+- [ ] Run and publish the same benchmark against each selected live model provider. / 对最终选定的在线模型 Provider 运行并发布同一评测。
 
 **Exit criterion / 完成标准:** a real LLM can replace `MockPlanner` without changing the Harness, and no malformed plan can reach the policy or robot layers. / 真实 LLM 可在不修改 Harness 的情况下替换 MockPlanner，任何非法计划均无法进入策略或机器人层。
 
@@ -170,9 +171,9 @@ Synapse2Action 面向科研、教学与有人监督的原型验证，不属于�
 
 ## Status / 当前状态
 
-The project is at the early safety-kernel stage. A minimal deterministic Harness, mock planner, fake robot, rule-based verifier, and safety tests are available. No hardware integration, trained model, benchmark result, or safety certification is claimed yet.
+The project now has a deterministic pre-simulation stack: versioned contracts, replaceable component interfaces, scripted/keyboard/synthetic intent sources, context-bound confirmation, a typed skill registry, an OpenAI-compatible planner boundary, deterministic planner-adversary experiments, VLA wire adapters and learned navigation baselines, plus HTTP and ROS 2 robot boundaries. A Gazebo package exists, but dynamic simulation, Unitree G1 integration, production model results, physical hardware, and safety certification are not yet claimed.
 
-项目当前处于安全内核早期阶段，已经具备最小确定性 Harness、Mock Planner、Fake Robot、规则验证器与安全测试。尚未宣称完成硬件集成、模型训练、基准结果或安全认证。
+项目目前已形成确定性的仿真前软件栈：版本化契约、可替换组件接口、脚本/键盘/合成意图源、上下文绑定确认、类型化 Skill Registry、OpenAI-compatible Planner 边界、确定性 Planner 对抗实验、VLA wire adapter 与学习型导航基线，以及 HTTP/ROS 2 机器人边界。Gazebo 包已经建立，但尚未宣称完成动态仿真、Unitree G1 接入、生产模型实测、真机集成或安全认证。
 
 ## Development / 开发
 
@@ -190,6 +191,9 @@ Run all hardware-free experiment scenarios and print a deterministic JSON report
 
 ```bash
 PYTHONPATH=src python3 -m synapse2action --demo
+PYTHONPATH=src python3 -m synapse2action --contract-catalog
+PYTHONPATH=src python3 -m synapse2action --keyboard-intents
+PYTHONPATH=src python3 -m synapse2action --planner-benchmark experiments/planner
 PYTHONPATH=src python3 -m synapse2action --navigation-demo
 PYTHONPATH=src python3 -m synapse2action --navigation-demo --navigation-scenario experiments/navigation/04_diagonal_dynamic.json
 PYTHONPATH=src python3 -m synapse2action --navigation-suite experiments/navigation --navigation-episode-directory artifacts/navigation-episodes
@@ -258,7 +262,7 @@ Select `--robot-transport embedded-http` to place the same robot driver behind a
 
 An external ROS2 or chassis bridge can replace the embedded server with `--robot-transport http --robot-base-url http://robot-host:9100/v1`. It must expose `POST /exchange`, `POST /halt`, and `POST /stop`; the optional bearer token is read from `ROBOT_API_KEY`. / 外部 ROS2 或底盘 bridge 可通过 `--robot-transport http --robot-base-url http://robot-host:9100/v1` 替换嵌入式服务。服务需要实现 `POST /exchange`、`POST /halt` 与 `POST /stop`；可选 bearer token 从 `ROBOT_API_KEY` 读取。
 
-`--robot-transport embedded-ros2-http` inserts the ROS2 mapping layer behind the HTTP bridge. Synchronized odometry, image, and obstacle-array messages form each observation; planar velocity maps to `Twist.linear.x/y`, while yaw rate maps to `Twist.angular.z`. Normal completion publishes a zero Twist, and emergency stop invokes the runtime stop path. The bundled dependency-free runtime records these ROS2-shaped messages while delegating world physics to loopback; a production runtime still needs to bind them to `rclpy` topics. / `--robot-transport embedded-ros2-http` 会在 HTTP bridge 后加入 ROS2 mapping。同步的 odometry、image 与 obstacle-array message 组成每帧 Observation；平面速度映射到 `Twist.linear.x/y`，偏航角速度映射到 `Twist.angular.z`。正常结束发布零 Twist，紧急停止调用 runtime stop。内置零依赖 runtime 会记录这些 ROS2-shaped message 并将世界物理交给 loopback；生产环境仍需用 `rclpy` 绑定真实 topic。
+`--robot-transport embedded-ros2-http` inserts the ROS2 mapping layer behind the HTTP bridge. Synchronized odometry, image, and obstacle-array messages form each observation; planar velocity maps to `Twist.linear.x/y`, while yaw rate maps to `Twist.angular.z`. Normal completion publishes a zero Twist, and emergency stop invokes the runtime stop path. The dependency-free loopback runtime verifies mapping semantics; `python3 -m synapse2action.ros2_robot_server` supplies the real `rclpy` topic binding for a ROS 2 host. / `--robot-transport embedded-ros2-http` 会在 HTTP bridge 后加入 ROS2 mapping。同步的 odometry、image 与 obstacle-array message 组成每帧 Observation；平面速度映射到 `Twist.linear.x/y`，偏航角速度映射到 `Twist.angular.z`。正常结束发布零 Twist，紧急停止调用 runtime stop。零依赖 loopback runtime 用于验证映射语义；在 ROS 2 主机上可通过 `python3 -m synapse2action.ros2_robot_server` 使用真实 `rclpy` topic binding。
 
 In a ROS2 environment, `python3 -m synapse2action.ros2_robot_server` runs that production binding as a standalone HTTP bridge. It subscribes to `nav_msgs/Odometry`, `sensor_msgs/Image`, and `visualization_msgs/MarkerArray`, publishes `geometry_msgs/Twist` to `/cmd_vel`, and publishes `std_msgs/Bool` for emergency stop. All topic names, QoS depth, sensor skew, host, and port are configurable CLI options; the default listener remains loopback-only. / 在 ROS2 环境中，`python3 -m synapse2action.ros2_robot_server` 会将生产 binding 作为独立 HTTP bridge 运行。它订阅 `nav_msgs/Odometry`、`sensor_msgs/Image` 与 `visualization_msgs/MarkerArray`，向 `/cmd_vel` 发布 `geometry_msgs/Twist`，并通过 `std_msgs/Bool` 发布 emergency stop。Topic、QoS、sensor skew、host 与 port 均可通过 CLI 配置；默认监听仍仅限 loopback。
 
@@ -302,7 +306,7 @@ The bundled suite covers successful execution, cancellation, emergency stop, inv
 
 内置实验覆盖成功执行、取消、急停、虚构技能、模拟机器人超时及未经选择直接确认。场景文件位于 `experiments/scenarios/`，无需模型、仿真器、EEG 设备或机器人。
 
-See [`docs/experiments.md`](docs/experiments.md) for the staged experiment matrix, metrics, and acceptance gates. / 分阶段实验矩阵、指标及验收门槛见 [`docs/experiments.md`](docs/experiments.md)。
+See [`docs/pre-simulation.md`](docs/pre-simulation.md) for the exact pre-simulation evidence boundary, and [`docs/experiments.md`](docs/experiments.md) for the staged experiment matrix, metrics, and acceptance gates. / 仿真前证据边界见 [`docs/pre-simulation.md`](docs/pre-simulation.md)，分阶段实验矩阵、指标及验收门槛见 [`docs/experiments.md`](docs/experiments.md)。
 
 ## License / 许可证
 

@@ -96,7 +96,10 @@ class Harness:
     def _execute_confirmed_target(self) -> TaskState:
         assert self.target is not None
         self._transition(TaskState.ARMED, "confirm", self.target)
-        planned_action = self.planner.plan(self.target)
+        try:
+            planned_action = self.planner.plan(self.target)
+        except Exception as exc:
+            return self._transition(TaskState.FAILED, "planner_failure", type(exc).__name__)
         decision = self.skills.validate(planned_action, SkillContext(self.target))
         if not decision.accepted:
             return self._transition(TaskState.FAILED, "reject_plan", decision.reason)

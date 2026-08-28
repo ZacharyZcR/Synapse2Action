@@ -5,6 +5,9 @@ from enum import StrEnum
 from typing import Any, Mapping, Protocol
 
 
+SCHEMA_VERSION = 1
+
+
 class IntentKind(StrEnum):
     SELECT = "select"
     CONFIRM = "confirm"
@@ -54,6 +57,10 @@ class TraceRecord:
     event: str
     state: TaskState
     detail: str = ""
+
+
+class IntentSource(Protocol):
+    def next_intent(self) -> Intent | None: ...
 
 
 class Planner(Protocol):

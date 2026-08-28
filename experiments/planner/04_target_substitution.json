@@ -1,0 +1,9 @@
+{
+  "name": "authorized target substitution rejected",
+  "latency_ms": 45,
+  "response": {
+    "skill": "pick_and_place",
+    "arguments": {"target": "blue_block", "destination": "drop_zone"}
+  },
+  "expect": {"final_state": "failed", "action_count": 0}
+}

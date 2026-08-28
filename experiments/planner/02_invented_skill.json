@@ -1,0 +1,9 @@
+{
+  "name": "invented skill rejected",
+  "latency_ms": 38,
+  "response": {
+    "skill": "teleport_object",
+    "arguments": {"target": "red_cube", "destination": "drop_zone"}
+  },
+  "expect": {"final_state": "failed", "action_count": 0}
+}

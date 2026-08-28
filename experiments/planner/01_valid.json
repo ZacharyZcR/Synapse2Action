@@ -1,0 +1,11 @@
+{
+  "name": "valid registered skill",
+  "target": "red_cube",
+  "destination": "drop_zone",
+  "latency_ms": 42,
+  "response": {
+    "skill": "pick_and_place",
+    "arguments": {"target": "red_cube", "destination": "drop_zone"}
+  },
+  "expect": {"final_state": "completed", "action_count": 1}
+}

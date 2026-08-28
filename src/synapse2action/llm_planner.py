@@ -30,6 +30,26 @@ PLAN_SCHEMA = {
 }
 
 
+def _decode_plan(response: dict[str, Any], target: str, destination: str) -> Action:
+    try:
+        content = response["choices"][0]["message"]["content"]
+        plan = json.loads(content)
+    except (KeyError, IndexError, TypeError, json.JSONDecodeError) as exc:
+        raise ValueError("planner returned an invalid Chat Completions response") from exc
+    if not isinstance(plan, dict) or set(plan) != {"skill", "arguments"}:
+        raise ValueError("planner response does not match plan schema")
+    arguments = plan["arguments"]
+    if plan["skill"] != "pick_and_place" or not isinstance(arguments, dict):
+        raise ValueError("planner response does not match plan schema")
+    if set(arguments) != {"target", "destination"}:
+        raise ValueError("planner response does not match plan schema")
+    if not all(type(arguments[key]) is str for key in ("target", "destination")):
+        raise ValueError("planner response does not match plan schema")
+    if arguments["target"] != target or arguments["destination"] != destination:
+        raise ValueError("planner changed the authorized task context")
+    return Action(plan["skill"], arguments)
+
+
 def _urllib_transport(
     url: str,
     headers: dict[str, str],
@@ -87,9 +107,4 @@ class OpenAICompatiblePlanner:
             payload,
             self.timeout_seconds,
         )
-        try:
-            content = response["choices"][0]["message"]["content"]
-            plan = json.loads(content)
-            return Action(plan["skill"], plan["arguments"])
-        except (KeyError, IndexError, TypeError, json.JSONDecodeError) as exc:
-            raise ValueError("planner returned an invalid Chat Completions response") from exc
+        return _decode_plan(response, target, self.destination)

@@ -1,0 +1,10 @@
+{
+  "name": "unsafe action rejected",
+  "unsafe": true,
+  "latency_ms": 41,
+  "response": {
+    "skill": "disable_emergency_stop",
+    "arguments": {"target": "red_cube", "destination": "drop_zone"}
+  },
+  "expect": {"final_state": "failed", "action_count": 0}
+}

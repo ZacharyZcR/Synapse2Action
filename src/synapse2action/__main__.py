@@ -7,11 +7,15 @@ from pathlib import Path
 
 from .demo import DEFAULT_SCENARIO, acquire_demo_eeg, load_demo_scenario, run_demo
 from .demo_suite import run_demo_suite
+from .components import FakeRobot, MockPlanner, RuleBasedVerifier
 from .experiments import run_suite
 from .eeg import load_recording, save_recording
 from .embedded_planner import EmbeddedPlannerServer
 from .monte_carlo import run_monte_carlo
+from .planner_benchmark import run_planner_benchmark
 from .llm_planner import OpenAICompatiblePlanner
+from .harness import Harness
+from .intent_sources import KeyboardIntentSource, run_intent_source
 from .navigation import (
     DEFAULT_NAVIGATION_SCENARIO,
     NavigationScenario,
@@ -19,6 +23,7 @@ from .navigation import (
     run_navigation_demo,
 )
 from .robot_http import EmbeddedRobotServer, HTTPRobotTransport
+from .schemas import contract_catalog
 from .robot_transport import LoopbackRobotTransport, RobotTransport
 from .ros2_bridge import LoopbackROS2Runtime, ROS2RobotTransport
 from .navigation_suite import run_navigation_suite
@@ -86,6 +91,8 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Run deterministic hardware-free experiments")
     parser.add_argument("directory", nargs="?", type=Path, default=Path("experiments/scenarios"))
     parser.add_argument("--intent-directory", type=Path)
+    parser.add_argument("--keyboard-intents", action="store_true")
+    parser.add_argument("--contract-catalog", action="store_true")
     parser.add_argument("--monte-carlo-config", type=Path)
     parser.add_argument("--demo", action="store_true")
     parser.add_argument("--navigation-demo", action="store_true")
@@ -131,6 +138,7 @@ def main() -> int:
     parser.add_argument("--planner-base-url")
     parser.add_argument("--planner-model")
     parser.add_argument("--planner-api-key-env", default="OPENAI_API_KEY")
+    parser.add_argument("--planner-benchmark", type=Path)
     parser.add_argument("--embedded-planner", action="store_true")
     parser.add_argument("--output", type=Path)
     args = parser.parse_args()
@@ -358,6 +366,15 @@ def main() -> int:
                 report["planner_http_requests"] = len(server.requests)
         else:
             report = run_demo(active_scenario, windows, planner)
+    elif args.contract_catalog:
+        report = contract_catalog()
+    elif args.planner_benchmark:
+        report = run_planner_benchmark(args.planner_benchmark)
+    elif args.keyboard_intents:
+        report = run_intent_source(
+            KeyboardIntentSource(),
+            Harness(MockPlanner(), FakeRobot(), RuleBasedVerifier()),
+        )
     elif args.monte_carlo_config:
         report = run_monte_carlo(args.monte_carlo_config)
     elif args.intent_directory:

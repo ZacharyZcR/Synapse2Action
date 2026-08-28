@@ -1,0 +1,6 @@
+{
+  "name": "provider timeout contained",
+  "latency_ms": 30000,
+  "provider_error": "timeout",
+  "expect": {"final_state": "failed", "action_count": 0}
+}

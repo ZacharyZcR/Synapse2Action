@@ -48,6 +48,21 @@ class LLMPlannerTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             planner.plan("red_cube")
 
+    def test_context_substitution_is_rejected_locally(self) -> None:
+        planner = OpenAICompatiblePlanner(
+            "http://localhost:8000/v1",
+            "test-model",
+            transport=lambda *_: {
+                "choices": [{"message": {"content": json.dumps({
+                    "skill": "pick_and_place",
+                    "arguments": {"target": "other_object", "destination": "drop_zone"},
+                })}}]
+            },
+        )
+
+        with self.assertRaisesRegex(ValueError, "authorized task context"):
+            planner.plan("red_cube")
+
     def test_adapter_runs_complete_hardware_free_pipeline(self) -> None:
         planner = OpenAICompatiblePlanner(
             "http://localhost:8000/v1",

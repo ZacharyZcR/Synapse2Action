@@ -80,6 +80,22 @@ class HarnessTests(unittest.TestCase):
         self.assertEqual(state, TaskState.FAILED)
         self.assertTrue(robot.stopped)
 
+    def test_planner_failure_is_contained_before_robot(self) -> None:
+        class FailedPlanner:
+            def plan(self, target):
+                raise TimeoutError("provider timeout")
+
+        robot = FakeRobot()
+        harness = Harness(FailedPlanner(), robot, RuleBasedVerifier())
+        harness.handle(Intent(IntentKind.SELECT, "red_cube"))
+
+        state = harness.handle(Intent(IntentKind.CONFIRM))
+
+        self.assertEqual(state, TaskState.FAILED)
+        self.assertEqual(robot.executed, [])
+        self.assertEqual(harness.trace[-1].event, "planner_failure")
+        self.assertEqual(harness.trace[-1].detail, "TimeoutError")
+
 
 if __name__ == "__main__":
     unittest.main()
