@@ -63,6 +63,8 @@ class SmolVLAAssetsTests(unittest.TestCase):
         self.assertIn("--dataset.eval_split=0.2", runner)
         self.assertIn("g1-pick-place-1.05.npz", runner)
         self.assertIn("evaluate_smolvla_g1_offline.py", runner)
+        self.assertIn("HF_HUB_OFFLINE=1", runner)
+        self.assertIn("simulation/vendor/huggingface", runner)
 
 
 if __name__ == "__main__":

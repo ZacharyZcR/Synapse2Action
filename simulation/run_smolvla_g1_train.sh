@@ -6,6 +6,7 @@ image="synapse2action-smolvla:0.6.1"
 dataset="${project_dir}/reports/simulation/lerobot-g1-pick-place"
 episode="${project_dir}/reports/simulation/g1-pick-place-episode.npz"
 output="${project_dir}/reports/training/smolvla-g1"
+cache="${project_dir}/simulation/vendor/huggingface"
 steps="${S2A_TRAIN_STEPS:-1}"
 
 [[ -f "${dataset}/meta/info.json" ]] || { echo "missing LeRobot dataset: ${dataset}" >&2; exit 2; }
@@ -14,8 +15,10 @@ mkdir -p "${project_dir}/reports/training"
 
 docker run --rm \
   --volume "${project_dir}:/workspace/current:ro" \
+  --volume "${cache}:/root/.cache/huggingface:ro" \
   --volume "${project_dir}/reports/simulation:/workspace/reports/simulation:ro" \
   --volume "${project_dir}/reports/training:/workspace/reports/training" \
+  --env HF_HUB_OFFLINE=1 --env TRANSFORMERS_OFFLINE=1 \
   "${image}" lerobot-train \
   --dataset.repo_id=synapse2action/g1-pick-place-sim \
   --dataset.root=/workspace/reports/simulation/lerobot-g1-pick-place \
@@ -36,7 +39,9 @@ docker run --rm \
 
 docker run --rm \
   --volume "${project_dir}:/workspace/current:ro" \
+  --volume "${cache}:/root/.cache/huggingface:ro" \
   --volume "${project_dir}/reports:/workspace/reports" \
+  --env HF_HUB_OFFLINE=1 --env TRANSFORMERS_OFFLINE=1 \
   "${image}" python simulation/validate_smolvla_g1_checkpoint.py \
   /workspace/reports/training/smolvla-g1/checkpoints/last/pretrained_model \
   /workspace/reports/simulation/g1-pick-place-episode.npz \
