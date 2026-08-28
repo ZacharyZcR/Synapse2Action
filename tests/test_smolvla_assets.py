@@ -73,6 +73,15 @@ class SmolVLAAssetsTests(unittest.TestCase):
         self.assertIn("bridge.set_vla_chunk", source)
         self.assertIn('report["vla_runtime"]', source)
 
+    def test_closed_loop_runner_uses_real_policy_sdk_and_simulator(self) -> None:
+        runner = (ROOT / "simulation" / "run_smolvla_g1_closed_loop.sh").read_text()
+        validator = (ROOT / "simulation" / "validate_g1_vla_rollout.py").read_text()
+        self.assertIn("smolvla_g1_chunk_server.py", runner)
+        self.assertIn("unitree-controller:locked-v18", runner)
+        self.assertIn("--vla-endpoint", runner)
+        self.assertIn('"functional_accepted"', validator)
+        self.assertIn('"realtime_accepted"', validator)
+
 
 if __name__ == "__main__":
     unittest.main()
