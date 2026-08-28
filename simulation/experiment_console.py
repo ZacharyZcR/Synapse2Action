@@ -53,9 +53,13 @@ class ExperimentController:
     def update(self, stage: str, status: str, detail: str = "") -> None:
         with self.lock:
             item = next(x for x in self.state["stages"] if x["id"] == stage)
+            if item["status"] == status and item["detail"] == detail:
+                return
             item.update(status=status, detail=detail)
-            self.state["log"].append(f"[{stage}] {status}: {detail}")
-            self.state["log"] = self.state["log"][-80:]
+            prefix = f"[{stage}] "
+            self.state["log"] = [line for line in self.state["log"] if not line.startswith(prefix)]
+            suffix = f": {detail}" if detail else ""
+            self.state["log"].append(f"{prefix}{status}{suffix}")
 
     def start(self) -> bool:
         with self.lock:

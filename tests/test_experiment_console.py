@@ -36,6 +36,23 @@ class ExperimentConsoleTests(unittest.TestCase):
         self.assertEqual(len(state["stages"]), 7)
         self.assertTrue(all(stage["status"] == "pending" for stage in state["stages"]))
 
+    def test_controller_keeps_only_latest_log_for_each_stage(self) -> None:
+        controller = MODULE.ExperimentController(ROOT, "http://127.0.0.1:18765/v1", "/model", "test")
+
+        controller.update("llm_planner", "running")
+        controller.update("llm_planner", "running", "provider · model · … ms")
+        controller.update("llm_planner", "completed", "provider · model · 42 ms")
+
+        state = controller.snapshot()
+        self.assertEqual(state["log"], ["[llm_planner] completed: provider · model · 42 ms"])
+
+    def test_controller_does_not_log_unchanged_pending_stage(self) -> None:
+        controller = MODULE.ExperimentController(ROOT, "http://127.0.0.1:18765/v1", "/model", "test")
+
+        controller.update("vla", "pending")
+
+        self.assertEqual(controller.snapshot()["log"], [])
+
     def test_mujoco_runner_writes_atomic_live_frames(self) -> None:
         source = (ROOT / "simulation" / "g1_mujoco_pick_place.py").read_text()
 
