@@ -26,14 +26,15 @@ are written to `reports/simulation/` and are intentionally not committed.
 Run the A-to-B locomotion scenario with a bounded 0.3 m/s forward command:
 
 ```bash
-./simulation/run_unitree_headless.sh locomotion 0.8
+./simulation/run_unitree_headless.sh locomotion 0.8 0.2 0.3
 ```
 
 MuJoCo publishes the measured base pose on SDK2's standard
 `rt/sportmodestate` topic. The C++ controller computes velocity from the live
-target error, slows inside the approach region, and commands zero within 5 cm.
-In addition to balance checks, acceptance requires a final target error within
-10 cm and low final horizontal velocity.
+target error into the robot frame and produces `vx`, `vy`, and `yaw_rate`. It
+slows inside the approach region and commands zero within 5 cm. In addition to
+balance checks, acceptance requires position error within 10 cm, yaw error
+within 0.15 rad, and low final translational/angular velocity.
 
 On an Ubuntu machine with a working Python development toolchain, prepare the
 official sources and Python dependencies:

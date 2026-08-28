@@ -4,15 +4,19 @@ set -euo pipefail
 project_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 report_dir="${project_dir}/reports/simulation"
 simulator_image="synapse2action-unitree:locked-v2"
-controller_image="synapse2action-unitree-controller:locked-v4"
+controller_image="synapse2action-unitree-controller:locked-v6"
 scenario="${1:-balance}"
 if [[ "${scenario}" != "balance" && "${scenario}" != "locomotion" ]]; then
-  echo "usage: $0 [balance|locomotion [target-x-m]]" >&2
+  echo "usage: $0 [balance|locomotion [target-x-m target-y-m target-yaw-rad]]" >&2
   exit 2
 fi
 target_x="0.0"
+target_y="0.0"
+target_yaw="0.0"
 if [[ "${scenario}" == "locomotion" ]]; then
   target_x="${2:-0.8}"
+  target_y="${3:-0.0}"
+  target_yaw="${4:-0.0}"
 fi
 run_id="$$"
 network="synapse2action-unitree-${run_id}"
@@ -48,6 +52,8 @@ docker run --detach \
   --name "${controller}" \
   --network "${network}" \
   --env S2A_TARGET_X_M="${target_x}" \
+  --env S2A_TARGET_Y_M="${target_y}" \
+  --env S2A_TARGET_YAW_RAD="${target_yaw}" \
   --env S2A_MAX_SPEED_MPS="0.3" \
   "${controller_image}" \
   ./build/g1_ctrl -n eth0 >/dev/null
@@ -65,6 +71,8 @@ docker run --detach \
     --interface eth0 \
     --container-network \
     --target-x "${target_x}" \
+    --target-y "${target_y}" \
+    --target-yaw "${target_yaw}" \
     --duration-seconds 14 \
     --output /workspace/reports/simulation/g1-mujoco.json >/dev/null
 

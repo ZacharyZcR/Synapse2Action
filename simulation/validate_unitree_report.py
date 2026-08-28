@@ -40,12 +40,14 @@ def main() -> None:
     }
     if args.scenario == "locomotion":
         final_velocity = simulator.get("final_base_linear_velocity_xyz_mps", [])
-        checks["closed_loop_goal_reached"] = abs(float(simulator.get("final_target_error_m", 99))) <= 0.1
+        checks["closed_loop_position_reached"] = float(simulator.get("final_position_error_m", 99)) <= 0.1
+        checks["closed_loop_yaw_reached"] = abs(float(simulator.get("final_yaw_error_rad", 99))) <= 0.15
         checks["stopped_after_locomotion"] = (
             isinstance(final_velocity, list)
             and len(final_velocity) == 3
             and abs(float(final_velocity[0])) < 0.2
             and abs(float(final_velocity[1])) < 0.2
+            and abs(float(simulator.get("final_yaw_rate_rad_s", 99))) < 0.15
         )
     report = {"accepted": all(checks.values()), "checks": checks}
     output = args.report_directory / "acceptance.json"

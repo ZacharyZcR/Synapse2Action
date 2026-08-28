@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from math import atan2, cos, hypot, sin
 from pathlib import Path
 import sys
 from threading import Event
@@ -26,6 +27,8 @@ def main() -> None:
     parser.add_argument("--duration-seconds", type=float, default=8.0)
     parser.add_argument("--command-preroll-seconds", type=float, default=0.5)
     parser.add_argument("--target-x", type=float, default=0.0)
+    parser.add_argument("--target-y", type=float, default=0.0)
+    parser.add_argument("--target-yaw", type=float, default=0.0)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
     if args.interface != "lo" and not args.container_network:
@@ -56,11 +59,16 @@ def main() -> None:
     odometry_publisher.Init()
     odometry_frames = 0
 
+    def base_yaw() -> float:
+        w, x, y, z = (float(value) for value in data.qpos[3:7])
+        return atan2(2.0 * (w * z + x * y), 1.0 - 2.0 * (y * y + z * z))
+
     def publish_odometry() -> None:
         nonlocal odometry_frames
         odometry.position = [float(value) for value in data.qpos[:3]]
         odometry.velocity = [float(value) for value in data.qvel[:3]]
         odometry.body_height = float(data.qpos[2])
+        odometry.imu_state.rpy = [0.0, 0.0, base_yaw()]
         odometry_publisher.Write(odometry)
         odometry_frames += 1
 
@@ -101,6 +109,9 @@ def main() -> None:
         if remaining > 0:
             sleep(remaining)
 
+    final_yaw = base_yaw()
+    position_error = hypot(args.target_x - float(data.qpos[0]), args.target_y - float(data.qpos[1]))
+    yaw_error = atan2(sin(args.target_yaw - final_yaw), cos(args.target_yaw - final_yaw))
     report = {
         "simulator": "unitreerobotics/unitree_mujoco",
         "model": "g1_29dof",
@@ -113,8 +124,13 @@ def main() -> None:
         "final_base_position_xyz_m": [float(value) for value in data.qpos[:3]],
         "forward_displacement_m": float(data.qpos[0]) - initial_base_position[0],
         "target_position_x_m": args.target_x,
-        "final_target_error_m": args.target_x - float(data.qpos[0]),
+        "target_position_y_m": args.target_y,
+        "target_yaw_rad": args.target_yaw,
+        "final_position_error_m": position_error,
+        "final_yaw_rad": final_yaw,
+        "final_yaw_error_rad": yaw_error,
         "final_base_linear_velocity_xyz_mps": [float(value) for value in data.qvel[:3]],
+        "final_yaw_rate_rad_s": float(data.qvel[5]),
         "minimum_base_height_m": minimum_base_height,
         "maximum_base_height_m": maximum_base_height,
         "physics_started_after_lowcmd": first_command.is_set(),
