@@ -24,6 +24,7 @@ class ExperimentConsoleTests(unittest.TestCase):
         self.assertIn("/api/state", html)
         self.assertIn("/api/frame", html)
         self.assertIn("encodeURIComponent(token)", html)
+        self.assertIn("s.log.join('\\n')", html)
         self.assertIn("prefers-reduced-motion", html)
         self.assertNotIn("https://", html)
 
