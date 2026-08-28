@@ -13,6 +13,7 @@ from lerobot.policies.utils import prepare_observation_for_inference
 
 
 def predict(model: Path, episode: np.lib.npyio.NpzFile, task: str) -> np.ndarray:
+    torch.manual_seed(0)
     policy = SmolVLAPolicy.from_pretrained(model)
     policy.eval()
     preprocess, postprocess = make_pre_post_processors(

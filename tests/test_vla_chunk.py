@@ -88,10 +88,11 @@ class VLAChunkTests(unittest.TestCase):
 
         coordinator = G1ChunkCoordinator(Client(), session_id="run", task="pick")
         images = {name: bytes(256 * 256 * 3) for name in ("camera1", "camera2", "camera3")}
-        self.assertTrue(coordinator.request([0.0] * 29, images))
+        self.assertTrue(coordinator.request([0.0] * 29, images, request_overhead_ms=3.0))
         self.assertFalse(coordinator.request([0.0] * 29, images))
         first = coordinator.poll(timeout_s=1)
         self.assertEqual(first.sequence, 0)
+        self.assertEqual(first.round_trip_ms, 5.0)
         self.assertTrue(coordinator.request([0.0] * 29, images))
         second = coordinator.poll(timeout_s=1)
         self.assertEqual(second.sequence, 1)

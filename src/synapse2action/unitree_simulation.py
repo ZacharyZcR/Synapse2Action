@@ -115,6 +115,7 @@ class UnitreePickPlaceSimulationRobot:
     runner_path: Path
     report_directory: Path
     timeout_seconds: float = 30.0
+    report_stem: str = "g1-pick-place"
     run: Runner = subprocess.run
     stopped: bool = False
     executed: list[Action] = field(default_factory=list)
@@ -143,8 +144,8 @@ class UnitreePickPlaceSimulationRobot:
             detail = completed.stderr.strip() or completed.stdout.strip() or "runner failed"
             return UnitreeSimulationRobot._result(False, f"Unitree pick-and-place failed: {detail}", started)
         try:
-            self.last_acceptance = self._load("g1-pick-place-acceptance.json")
-            self.last_simulator_report = self._load("g1-pick-place.json")
+            self.last_acceptance = self._load(f"{self.report_stem}-acceptance.json")
+            self.last_simulator_report = self._load(f"{self.report_stem}.json")
         except (OSError, ValueError, TypeError) as exc:
             return UnitreeSimulationRobot._result(False, f"invalid pick-and-place report: {exc}", started)
         accepted = self.last_acceptance.get("accepted") is True
@@ -181,7 +182,10 @@ class UnitreePickPlaceVerifier:
         )
 
 
-def unitree_pick_place_skill_registry() -> SkillRegistry:
+def unitree_pick_place_skill_registry(*, timeout_ms: int = 30_000) -> SkillRegistry:
+    if timeout_ms <= 0:
+        raise ValueError("pick-and-place timeout must be positive")
+
     def precondition(action: Action, context: SkillContext) -> str | None:
         if action.arguments["target"] != context.selected_target:
             return "planner changed selected target"
@@ -193,7 +197,7 @@ def unitree_pick_place_skill_registry() -> SkillRegistry:
         SkillSpec(
             "pick_and_place",
             {"target": str, "destination": str},
-            timeout_ms=30_000,
+            timeout_ms=timeout_ms,
             risk=RiskLevel.MEDIUM,
             precondition=precondition,
             success_condition=lambda result: result.success,

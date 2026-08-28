@@ -164,11 +164,18 @@ class G1ChunkRuntimeMetrics:
 class G1ChunkCoordinator:
     """Keep model HTTP inference off the simulator stepping thread."""
 
-    def __init__(self, client: SmolVLAChunkClient, *, session_id: str, task: str) -> None:
+    def __init__(
+        self,
+        client: SmolVLAChunkClient,
+        *,
+        session_id: str,
+        task: str,
+        frequency_hz: float = 10.0,
+    ) -> None:
         self.client = client
         self.session_id = session_id
         self.task = task
-        self.metrics = G1ChunkRuntimeMetrics()
+        self.metrics = G1ChunkRuntimeMetrics(frequency_hz=frequency_hz)
         self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="smolvla-chunk")
         self._future: Future[G1ActionChunk] | None = None
         self._next_sequence = 0
@@ -177,19 +184,37 @@ class G1ChunkCoordinator:
     def in_flight(self) -> bool:
         return self._future is not None
 
-    def request(self, state: Sequence[float], images: Mapping[str, bytes]) -> bool:
+    def request(
+        self,
+        state: Sequence[float],
+        images: Mapping[str, bytes],
+        *,
+        request_overhead_ms: float = 0.0,
+    ) -> bool:
         if self._future is not None:
             return False
+        if request_overhead_ms < 0 or not isfinite(request_overhead_ms):
+            raise ValueError("request overhead must be finite and non-negative")
         state_snapshot = tuple(float(value) for value in state)
         image_snapshot = {name: bytes(value) for name, value in images.items()}
-        self._future = self._executor.submit(
-            self.client.infer,
-            session_id=self.session_id,
-            sequence=self._next_sequence,
-            task=self.task,
-            state=state_snapshot,
-            images=image_snapshot,
-        )
+
+        def infer() -> G1ActionChunk:
+            chunk = self.client.infer(
+                session_id=self.session_id,
+                sequence=self._next_sequence,
+                task=self.task,
+                state=state_snapshot,
+                images=image_snapshot,
+            )
+            return G1ActionChunk(
+                chunk.session_id,
+                chunk.sequence,
+                chunk.actions,
+                chunk.inference_ms,
+                chunk.round_trip_ms + request_overhead_ms,
+            )
+
+        self._future = self._executor.submit(infer)
         return True
 
     def poll(self, *, timeout_s: float = 0.0) -> G1ActionChunk | None:

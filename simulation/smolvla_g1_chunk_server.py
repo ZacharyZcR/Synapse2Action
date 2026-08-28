@@ -16,7 +16,8 @@ from lerobot.policies.utils import prepare_observation_for_inference
 
 
 class ChunkService:
-    def __init__(self, model: Path) -> None:
+    def __init__(self, model: Path, *, seed: int = 0) -> None:
+        self.seed = seed
         self.policy = SmolVLAPolicy.from_pretrained(model)
         self.policy.eval()
         self.preprocess, self.postprocess = make_pre_post_processors(
@@ -26,6 +27,7 @@ class ChunkService:
         )
 
     def infer(self, payload: dict[str, object]) -> dict[str, object]:
+        torch.manual_seed(self.seed + int(payload["sequence"]))
         state = np.asarray(payload["state"], dtype=np.float32)
         if payload.get("image_encoding") != "rgb8-256x256":
             raise ValueError("unsupported image encoding")
@@ -88,8 +90,9 @@ def main() -> None:
     parser.add_argument("model", type=Path)
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", type=int, default=8080)
+    parser.add_argument("--seed", type=int, default=0)
     args = parser.parse_args()
-    service = ChunkService(args.model)
+    service = ChunkService(args.model, seed=args.seed)
     HTTPServer((args.host, args.port), handler(service)).serve_forever()
 
 

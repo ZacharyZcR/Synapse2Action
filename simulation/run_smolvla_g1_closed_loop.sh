@@ -22,7 +22,8 @@ cleanup() {
 trap cleanup EXIT
 mkdir -p "${report_dir}"
 docker network create "${network}" >/dev/null
-docker run --detach --name "${policy}" --network "${network}" \
+docker run --detach --name "${policy}" --network "${network}" --cpu-shares 256 \
+  --env OMP_NUM_THREADS=8 --env MKL_NUM_THREADS=8 \
   --env HF_HUB_OFFLINE=1 --env TRANSFORMERS_OFFLINE=1 \
   --volume "${project_dir}:/workspace/current:ro" \
   --volume "${cache}:/root/.cache/huggingface" \
@@ -38,17 +39,19 @@ until docker exec "${policy}" python -c \
   }
   sleep 1
 done
-docker run --detach --name "${controller}" --network "${network}" \
+docker run --detach --name "${controller}" --network "${network}" --cpu-shares 4096 \
   --env S2A_TARGET_X_M=0.0 --env S2A_TARGET_Y_M=0.0 --env S2A_TARGET_YAW_RAD=0.0 \
   --env S2A_MAX_SPEED_MPS=0.3 \
   "${controller_image}" ./build/g1_ctrl -n eth0 >/dev/null
-docker run --detach --name "${simulator}" --network "${network}" \
+docker run --detach --name "${simulator}" --network "${network}" --cpu-shares 2048 \
   --workdir /workspace/current --env PYTHONPATH=/workspace/current/src --env MUJOCO_GL=osmesa \
   --volume "${project_dir}:/workspace/current:ro" \
   --volume "${report_dir}:/workspace/reports/simulation" \
   "${simulator_image}" python3 simulation/g1_mujoco_pick_place.py \
   --unitree-mujoco /opt/unitree/unitree_mujoco --interface eth0 \
   --duration-seconds 30 --vla-endpoint http://${policy}:8080 \
+  --vla-frequency-hz 3 --behavior-frequency-hz 10 --vla-stale-after-seconds 20 \
+  --vla-refresh-lookahead-actions 167 --release-timeout-seconds 28 \
   --output /workspace/reports/simulation/g1-smolvla-closed-loop.json >/dev/null
 simulator_exit="$(docker wait "${simulator}")"
 docker logs "${policy}" >"${report_dir}/g1-smolvla-policy.log" 2>&1

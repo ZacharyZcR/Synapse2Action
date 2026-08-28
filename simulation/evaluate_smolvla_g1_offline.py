@@ -20,7 +20,10 @@ def main() -> None:
     parser.add_argument("model", type=Path)
     parser.add_argument("episode", type=Path)
     parser.add_argument("--report", type=Path, required=True)
+    parser.add_argument("--predictions-output", type=Path)
+    parser.add_argument("--seed", type=int, default=0)
     args = parser.parse_args()
+    torch.manual_seed(args.seed)
     episode = np.load(args.episode)
     policy = SmolVLAPolicy.from_pretrained(args.model)
     policy.eval()
@@ -68,6 +71,9 @@ def main() -> None:
     }
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
+    if args.predictions_output:
+        args.predictions_output.parent.mkdir(parents=True, exist_ok=True)
+        np.savez_compressed(args.predictions_output, predicted=predicted, target=target)
     print(json.dumps(report, sort_keys=True))
     raise SystemExit(not report["finite"])
 

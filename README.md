@@ -110,9 +110,9 @@ The alternate `rtxpro-vllm/DeepSeek-V4-Flash-0731` Pi route currently returns 50
 - [ ] Define a common `Policy` adapter for scripted skills, ACT, SmolVLA, and future VLA models. / 为固定技能、ACT、SmolVLA 与后续 VLA 定义统一 Policy Adapter。
 - [x] Establish ACT or another deterministic imitation-learning baseline before VLA. / 在 VLA 前建立 ACT 或其他可控模仿学习基线。
 - [x] Integrate LeRobot data, training, inference, and checkpoint metadata. / 集成 LeRobot 数据、训练、推理与检查点元数据。
-- [ ] Integrate SmolVLA as the first language-conditioned action policy. / 以 SmolVLA 作为首个语言条件动作策略。
+- [x] Integrate SmolVLA as the first language-conditioned action policy. / 以 SmolVLA 作为首个语言条件动作策略。
 - [ ] Validate action chunks against workspace, joint, velocity, acceleration, and duration limits. / 对动作块执行空间、关节、速度、加速度与持续时间校验。
-- [ ] Verify task outcomes using robot state and visual evidence instead of model self-reporting. / 使用机器人状态与视觉证据验证结果，而非相信模型自报成功。
+- [x] Verify task outcomes using robot state and visual evidence instead of model self-reporting. / 使用机器人状态与视觉证据验证结果，而非相信模型自报成功。
 - [ ] Add bounded retry and deterministic recovery paths. / 加入有界重试与确定性恢复路径。
 
 **Exit criterion / 完成标准:** the planner selects a registered skill and the VLA completes a simulated G1 manipulation task under Harness supervision. / Planner 选择已注册技能，VLA 在 Harness 监督下完成 G1 仿真操作任务。
@@ -174,9 +174,27 @@ Synapse2Action 面向科研、教学与有人监督的原型验证，不属于�
 
 ## Status / 当前状态
 
-The project now has a deterministic pre-simulation stack plus an accepted Unitree G1 navigation path through the official SDK2, RL controller, and MuJoCo bridge. Confirmation-gated Harness execution reaches the simulator through a high-level `Robot` adapter, and measured pose independently determines completion. G1 manipulation, production VLA results, live EEG, physical hardware, and safety certification are not yet claimed.
+The project now has accepted Unitree G1 navigation, scripted manipulation, and SmolVLA-authorized manipulation paths through the official SDK2, RL controller, and MuJoCo bridge. The official LeRobot 0.6.1 pipeline trains SmolVLA on five independently simulated episodes and evaluates a held-out episode before deployment. A confirmation-gated Harness run completes `select → confirm → plan → policy → execute → verify`; measured robot and object state independently determines success. Live synthetic BrainFlow/LSL input also reaches the same simulation boundary. Physical EEG acquisition, human-subject metrics, physical G1 integration, and safety certification are not yet claimed.
 
-项目目前已形成确定性的仿真前软件栈，并通过官方 SDK2、RL Controller 与 MuJoCo Bridge 验收了 Unitree G1 导航及固定策略抓取放置链路。确认门控后的 Harness 会经高层 `Robot` Adapter 进入仿真，最终完成状态由实测位姿独立判定。真实 LeRobot Dataset、SmolVLA 29 维训练及 checkpoint 推理链路已经通过集成验收；公开 PhysioNet SSVEP 数据也已完成跨受试者解码、拒识校准，并驱动同一 Harness/G1 仿真闭环。VLA 闭环任务效果、实时 EEG、真机集成及安全认证仍未完成。
+项目目前已通过官方 SDK2、RL Controller 与 MuJoCo Bridge 验收 Unitree G1 导航、固定策略抓放和 SmolVLA 授权抓放链路。官方 LeRobot 0.6.1 管线使用五条独立仿真 episode 训练 SmolVLA，并在部署前评估完全留出的 episode。确认门控 Harness 已跑通 `选择 → 确认 → 规划 → 策略 → 执行 → 验证`，成功状态由机器人与物体实测状态独立判定。BrainFlow/LSL 合成实时输入也已抵达同一仿真边界。真实 EEG 采集、受试者指标、G1 真机接入和安全认证仍未完成。
+
+### SmolVLA G1 closed loop / SmolVLA G1 闭环
+
+SmolVLA is not allowed to write motor torques or DDS commands directly. The CPU deployment profile treats its 50-action chunk as a 3 Hz, 16.67-second skill authorization window. A typed pick-and-place behavior executor expands that window to validated 10 Hz joint targets; the official Unitree RL controller retains balance control, and the SDK2 MuJoCo bridge alone applies low-level commands. The next VLA chunk is inferred concurrently, buffered, and swapped only after the current behavior chunk is consumed.
+
+SmolVLA 不直接写入力矩或 DDS 指令。纯 CPU 部署将其 50-action chunk 作为 3Hz、覆盖 16.67 秒的技能授权窗口；类型化抓放 Behavior Executor 将其展开为已验证的 10Hz 关节目标，官方 Unitree RL Controller 继续负责平衡，只有 SDK2 MuJoCo Bridge 能施加低层命令。下一段 VLA chunk 会并发推理、缓冲，并仅在当前行为段消费完成后切换。
+
+```bash
+./simulation/run_smolvla_g1_suite_train.sh
+./simulation/run_smolvla_g1_closed_loop.sh
+PYTHONPATH=src python3 simulation/run_harness_unitree.py \
+  --task pick-place --policy smolvla --destination red_cube \
+  --output reports/simulation/harness-unitree-smolvla-pick-place.json
+```
+
+The accepted local run received three real SmolVLA chunks, measured maximum end-to-end chunk latency of 9.70 seconds against 16.67 seconds of coverage, recorded zero stale fallbacks, and independently passed standing, grasp, lift, release, and drop-zone checks. These numbers describe the current CPU/Docker host and are not physical-G1 performance claims.
+
+本地验收实际接收 3 个 SmolVLA chunk，最大端到端 chunk 时延为 9.70 秒，低于 16.67 秒覆盖窗口；stale fallback 为 0，并独立通过站立、抓取、抬升、释放和落盘检查。该数据仅描述当前 CPU/Docker 主机，不代表 G1 真机性能。
 
 ## Development / 开发
 

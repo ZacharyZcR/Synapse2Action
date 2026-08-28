@@ -12,7 +12,7 @@ from types import SimpleNamespace
 import mujoco
 import numpy as np
 
-from synapse2action.g1_vla import make_g1_vla_bridge
+from synapse2action.g1_vla import G1PickPlaceBehaviorExecutor, make_g1_vla_bridge
 from synapse2action.unitree_g1 import G1_FIX_STAND_POSITION_RAD
 from synapse2action.vla_chunk import G1ChunkCoordinator, SmolVLAChunkClient
 from unitree_sdk2py.core.channel import ChannelFactoryInitialize, ChannelSubscriber
@@ -36,9 +36,17 @@ def main() -> None:
     parser.add_argument("--interface", default="lo")
     parser.add_argument("--duration-seconds", type=float, default=14.0)
     parser.add_argument("--vla-endpoint")
+    parser.add_argument("--vla-block-on-refresh", action="store_true")
+    parser.add_argument("--vla-frequency-hz", type=float, default=10.0)
+    parser.add_argument("--behavior-frequency-hz", type=float, default=10.0)
+    parser.add_argument("--vla-stale-after-seconds", type=float, default=7.0)
+    parser.add_argument("--vla-refresh-lookahead-actions", type=int, default=5)
+    parser.add_argument("--release-timeout-seconds", type=float, default=20.0)
     parser.add_argument("--episode-output", type=Path)
     parser.add_argument("--output", type=Path, required=True)
     args = parser.parse_args()
+    if args.vla_frequency_hz <= 0 or args.behavior_frequency_hz <= 0:
+        parser.error("VLA and behavior frequencies must be positive")
 
     source = args.unitree_mujoco / "unitree_robots" / "g1" / "scene.xml"
     additions = """
@@ -75,21 +83,32 @@ def main() -> None:
     data.qpos[7 : 7 + len(G1_FIX_STAND_POSITION_RAD)] = G1_FIX_STAND_POSITION_RAD
     mujoco.mj_forward(model, data)
     ChannelFactoryInitialize(args.domain_id, args.interface)
-    bridge_class = make_g1_vla_bridge(UnitreeSdk2Bridge) if args.vla_endpoint else UnitreeSdk2Bridge
+    bridge_class = (
+        make_g1_vla_bridge(
+            UnitreeSdk2Bridge,
+            action_frequency_hz=args.behavior_frequency_hz,
+            stale_after_s=args.vla_stale_after_seconds,
+        )
+        if args.vla_endpoint
+        else UnitreeSdk2Bridge
+    )
     bridge = bridge_class(model, data)
     bridge.low_state.mode_machine = 5
     coordinator = None
     online_renderers = None
+    behavior = None
     if args.vla_endpoint:
         coordinator = G1ChunkCoordinator(
             SmolVLAChunkClient(args.vla_endpoint),
             session_id="g1-pick-place",
             task="pick the red block and place it in the green tray",
+            frequency_hz=args.vla_frequency_hz,
         )
         online_renderers = {
             name: mujoco.Renderer(model, height=256, width=256)
             for name in ("camera1", "camera2", "camera3")
         }
+        behavior = G1PickPlaceBehaviorExecutor()
 
     first_command = Event()
     command_count = 0
@@ -110,6 +129,66 @@ def main() -> None:
         sleep(0.002)
     if not first_command.is_set():
         raise TimeoutError("no SDK2 LowCmd received")
+
+    def render_observation() -> dict[str, bytes]:
+        images = {}
+        for name, renderer in online_renderers.items():
+            renderer.update_scene(data, camera=name)
+            images[name] = renderer.render().tobytes()
+        return images
+
+    def request_chunk() -> bool:
+        started_rendering = monotonic()
+        images = render_observation()
+        overhead_ms = (monotonic() - started_rendering) * 1000
+        return coordinator.request(
+            data.qpos[7:36],
+            images,
+            request_overhead_ms=overhead_ms,
+        )
+
+    def adapt_chunk(chunk):
+        if behavior is None:
+            return chunk
+        action_count = round(
+            len(chunk.actions) * args.behavior_frequency_hz / args.vla_frequency_hz
+        )
+        if action_count < 1:
+            raise ValueError("VLA chunk must cover at least one behavior action")
+        source_actions = (
+            chunk.actions[
+                min(
+                    int(index * args.vla_frequency_hz / args.behavior_frequency_hz),
+                    len(chunk.actions) - 1,
+                )
+            ]
+            for index in range(action_count)
+        )
+        return type(chunk)(
+            chunk.session_id,
+            chunk.sequence,
+            tuple(behavior.project(action) for action in source_actions),
+            chunk.inference_ms,
+            chunk.round_trip_ms,
+        )
+
+    def wait_for_chunk() -> None:
+        inference_deadline = monotonic() + 30.0
+        while monotonic() < inference_deadline:
+            chunk = coordinator.poll()
+            if chunk is not None:
+                bridge.set_vla_chunk(adapt_chunk(chunk))
+                return
+            sleep(0.01)
+        raise TimeoutError("no VLA action chunk received")
+
+    if coordinator is not None:
+        request_chunk()
+        try:
+            wait_for_chunk()
+        except TimeoutError:
+            coordinator.close()
+            raise
 
     left = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "left_wrist_yaw_link")
     right = mujoco.mj_name2id(model, mujoco.mjtObj.mjOBJ_BODY, "right_wrist_yaw_link")
@@ -133,21 +212,31 @@ def main() -> None:
     episode_action: list[np.ndarray] = []
     episode_qpos: list[np.ndarray] = []
     started = monotonic()
+    started_simulation_time = float(data.time)
     next_step = started
     steps = 0
-    while monotonic() - started < args.duration_seconds:
+    pending_chunk = None
+    while data.time - started_simulation_time < args.duration_seconds:
         mujoco.mj_step(model, data)
         steps += 1
         if coordinator is not None:
             chunk = coordinator.poll()
             if chunk is not None:
-                bridge.set_vla_chunk(chunk)
-            if bridge.needs_vla_chunk() and not coordinator.in_flight:
-                images = {}
-                for name, renderer in online_renderers.items():
-                    renderer.update_scene(data, camera=name)
-                    images[name] = renderer.render().tobytes()
-                coordinator.request(data.qpos[7:36], images)
+                pending_chunk = adapt_chunk(chunk)
+            if pending_chunk is not None and bridge.needs_vla_chunk(lookahead_actions=0):
+                bridge.set_vla_chunk(pending_chunk)
+                pending_chunk = None
+            lookahead = 0 if args.vla_block_on_refresh else args.vla_refresh_lookahead_actions
+            if (
+                pending_chunk is None
+                and bridge.needs_vla_chunk(lookahead_actions=lookahead)
+                and not coordinator.in_flight
+            ):
+                request_chunk()
+                next_step = monotonic()
+                if args.vla_block_on_refresh:
+                    wait_for_chunk()
+                    next_step = monotonic()
         minimum_base_height = min(minimum_base_height, float(data.qpos[2]))
         maximum_item_height = max(maximum_item_height, float(data.xpos[item, 2]))
         maximum_left_hand_height = max(maximum_left_hand_height, float(data.xpos[left, 2]))
@@ -165,8 +254,17 @@ def main() -> None:
             data.eq_active[weld] = 1
             grasped = True
             grasped_at_seconds = float(data.time)
-        release_time = 13.0 if grasped_at_seconds is None else max(13.0, grasped_at_seconds + 8.0)
-        if grasped and not released and data.time > release_time:
+        drop_zone_delta = data.xpos[item, :2] - np.asarray((0.32, 0.12))
+        object_lifted = maximum_item_height - initial_item[2] >= 0.10
+        object_over_drop_zone = abs(drop_zone_delta[0]) <= 0.075 and abs(drop_zone_delta[1]) <= 0.04
+        object_lowered_for_release = data.xpos[item, 2] <= 0.72
+        release_ready = (
+            data.time > 9.0
+            and object_lifted
+            and object_over_drop_zone
+            and object_lowered_for_release
+        )
+        if grasped and not released and (release_ready or data.time > args.release_timeout_seconds):
             data.eq_active[weld] = 0
             released = True
             released_at_seconds = float(data.time)

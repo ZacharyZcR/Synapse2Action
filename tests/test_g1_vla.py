@@ -5,12 +5,33 @@ from pathlib import Path
 
 from synapse2action.g1_vla import (
     G1_MANIPULATION_JOINTS,
+    G1PickPlaceBehaviorExecutor,
     G1VLAActionProjector,
     make_g1_vla_bridge,
 )
 
 
 class G1VLAActionProjectorTests(unittest.TestCase):
+    def test_pick_place_behavior_progress_is_bounded_and_monotonic(self) -> None:
+        adapter = G1PickPlaceBehaviorExecutor()
+        action = [0.0] * 29
+        grasp = (0.0, -0.36445, -0.02471, 0.78152, 1.45247, -0.36455, 0.02455, -0.78133, 1.45280)
+        for joint, target in zip(G1_MANIPULATION_JOINTS, grasp, strict=True):
+            action[joint] = target
+        projected = adapter.project(action)
+        self.assertEqual(adapter.phase, 1)
+        self.assertTrue(all(projected[index] == 0.0 for index in set(range(29)) - set(G1_MANIPULATION_JOINTS)))
+        stand_action = [0.0] * 29
+        stand = (0.0, 0.0, 0.25, 0.0, 0.97, 0.0, -0.25, 0.0, 0.97)
+        for joint, target in zip(G1_MANIPULATION_JOINTS, stand, strict=True):
+            stand_action[joint] = target
+        adapter.project(stand_action)
+        self.assertEqual(adapter.phase, 2)
+
+    def test_pick_place_behavior_rejects_invalid_action(self) -> None:
+        with self.assertRaisesRegex(ValueError, "29 joints"):
+            G1PickPlaceBehaviorExecutor().project((0.0,) * 28)
+
     def test_only_manipulation_joints_override_rl_command(self) -> None:
         rl = tuple(index / 100 for index in range(29))
         predicted = tuple(-value for value in rl)

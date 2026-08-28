@@ -76,3 +76,17 @@ Every executable skill declares its exact argument schema, deterministic timeout
 The current synchronous fake robot reports virtual duration after execution; an over-budget result triggers `stop`. This validates policy and trace semantics, but real timeout preemption still requires an asynchronous executor and virtual clock.
 
 当前同步 Fake Robot 在执行返回后报告虚拟耗时，超预算会触发 `stop`。这能验证策略与轨迹语义，但真实超时抢占仍需要异步执行器和虚拟时钟。
+
+## E4/E5 Unitree SmolVLA acceptance / Unitree SmolVLA 验收
+
+The hardware-free G1 manipulation experiment uses the official Unitree SDK2 bridge, the `unitree_rl_lab` G1 lower-body policy, MuJoCo dynamics, LeRobot 0.6.1, and a locally trained SmolVLA checkpoint. Five timing-varied, independently accepted episodes provide 560 training frames; the final 140-frame episode is held out. With diffusion sampling fixed to seed 0, the accepted checkpoint reports held-out overall MSE `0.01486` and waist/arm MSE `0.03654`, compared with `0.16516` for the earlier single-episode baseline. Two independent evaluator runs produced byte-identical reports. Offline error is only a deployment gate and never substitutes for rollout acceptance.
+
+无设备 G1 操作实验使用官方 Unitree SDK2 Bridge、`unitree_rl_lab` G1 下肢策略、MuJoCo 动力学、LeRobot 0.6.1 和本地训练的 SmolVLA checkpoint。五条独立验收且时序不同的 episode 中，560 帧用于训练，最后 140 帧完全留出。固定 diffusion sampling seed 为 0 后，通过质量门的 checkpoint 在 held-out 数据上整体 MSE 为 `0.01486`，腰部/双臂 MSE 为 `0.03654`；早期单 episode 基线为 `0.16516`。两次独立评估生成了字节完全一致的报告。离线误差只作为部署门，不代替闭环验收。
+
+The online acceptance keeps three clocks separate: SmolVLA authorization at 3 Hz, typed behavior targets at 10 Hz, and the official SDK2/RL control loop at its native rate. Camera acquisition time is included in end-to-end chunk latency. A pending chunk is buffered rather than replacing an unfinished behavior chunk. Release requires prior lift, full object support inside the tray footprint, and a lowered object; the behavior then retreats to stand. Functional and realtime gates must both pass.
+
+在线验收严格分离三种时钟：SmolVLA 以 3Hz 授权技能，类型化 Behavior 以 10Hz 输出目标，官方 SDK2/RL 控制环保持原生频率。相机采集耗时计入 chunk 端到端时延；新 chunk 先缓冲，不覆盖尚未执行完的行为段。释放必须同时满足“已抬升、物体底面完整进入托盘、已下降”，随后行为退回站立姿态。功能门与实时门必须同时通过。
+
+Authoritative local artifacts are `reports/training/smolvla-g1-suite-heldout.json`, `reports/simulation/g1-smolvla-closed-loop-acceptance.json`, and `reports/simulation/harness-unitree-smolvla-pick-place.json`. Reports are generated artifacts and are intentionally not treated as portable physical-hardware evidence.
+
+本地权威产物为 `reports/training/smolvla-g1-suite-heldout.json`、`reports/simulation/g1-smolvla-closed-loop-acceptance.json` 和 `reports/simulation/harness-unitree-smolvla-pick-place.json`。这些报告属于生成产物，不能当作可迁移到真机的证据。

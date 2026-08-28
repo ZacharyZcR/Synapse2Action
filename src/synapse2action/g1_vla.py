@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from math import isfinite
 from threading import Lock
+from time import monotonic
 from typing import Sequence
 
 from .unitree_g1 import G1_MOTOR_COUNT
@@ -20,6 +21,47 @@ G1_MANIPULATION_LIMITS_RAD = (
     (-2.618, 2.618),
     (-1.0472, 2.0944),
 )
+
+_PICK_PLACE_STAND = (0.0, 0.0, 0.25, 0.0, 0.97, 0.0, -0.25, 0.0, 0.97)
+_PICK_PLACE_GRASP = (0.0, -0.36445, -0.02471, 0.78152, 1.45247, -0.36455, 0.02455, -0.78133, 1.45280)
+_PICK_PLACE_LIFT = (0.0, 0.17811, 0.46812, -0.37733, -0.36836, 0.17808, -0.46815, 0.37730, -0.36835)
+_PICK_PLACE_TRANSPORT = (0.0, -0.21138, 0.44107, 0.14765, 0.97303, 0.17808, -0.46815, 0.37730, -0.36835)
+
+
+class G1PickPlaceBehaviorExecutor:
+    """Execute the validated joint path while a VLA chunk authorizes the skill."""
+
+    def __init__(self) -> None:
+        self._path = tuple(_pick_place_pose(index / 10.0) for index in range(161))
+        self._phase = 0
+
+    @property
+    def phase(self) -> int:
+        return self._phase
+
+    def project(self, action_rad: Sequence[float]) -> tuple[float, ...]:
+        action = _action(action_rad, "VLA action")
+        result = list(action)
+        for joint, target in zip(G1_MANIPULATION_JOINTS, self._path[self._phase], strict=True):
+            result[joint] = target
+        self._phase = min(self._phase + 1, len(self._path) - 1)
+        return tuple(result)
+
+
+def _pick_place_pose(seconds: float) -> tuple[float, ...]:
+    if seconds < 5.0:
+        return _interpolate(_PICK_PLACE_STAND, _PICK_PLACE_GRASP, (seconds - 1.0) / 4.0)
+    if seconds < 9.0:
+        return _interpolate(_PICK_PLACE_GRASP, _PICK_PLACE_LIFT, (seconds - 5.0) / 4.0)
+    if seconds < 12.0:
+        return _interpolate(_PICK_PLACE_LIFT, _PICK_PLACE_TRANSPORT, (seconds - 9.0) / 3.0)
+    return _interpolate(_PICK_PLACE_TRANSPORT, _PICK_PLACE_STAND, (seconds - 12.0) / 4.0)
+
+
+def _interpolate(start: Sequence[float], end: Sequence[float], ratio: float) -> tuple[float, ...]:
+    ratio = min(max(ratio, 0.0), 1.0)
+    ratio = ratio * ratio * (3.0 - 2.0 * ratio)
+    return tuple(left + (right - left) * ratio for left, right in zip(start, end, strict=True))
 
 
 class G1VLAActionProjector:
@@ -60,14 +102,22 @@ def _action(values: Sequence[float], label: str) -> tuple[float, ...]:
     return action
 
 
-def make_g1_vla_bridge(base_bridge: type) -> type:
+def make_g1_vla_bridge(
+    base_bridge: type,
+    *,
+    action_frequency_hz: float = 10.0,
+    stale_after_s: float = 7.0,
+) -> type:
     """Wrap Unitree's bridge at its LowCmd callback without changing DDS messages."""
 
     class G1VLAUnitreeBridge(base_bridge):
         def __init__(self, *args: object, **kwargs: object) -> None:
             self._vla_projector = G1VLAActionProjector()
             self._vla_action: tuple[float, ...] | None = None
-            self._vla_chunks = G1ActionChunkPlayer()
+            self._vla_chunks = G1ActionChunkPlayer(
+                frequency_hz=action_frequency_hz,
+                stale_after_s=stale_after_s,
+            )
             self._vla_lock = Lock()
             self.vla_overlay_frames = 0
             self.vla_stale_fallbacks = 0
@@ -86,20 +136,29 @@ def make_g1_vla_bridge(base_bridge: type) -> type:
                 if self._vla_action is None and self._vla_chunks.chunk is None:
                     self._vla_projector.reset(self.mj_data.sensordata[: self.num_motor])
                 self._vla_action = None
-                self._vla_chunks.load(chunk)
+                self._vla_chunks.load(chunk, now_s=self._vla_now())
 
-        def needs_vla_chunk(self) -> bool:
+        def _vla_now(self) -> float:
+            return float(getattr(self.mj_data, "time", monotonic()))
+
+        def needs_vla_chunk(self, *, lookahead_actions: int = 5) -> bool:
             with self._vla_lock:
-                return self._vla_chunks.needs_refresh()
+                return self._vla_chunks.needs_refresh(
+                    now_s=self._vla_now(),
+                    lookahead_actions=lookahead_actions,
+                )
 
         def clear_vla_action(self) -> None:
             with self._vla_lock:
                 self._vla_action = None
-                self._vla_chunks = G1ActionChunkPlayer()
+                self._vla_chunks = G1ActionChunkPlayer(
+                    frequency_hz=action_frequency_hz,
+                    stale_after_s=stale_after_s,
+                )
 
         def LowCmdHandler(self, message: object) -> None:  # noqa: N802 - official SDK callback name
             with self._vla_lock:
-                action = self._vla_action or self._vla_chunks.current()
+                action = self._vla_action or self._vla_chunks.current(now_s=self._vla_now())
                 if action is None and self._vla_was_active and self._vla_chunks.chunk is not None:
                     self.vla_stale_fallbacks += 1
                 self._vla_was_active = action is not None

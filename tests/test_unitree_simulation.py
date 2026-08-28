@@ -93,8 +93,8 @@ class UnitreeSimulationTests(unittest.TestCase):
             reports = Path(directory)
 
             def run(command, **kwargs):
-                (reports / "g1-pick-place-acceptance.json").write_text(json.dumps({"accepted": True}))
-                (reports / "g1-pick-place.json").write_text(json.dumps({
+                (reports / "vla-acceptance.json").write_text(json.dumps({"accepted": True}))
+                (reports / "vla.json").write_text(json.dumps({
                     "grasped": True,
                     "released": True,
                     "initial_object_position_xyz_m": [0.15, 0.0, 0.68],
@@ -104,7 +104,7 @@ class UnitreeSimulationTests(unittest.TestCase):
                 }))
                 return subprocess.CompletedProcess(command, 0, "", "")
 
-            robot = UnitreePickPlaceSimulationRobot(Path("runner"), reports, run=run)
+            robot = UnitreePickPlaceSimulationRobot(Path("runner"), reports, report_stem="vla", run=run)
             harness = Harness(
                 MockPlanner(arguments={"target": "red_cube", "destination": "drop_tray"}),
                 robot,
