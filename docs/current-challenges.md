@@ -45,6 +45,7 @@ human or scripted intent
 8. **Python runtime split.** The main Harness uses Python 3.12 while the compatible WBC runtime uses Python 3.10. The boundary must remain a versioned data contract; importing the main package inside the vendor runtime is not supported.
 9. **Language-to-work causality is unproven.** Three TaskSpecs and a versioned qualification manifest now cover paraphrases, changed goals, forbidden objects, and impossible requests, but candidate policies have not yet run the matched-observation evaluation.
 10. **The production gap is not a model-size problem.** Reliability, failure detection, deterministic safety, recovery, cycle time, intervention rate, embodiment transfer, and versioned requalification remain unresolved even with a stronger VLA.
+11. **The admission gate exists, but candidate evidence is incomplete.** The verifier now rejects wrong seeds, contradictory Result v3 verdicts, unconfirmed execution, recovery overreach, and incomplete or unbound language suites. GR00T/OpenPI still require real matched evidence before either can pass it.
 
 1. **VLA 成熟度与覆盖不足。** 公开 checkpoint 绑定特定任务和本体，不同 Seed 结果波动，尚未证明跨物体、目标、相机扰动和任务的泛化。问题不能简单归因于模型参数较小；数据覆盖、长时序闭环和恢复示范是更直接的缺口。
 2. **受控恢复状态机已闭合，但尚无 Policy 级实测证据。** Outcome Failure 只有在重新校验世界状态、签发新授权 Challenge 并二次确认后才能重试一次；安全失败和预算耗尽均禁止重试，急停可抢占待确认恢复，报告保留两次失败提案。候选 Policy 的恢复成功率与失败检测召回率尚未测量。
@@ -56,6 +57,7 @@ human or scripted intent
 8. **Python Runtime 分裂。** 主 Harness 使用 Python 3.12，兼容 WBC Runtime 使用 Python 3.10；边界必须保持为版本化数据契约，不支持 Vendor Runtime 直接 Import 主包。
 9. **尚未证明语言到工作的因果性。** 当前已有三个 TaskSpec 和覆盖同义改写、目标变化、禁止物体与不可能请求的版本化准入集，但候选 Policy 尚未完成匹配 Observation 的实际评测。
 10. **工业化差距不是模型大小问题。** 即使换成更强 VLA，可靠性、失败检测、确定性安全、恢复、节拍、人工介入率、本体迁移和版本化重新验收仍未解决。
+11. **准入门已具备，但候选证据尚不完整。** Verifier 现在会拒绝错误 Seed、自相矛盾的 Result v3、未确认执行、恢复越权以及缺失或未绑定的语言准入集；GR00T/OpenPI 仍需真实匹配证据才能通过。
 
 ### Immediate roadmap / 近期路线
 
@@ -63,15 +65,17 @@ human or scripted intent
 2. Move remaining processor and normalization operations behind LeRobot; the shared SmolVLA/OpenPI Action Chunk proposal boundary is complete.
 3. Qualify a second mature policy under the same TaskSpec, seeds, and verifier.
 4. Run the three-TaskSpec qualification manifest and prove paraphrase invariance, counterfactual sensitivity, refusal, and constraint binding.
-5. Measure recovery success and failure-detection recall when candidate-policy runtimes are available; preserve the accepted hardware-free state-machine gate.
-6. Begin physical-G1 work only with read-only preflight, physical emergency stop, supervised workspace, and operator takeover.
+5. Feed every candidate's matched run and language evidence through the Policy Admission Verifier; do not promote a policy from upstream claims or isolated success.
+6. Measure recovery success and failure-detection recall when candidate-policy runtimes are available; preserve the accepted hardware-free state-machine gate.
+7. Begin physical-G1 work only with read-only preflight, physical emergency stop, supervised workspace, and operator takeover.
 
 1. 基于已完成的 20-Seed 基线，用受控动作、接触、时序与场景反事实定位抬升失败原因。
 2. 将剩余 Processor 与 Normalization 操作迁移到 LeRobot；SmolVLA/OpenPI 共用的 Action Chunk 提案边界已经完成。
 3. 让第二个成熟 Policy 在相同 TaskSpec、Seed 和 Verifier 下完成验收。
 4. 运行三个 TaskSpec 的语言准入集，并证明同义改写不变性、反事实敏感性、拒绝能力与约束绑定。
-5. 在候选 Policy Runtime 可用后测量恢复成功率与失败检测召回率；保留已验收的无硬件状态机门槛。
-6. 只有在只读预检、实体急停、受控工作区和人工接管就绪后，才开始 G1 真机工作。
+5. 将每个候选 Policy 的匹配运行与语言证据送入 Policy Admission Verifier；不得凭上游声明或孤立成功晋级。
+6. 在候选 Policy Runtime 可用后测量恢复成功率与失败检测召回率；保留已验收的无硬件状态机门槛。
+7. 只有在只读预检、实体急停、受控工作区和人工接管就绪后，才开始 G1 真机工作。
 
 The full engineering and industrialization rationale is maintained in [Language-to-Work Industrialization Gap](industrialization-gap.md).
 

@@ -130,6 +130,7 @@ The alternate `rtxpro-vllm/DeepSeek-V4-Flash-0731` Pi route currently returns 50
 - [x] Run 20 fixed-seed episodes and report confidence intervals: strict all-stage success is currently 1/20 (5%, Wilson 95% CI 0.9%–23.6%). / 完成 20 个固定 Seed Episode 并报告置信区间：当前严格全阶段成功率为 1/20（5%，Wilson 95% CI 0.9%–23.6%）。
 - [ ] Evaluate a second mature LeRobot-supported policy under the same TaskSpec, seeds, and verifier. / 在同一 TaskSpec、Seed 与 Verifier 下评测第二个成熟的 LeRobot Policy。
 - [x] Define three independent TaskSpecs and a versioned language qualification suite covering paraphrases, counterfactuals, forbidden requests, and impossible requests. / 定义三个独立 TaskSpec，并建立覆盖同义改写、反事实、禁止请求和不可完成请求的版本化语言准入集。
+- [x] Add a fail-closed Policy Admission Verifier for exact seeds, Result v3 consistency, confirmation traces, bounded recovery, manifest-bound language coverage, and configurable outcome reliability. / 加入 Fail-Closed Policy Admission Verifier，严格检查 Seed、Result v3 一致性、确认链、受限恢复、绑定 Manifest 的语言覆盖及可配置结果可靠性。
 - [ ] Validate action chunks against workspace, joint, velocity, acceleration, and duration limits. / 对动作块执行空间、关节、速度、加速度与持续时间校验。
 - [x] Verify task outcomes using robot state and visual evidence instead of model self-reporting. / 使用机器人状态与视觉证据验证结果，而非相信模型自报成功。
 - [x] Add a one-attempt deterministic recovery path with fresh world validation, a new authorization challenge, second confirmation, stop preemption, and retained audit history. / 加入最多一次的确定性恢复路径，要求重新校验世界状态、签发新授权 Challenge、二次确认、急停可抢占并保留完整审计历史。

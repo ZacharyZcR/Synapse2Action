@@ -133,6 +133,7 @@ LLM 与 VLA 永远不拥有急停、碰撞约束、力矩限制、工作空间�
 - [x] Version a qualification manifest for paraphrases, counterfactuals, forbidden-object constraints, and impossible requests.
 - [ ] Execute the qualification manifest against each candidate policy under matched observations and seeds.
 - [ ] Require the structured plan to cross the exact Planner-to-VLA boundary recorded in evidence.
+- [x] Add a fail-closed Policy Admission Verifier that binds language evidence to the manifest hash and jointly checks exact seeds, Result v3, authorization traces, recovery limits, safety, process compliance, and outcome rate.
 - [x] Classify outcome, process, and safety failures and emit a deterministic recovery allowlist; safety violations permit no retry.
 - [x] Route an allowlisted recovery plan through fresh world validation, a new authorization challenge, and a second explicit confirmation before executing at most one attempt.
 - [ ] Qualify recovery success and failure-detection recall with real candidate policies; the current acceptance is hardware-free state-machine evidence.
@@ -147,6 +148,8 @@ LLM 与 VLA 永远不拥有急停、碰撞约束、力矩限制、工作空间�
 ### Production qualification metrics / 生产准入指标
 
 Research success rate alone is insufficient. Every release candidate must also report task-time distribution, interventions per operating hour, failure-detection recall, safe-stop latency, recovery success, continuous run duration, hardware faults, and regression by model/data/controller version.
+
+The admission verifier is an evidence gate, not evidence generation. No policy is accepted until real candidate runs and the matched language evaluation are supplied; the current GR00T 1/20 strict result does not satisfy a production reliability threshold.
 
 仅报告研究成功率不够。每个发布候选还必须报告任务耗时分布、每运行小时人工介入次数、失败检测召回率、安全停止延迟、恢复成功率、连续运行时长、硬件故障，以及按模型、数据、Controller 版本划分的回归结果。
 

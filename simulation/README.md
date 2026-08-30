@@ -35,6 +35,25 @@ paraphrases, behavior-changing counterfactuals, forbidden requests, and
 impossible requests. It defines future model acceptance cases; generating the
 manifest does not count as passing them.
 
+After a candidate policy has produced matched run reports and a language
+evaluation bound to that manifest, verify the complete bundle with:
+
+```bash
+PYTHONPATH=src python3 simulation/verify_policy_admission.py \
+  --runs reports/policy/run-*.json \
+  --language-manifest reports/language/qualification.json \
+  --language-evaluation reports/language/policy-evaluation.json \
+  --required-seeds 1001 1002 1003 \
+  --minimum-outcome-success-rate 0.90 \
+  --output reports/policy/admission.json
+```
+
+The verifier fails closed on a missing or duplicated language case, mismatched
+manifest hash, changed observation or seed, contradictory Result v3 aggregate,
+unconfirmed execution, safety-violating recovery, excess retry, non-compliant
+process, or incomplete seed set. The command returning success proves only that
+the supplied evidence bundle meets the configured gates.
+
 ## GR00T whole-body VLA status
 
 The accepted local baseline uses the public GR00T N1.6 Unitree G1
