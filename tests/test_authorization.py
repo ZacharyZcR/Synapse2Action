@@ -2,7 +2,7 @@ import unittest
 
 from synapse2action.authorization import ChallengeStore
 from synapse2action.components import FakeRobot, MockPlanner, RuleBasedVerifier
-from synapse2action.contracts import Intent, IntentKind, TaskState
+from synapse2action.contracts import ExecutionResult, Intent, IntentKind, TaskState
 from synapse2action.harness import Harness
 
 
@@ -12,6 +12,68 @@ def make_authorized_harness() -> tuple[Harness, FakeRobot]:
 
 
 class AuthorizationTests(unittest.TestCase):
+    def test_recovery_issues_a_new_challenge_and_rejects_the_consumed_token(self) -> None:
+        class ResultSequenceRobot(FakeRobot):
+            def __init__(self):
+                super().__init__()
+                self.results = [
+                    ExecutionResult(
+                        False,
+                        "missed",
+                        outcome_success=False,
+                        process_compliance=True,
+                        safety_passed=True,
+                    ),
+                    ExecutionResult(True, "recovered"),
+                ]
+
+            def execute(self, action):
+                self.executed.append(action)
+                return self.results.pop(0)
+
+        robot = ResultSequenceRobot()
+        harness = Harness(
+            MockPlanner(),
+            robot,
+            RuleBasedVerifier(),
+            authorizer=ChallengeStore(),
+        )
+        harness.handle(Intent(IntentKind.SELECT, "red_cube", target_revision=7, at_ms=0))
+        original_token = harness.challenge_token
+        harness.handle(
+            Intent(
+                IntentKind.CONFIRM,
+                target_revision=7,
+                challenge_token=original_token,
+                at_ms=500,
+            )
+        )
+
+        harness.request_recovery(target_revision=7, at_ms=1_000)
+        recovery_token = harness.challenge_token
+        rejected = harness.handle(
+            Intent(
+                IntentKind.CONFIRM,
+                target_revision=7,
+                challenge_token=original_token,
+                at_ms=1_100,
+            )
+        )
+
+        self.assertNotEqual(original_token, recovery_token)
+        self.assertEqual(rejected, TaskState.AWAITING_RECOVERY_CONFIRMATION)
+        self.assertEqual(len(robot.executed), 1)
+        accepted = harness.handle(
+            Intent(
+                IntentKind.CONFIRM,
+                target_revision=7,
+                challenge_token=recovery_token,
+                at_ms=1_200,
+            )
+        )
+        self.assertEqual(accepted, TaskState.COMPLETED)
+        self.assertEqual(len(robot.executed), 2)
+
     def test_matching_challenge_executes(self) -> None:
         harness, robot = make_authorized_harness()
         harness.handle(Intent(IntentKind.SELECT, "red_cube", target_revision=7, at_ms=0))

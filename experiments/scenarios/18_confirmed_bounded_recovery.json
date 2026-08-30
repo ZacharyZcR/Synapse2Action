@@ -1,0 +1,29 @@
+{
+  "name": "outcome failure requires one confirmed recovery",
+  "robot": {
+    "results": [
+      {
+        "success": false,
+        "detail": "object missed destination",
+        "outcome_success": false,
+        "process_compliance": true,
+        "safety_passed": true
+      },
+      {
+        "success": true,
+        "detail": "object placed after confirmed retry"
+      }
+    ]
+  },
+  "intents": [
+    {"kind": "select", "target": "red_cube"},
+    {"kind": "confirm"},
+    {"kind": "recover"},
+    {"kind": "confirm"}
+  ],
+  "expect": {
+    "final_state": "completed",
+    "action_count": 2,
+    "recovery_attempts": 1
+  }
+}

@@ -134,7 +134,8 @@ LLM 与 VLA 永远不拥有急停、碰撞约束、力矩限制、工作空间�
 - [ ] Execute the qualification manifest against each candidate policy under matched observations and seeds.
 - [ ] Require the structured plan to cross the exact Planner-to-VLA boundary recorded in evidence.
 - [x] Classify outcome, process, and safety failures and emit a deterministic recovery allowlist; safety violations permit no retry.
-- [ ] Route an allowlisted recovery plan through a second explicit confirmation before executing one bounded attempt.
+- [x] Route an allowlisted recovery plan through fresh world validation, a new authorization challenge, and a second explicit confirmation before executing at most one attempt.
+- [ ] Qualify recovery success and failure-detection recall with real candidate policies; the current acceptance is hardware-free state-machine evidence.
 
 ### Milestone D — Physical G1 preflight / G1 真机预检
 

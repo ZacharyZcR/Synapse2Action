@@ -87,7 +87,7 @@ def default_skill_registry() -> SkillRegistry:
                 timeout_ms=5_000,
                 risk=RiskLevel.MEDIUM,
                 precondition=_pick_and_place_precondition,
-                success_condition=lambda result: result.success,
+                success_condition=lambda result: bool(result.process_compliance),
             ),
             SkillSpec(
                 "navigate_to",
@@ -95,7 +95,7 @@ def default_skill_registry() -> SkillRegistry:
                 timeout_ms=30_000,
                 risk=RiskLevel.MEDIUM,
                 precondition=_navigate_to_precondition,
-                success_condition=lambda result: result.success,
+                success_condition=lambda result: bool(result.process_compliance),
             ),
         ]
     )

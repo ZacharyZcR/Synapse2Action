@@ -28,6 +28,7 @@ class TaskState(StrEnum):
     IDLE = "idle"
     TARGET_SELECTED = "target_selected"
     AWAITING_CONFIRMATION = "awaiting_confirmation"
+    AWAITING_RECOVERY_CONFIRMATION = "awaiting_recovery_confirmation"
     ARMED = "armed"
     EXECUTING = "executing"
     VERIFYING = "verifying"

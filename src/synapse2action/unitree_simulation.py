@@ -252,6 +252,6 @@ def unitree_pick_place_skill_registry(*, timeout_ms: int = 30_000) -> SkillRegis
             timeout_ms=timeout_ms,
             risk=RiskLevel.MEDIUM,
             precondition=precondition,
-            success_condition=lambda result: result.success,
+            success_condition=lambda result: bool(result.process_compliance),
         )
     ])

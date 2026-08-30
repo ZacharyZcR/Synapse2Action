@@ -132,7 +132,7 @@ The alternate `rtxpro-vllm/DeepSeek-V4-Flash-0731` Pi route currently returns 50
 - [x] Define three independent TaskSpecs and a versioned language qualification suite covering paraphrases, counterfactuals, forbidden requests, and impossible requests. / 定义三个独立 TaskSpec，并建立覆盖同义改写、反事实、禁止请求和不可完成请求的版本化语言准入集。
 - [ ] Validate action chunks against workspace, joint, velocity, acceleration, and duration limits. / 对动作块执行空间、关节、速度、加速度与持续时间校验。
 - [x] Verify task outcomes using robot state and visual evidence instead of model self-reporting. / 使用机器人状态与视觉证据验证结果，而非相信模型自报成功。
-- [ ] Add bounded retry and deterministic recovery paths. / 加入有界重试与确定性恢复路径。
+- [x] Add a one-attempt deterministic recovery path with fresh world validation, a new authorization challenge, second confirmation, stop preemption, and retained audit history. / 加入最多一次的确定性恢复路径，要求重新校验世界状态、签发新授权 Challenge、二次确认、急停可抢占并保留完整审计历史。
 - [x] Classify failed results into outcome, process, and safety failures; emit an audited recovery allowlist with no automatic execution. / 将失败结果分类为结果、过程与安全失败；输出可审计的恢复白名单，禁止自动执行。
 
 **Exit criterion / 完成标准:** at least two replaceable policies run through the same LeRobot-backed contract; a minimum 20-seed suite separately reports outcome, process, and safety; and no model self-report substitutes for measured physical evidence. / 至少两个可替换 Policy 通过同一套基于 LeRobot 的契约运行；不少于 20 个 Seed 的评测分别报告结果、过程与安全；任何模型自报结果均不得替代实测物理证据。

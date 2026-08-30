@@ -219,6 +219,8 @@ def main() -> int:
         "recovery_proposal": (
             asdict(harness.last_recovery) if harness.last_recovery else None
         ),
+        "recovery_attempts": harness.recovery_attempts,
+        "recovery_history": [asdict(proposal) for proposal in harness.recovery_history],
         "trace": [asdict(record) for record in harness.trace],
         "unitree_acceptance": robot.last_acceptance,
         "unitree_simulator": robot.last_simulator_report,

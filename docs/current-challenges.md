@@ -36,7 +36,7 @@ human or scripted intent
 ### Active problems / 当前问题
 
 1. **VLA maturity and coverage.** The public checkpoint is task- and embodiment-specific. Failures vary by seed, and the system has not demonstrated generalization across objects, destinations, camera perturbations, or tasks. Model size alone is not the primary diagnosis; data coverage, long-horizon closed-loop behavior, and recovery examples are more direct gaps.
-2. **Recovery classification exists, but the controlled loop is incomplete.** Failed results now produce deterministic outcome/process/safety classes and an audited allowlist; safety failures permit no retry. The proposal does not yet pass through a second confirmation and one bounded execution attempt.
+2. **The controlled recovery state machine is complete, but policy-level evidence is not.** Outcome failures can enter one retry only after fresh world validation, a new authorization challenge, and second confirmation. Safety failures and exhausted budgets cannot retry; stop preempts the pending recovery, and the report retains both failure proposals. Candidate policies have not yet been measured for recovery success or failure-detection recall.
 3. **Result semantics are separated, but evidence depth varies.** Schema v3 and the Harness now report `outcome_success`, `process_compliance`, and `safety_passed` independently. Legacy robot adapters preserve compatibility by defaulting missing component verdicts to their prior aggregate result; controller-native safety evidence must replace that fallback before hardware qualification.
 4. **LeRobot boundary is incomplete.** The current GR00T/WBC runner directly manages vendor environments and JSON handoff. Standard policy, processor, dataset, and robot operations should move behind LeRobot; humanoid-specific WBC remains an explicit adapter boundary.
 5. **Benchmark throughput and telemetry.** The 20-seed baseline is complete, but serial episodes remain slow and provide no intra-episode heartbeat. A resident policy server, optional video, parallel environments, smoke/full profiles, and stage progress telemetry are required.
@@ -47,7 +47,7 @@ human or scripted intent
 10. **The production gap is not a model-size problem.** Reliability, failure detection, deterministic safety, recovery, cycle time, intervention rate, embodiment transfer, and versioned requalification remain unresolved even with a stronger VLA.
 
 1. **VLA 成熟度与覆盖不足。** 公开 checkpoint 绑定特定任务和本体，不同 Seed 结果波动，尚未证明跨物体、目标、相机扰动和任务的泛化。问题不能简单归因于模型参数较小；数据覆盖、长时序闭环和恢复示范是更直接的缺口。
-2. **恢复分类已完成，但受控循环尚未闭合。** 失败结果现在会生成确定性的结果/过程/安全分类与可审计白名单，安全失败禁止重试；恢复提案尚未经过第二次确认并执行一次有界尝试。
+2. **受控恢复状态机已闭合，但尚无 Policy 级实测证据。** Outcome Failure 只有在重新校验世界状态、签发新授权 Challenge 并二次确认后才能重试一次；安全失败和预算耗尽均禁止重试，急停可抢占待确认恢复，报告保留两次失败提案。候选 Policy 的恢复成功率与失败检测召回率尚未测量。
 3. **结果语义已经拆分，但证据深度不同。** Schema v3 与 Harness 已独立报告 `outcome_success`、`process_compliance` 和 `safety_passed`。旧 Robot Adapter 为兼容性会将缺失的分项判定回退到原聚合结果；真机准入前必须用 Controller 原生安全证据替换该回退。
 4. **LeRobot 边界尚未收敛。** 当前 GR00T/WBC runner 仍直接管理 Vendor 环境与 JSON 交接；标准 Policy、Processor、Dataset 和 Robot 操作应迁移到 LeRobot，人形 WBC 保持为显式专用 Adapter 边界。
 5. **评测吞吐与遥测不足。** 20 个 Seed 的基线已完成，但串行 Episode 仍然缓慢，且单次运行内部没有心跳；需要常驻 Policy Server、可选视频、并行环境、Smoke/Full 两级评测和阶段进度遥测。
@@ -63,14 +63,14 @@ human or scripted intent
 2. Move remaining processor and normalization operations behind LeRobot; the shared SmolVLA/OpenPI Action Chunk proposal boundary is complete.
 3. Qualify a second mature policy under the same TaskSpec, seeds, and verifier.
 4. Run the three-TaskSpec qualification manifest and prove paraphrase invariance, counterfactual sensitivity, refusal, and constraint binding.
-5. Route the deterministic recovery proposal through a second confirmation and allow at most one retry; never retry a safety violation.
+5. Measure recovery success and failure-detection recall when candidate-policy runtimes are available; preserve the accepted hardware-free state-machine gate.
 6. Begin physical-G1 work only with read-only preflight, physical emergency stop, supervised workspace, and operator takeover.
 
 1. 基于已完成的 20-Seed 基线，用受控动作、接触、时序与场景反事实定位抬升失败原因。
 2. 将剩余 Processor 与 Normalization 操作迁移到 LeRobot；SmolVLA/OpenPI 共用的 Action Chunk 提案边界已经完成。
 3. 让第二个成熟 Policy 在相同 TaskSpec、Seed 和 Verifier 下完成验收。
 4. 运行三个 TaskSpec 的语言准入集，并证明同义改写不变性、反事实敏感性、拒绝能力与约束绑定。
-5. 将确定性恢复提案送入第二次确认，最多允许一次重试；安全失败永不重试。
+5. 在候选 Policy Runtime 可用后测量恢复成功率与失败检测召回率；保留已验收的无硬件状态机门槛。
 6. 只有在只读预检、实体急停、受控工作区和人工接管就绪后，才开始 G1 真机工作。
 
 The full engineering and industrialization rationale is maintained in [Language-to-Work Industrialization Gap](industrialization-gap.md).

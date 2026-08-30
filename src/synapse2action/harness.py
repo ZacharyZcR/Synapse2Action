@@ -32,6 +32,9 @@ class Harness:
     last_result: ExecutionResult | None = None
     recovery_policy: BoundedRecoveryPolicy = field(default_factory=BoundedRecoveryPolicy)
     last_recovery: RecoveryProposal | None = None
+    recovery_history: list[RecoveryProposal] = field(default_factory=list)
+    last_confirmed_action: Action | None = None
+    recovery_attempts: int = 0
 
     def handle(self, intent: Intent) -> TaskState:
         if intent.kind is IntentKind.STOP:
@@ -39,18 +42,25 @@ class Harness:
                 self.authorizer.revoke()
             self.pending_action = None
             self.last_recovery = None
+            self.last_confirmed_action = None
             self.challenge_token = None
             self.robot.stop()
             return self._transition(TaskState.EMERGENCY_STOPPED, "stop", "global stop")
 
         if intent.kind is IntentKind.CANCEL:
-            self._require(TaskState.AWAITING_CONFIRMATION, TaskState.ARMED)
+            self._require(
+                TaskState.AWAITING_CONFIRMATION,
+                TaskState.AWAITING_RECOVERY_CONFIRMATION,
+                TaskState.ARMED,
+            )
             if self.authorizer:
                 self.authorizer.revoke()
             self.target = None
             self.target_revision = None
             self.challenge_token = None
             self.pending_action = None
+            self.last_recovery = None
+            self.last_confirmed_action = None
             return self._transition(TaskState.CANCELLED, "cancel")
 
         if intent.kind is IntentKind.SELECT:
@@ -67,6 +77,9 @@ class Harness:
                     raise ValueError(decision.reason)
             self.target = intent.target
             self.last_recovery = None
+            self.last_confirmed_action = None
+            self.recovery_attempts = 0
+            self.recovery_history.clear()
             self.target_revision = intent.target_revision
             self._transition(TaskState.TARGET_SELECTED, "select", intent.target)
             planned_action = self._plan_selected_target()
@@ -81,41 +94,118 @@ class Harness:
             return self._transition(TaskState.AWAITING_CONFIRMATION, "await_confirmation")
 
         if intent.kind is IntentKind.CONFIRM:
-            self._require(TaskState.AWAITING_CONFIRMATION)
+            self._require(
+                TaskState.AWAITING_CONFIRMATION,
+                TaskState.AWAITING_RECOVERY_CONFIRMATION,
+            )
+            confirmation_state = self.state
             if self.world:
                 if self.target_revision is None or intent.at_ms is None:
-                    self._transition(TaskState.AWAITING_CONFIRMATION, "reject_world", "missing world context")
+                    self._transition(confirmation_state, "reject_world", "missing world context")
+                    return self.state
+                if intent.target_revision != self.target_revision:
+                    self._transition(
+                        confirmation_state,
+                        "reject_world",
+                        "target revision changed",
+                    )
                     return self.state
                 assert self.target is not None
                 decision = self.world.validate(self.target, self.target_revision, intent.at_ms)
                 if not decision.accepted:
-                    self._transition(TaskState.AWAITING_CONFIRMATION, "reject_world", decision.reason)
+                    self._transition(confirmation_state, "reject_world", decision.reason)
                     return self.state
             if self.authorizer:
                 if intent.challenge_token is None or intent.target_revision is None or intent.at_ms is None:
-                    self._transition(TaskState.AWAITING_CONFIRMATION, "reject_confirmation", "missing challenge context")
+                    self._transition(
+                        confirmation_state,
+                        "reject_confirmation",
+                        "missing challenge context",
+                    )
                     return self.state
                 assert self.target is not None
                 decision = self.authorizer.consume(
                     intent.challenge_token, self.target, intent.target_revision, intent.at_ms
                 )
                 if not decision.accepted:
-                    self._transition(TaskState.AWAITING_CONFIRMATION, "reject_confirmation", decision.reason)
+                    self._transition(confirmation_state, "reject_confirmation", decision.reason)
                     return self.state
                 self.challenge_token = None
-            return self._execute_confirmed_target()
+            return self._execute_confirmed_target(
+                recovery=confirmation_state is TaskState.AWAITING_RECOVERY_CONFIRMATION
+            )
 
         raise ValueError(f"unsupported intent: {intent.kind}")
 
-    def _execute_confirmed_target(self) -> TaskState:
+    def request_recovery(
+        self,
+        *,
+        target_revision: int | None = None,
+        at_ms: int | None = None,
+    ) -> TaskState:
+        self._require(TaskState.FAILED)
+        proposal = self.last_recovery
+        if (
+            proposal is None
+            or "retry_confirmed_plan" not in proposal.allowed_skills
+            or self.last_confirmed_action is None
+        ):
+            raise InvalidTransition("failed execution has no retryable recovery proposal")
+        if self.world:
+            if target_revision is None or at_ms is None:
+                raise ValueError("recovery requires a fresh world revision and timestamp")
+            assert self.target is not None
+            decision = self.world.validate(self.target, target_revision, at_ms)
+            if not decision.accepted:
+                self._transition(TaskState.FAILED, "reject_recovery_world", decision.reason)
+                return self.state
+            self.target_revision = target_revision
+        if self.authorizer:
+            if target_revision is None or at_ms is None:
+                raise ValueError("authorized recovery requires world revision and timestamp")
+            if self.world is None and target_revision != self.target_revision:
+                self._transition(
+                    TaskState.FAILED,
+                    "reject_recovery_world",
+                    "target revision changed",
+                )
+                return self.state
+            assert self.target is not None
+            challenge = self.authorizer.issue(self.target, target_revision, at_ms)
+            self.challenge_token = challenge.token
+            self._transition(TaskState.FAILED, "issue_recovery_challenge", challenge.token)
+        self.pending_action = self.last_confirmed_action
+        return self._transition(
+            TaskState.AWAITING_RECOVERY_CONFIRMATION,
+            "await_recovery_confirmation",
+            proposal.failure_class.value,
+        )
+
+    def _execute_confirmed_target(self, *, recovery: bool = False) -> TaskState:
         assert self.target is not None
         assert self.pending_action is not None
         planned_action = self.pending_action
         self.pending_action = None
-        self._transition(TaskState.ARMED, "confirm", planned_action.skill)
+        if recovery:
+            self.recovery_attempts += 1
+        else:
+            self.last_confirmed_action = planned_action
+        self._transition(
+            TaskState.ARMED,
+            "confirm_recovery" if recovery else "confirm",
+            planned_action.skill,
+        )
         action = self.policy.prepare(planned_action)
         decision = self.skills.validate(action, SkillContext(self.target))
         if not decision.accepted:
+            self.last_result = ExecutionResult(
+                False,
+                decision.reason,
+                outcome_success=False,
+                process_compliance=False,
+                safety_passed=True,
+            )
+            self.last_recovery = self._record_recovery(self.last_result)
             return self._transition(TaskState.FAILED, "reject_policy", decision.reason)
         self._transition(TaskState.ARMED, "policy", f"{action.skill}:{len(action.steps)}_steps")
         self._transition(TaskState.EXECUTING, "execute", action.skill)
@@ -136,13 +226,25 @@ class Harness:
             safety_passed=safety_passed,
         )
         final_state = TaskState.COMPLETED if success else TaskState.FAILED
-        self.last_recovery = None if success else self.recovery_policy.propose(self.last_result)
+        self.last_recovery = (
+            None
+            if success
+            else self._record_recovery(self.last_result)
+        )
         detail = result.detail
         if not process_compliance:
             detail = skill_result.reason
         elif not safety_passed:
             detail = "safety gate failed"
         return self._transition(final_state, "result", detail)
+
+    def _record_recovery(self, result: ExecutionResult) -> RecoveryProposal:
+        proposal = self.recovery_policy.propose(
+            result,
+            attempts=self.recovery_attempts,
+        )
+        self.recovery_history.append(proposal)
+        return proposal
 
     def _plan_selected_target(self) -> Action | None:
         assert self.target is not None

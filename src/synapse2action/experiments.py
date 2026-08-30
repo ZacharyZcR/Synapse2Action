@@ -20,19 +20,43 @@ class ExperimentResult:
     action_count: int
     stopped: bool
     error: str | None
+    recovery_attempts: int
+    recovery_history: list[dict[str, Any]]
     trace: list[dict[str, Any]]
+
+
+class ScenarioRobot(FakeRobot):
+    def __init__(self, results: list[ExecutionResult]) -> None:
+        if not results:
+            raise ValueError("scenario robot requires at least one result")
+        super().__init__(result=results[0])
+        self.results = results
+
+    def execute(self, action):
+        if self.stopped:
+            return ExecutionResult(False, "robot is stopped")
+        if action.skill not in self.allowed_skills:
+            return ExecutionResult(False, f"unknown skill: {action.skill}")
+        self.executed.append(action)
+        return self.results.pop(0)
+
+
+def _execution_result(config: dict[str, Any]) -> ExecutionResult:
+    return ExecutionResult(
+        success=config.get("success", True),
+        detail=config.get("detail", "simulated action completed"),
+        duration_ms=config.get("duration_ms", 0),
+        outcome_success=config.get("outcome_success"),
+        process_compliance=config.get("process_compliance"),
+        safety_passed=config.get("safety_passed"),
+    )
 
 
 def run_scenario(path: Path) -> ExperimentResult:
     scenario = json.loads(path.read_text(encoding="utf-8"))
     robot_config = scenario.get("robot", {})
-    robot = FakeRobot(
-        result=ExecutionResult(
-            robot_config.get("success", True),
-            robot_config.get("detail", "simulated action completed"),
-            robot_config.get("duration_ms", 0),
-        )
-    )
+    result_configs = robot_config.get("results", [robot_config])
+    robot = ScenarioRobot([_execution_result(config) for config in result_configs])
     authorization = scenario.get("authorization")
     authorizer = ChallengeStore(authorization.get("lifetime_ms", 3_000)) if authorization else None
     world_config = scenario.get("world")
@@ -63,10 +87,11 @@ def run_scenario(path: Path) -> ExperimentResult:
         for item in scenario["intents"]:
             if harness.state in {
                 TaskState.COMPLETED,
-                TaskState.FAILED,
                 TaskState.CANCELLED,
                 TaskState.EMERGENCY_STOPPED,
             }:
+                break
+            if harness.state is TaskState.FAILED and item.get("kind") != "recover":
                 break
             if "world_update" in item:
                 update = item["world_update"]
@@ -81,6 +106,12 @@ def run_scenario(path: Path) -> ExperimentResult:
                     world.remove(update["target"])
                 else:
                     raise ValueError(f"unknown world operation: {update['op']}")
+                continue
+            if item.get("kind") == "recover":
+                harness.request_recovery(
+                    target_revision=item.get("target_revision"),
+                    at_ms=item.get("at_ms"),
+                )
                 continue
             harness.handle(
                 Intent(
@@ -99,6 +130,7 @@ def run_scenario(path: Path) -> ExperimentResult:
         harness.state.value == expected["final_state"]
         and len(robot.executed) == expected.get("action_count", 0)
         and robot.stopped is expected.get("stopped", False)
+        and harness.recovery_attempts == expected.get("recovery_attempts", 0)
         and error == expected.get("error")
     )
     trace = [
@@ -106,7 +138,15 @@ def run_scenario(path: Path) -> ExperimentResult:
         for record in harness.trace
     ]
     return ExperimentResult(
-        scenario["name"], passed, harness.state.value, len(robot.executed), robot.stopped, error, trace
+        scenario["name"],
+        passed,
+        harness.state.value,
+        len(robot.executed),
+        robot.stopped,
+        error,
+        harness.recovery_attempts,
+        [asdict(proposal) for proposal in harness.recovery_history],
+        trace,
     )
 
 
