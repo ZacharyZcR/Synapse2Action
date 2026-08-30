@@ -1,6 +1,10 @@
 import unittest
 
-from synapse2action.groot_benchmark import summarize_groot_episodes, wilson_interval
+from synapse2action.groot_benchmark import (
+    compare_groot_counterfactuals,
+    summarize_groot_episodes,
+    wilson_interval,
+)
 
 
 def episode(seed: int, *, grasped: bool, lifted: bool) -> dict[str, object]:
@@ -45,6 +49,38 @@ class GrootBenchmarkTests(unittest.TestCase):
     def test_rejects_empty_benchmark(self) -> None:
         with self.assertRaises(ValueError):
             summarize_groot_episodes([])
+
+    def test_compares_seed_paired_lift_counterfactuals(self) -> None:
+        baseline = [
+            episode(10, grasped=True, lifted=False),
+            episode(11, grasped=True, lifted=False),
+        ]
+        shorter_horizon = [
+            episode(10, grasped=True, lifted=True),
+            episode(11, grasped=True, lifted=False),
+        ]
+
+        report = compare_groot_counterfactuals(
+            {"baseline": baseline, "short_horizon": shorter_horizon}
+        )
+
+        effect = report["effects_vs_baseline"]["short_horizon"]
+        self.assertEqual(effect["lift_rate_delta"], 0.5)
+        self.assertAlmostEqual(effect["mean_maximum_lift_m_delta"], 0.04)
+        self.assertTrue(effect["paired_results"][0]["lifted_changed"])
+        self.assertAlmostEqual(
+            effect["paired_results"][0]["maximum_lift_m_delta"], 0.08
+        )
+        self.assertEqual(report["paired_seeds"], [10, 11])
+
+    def test_counterfactuals_require_identical_seed_order(self) -> None:
+        with self.assertRaisesRegex(ValueError, "same order"):
+            compare_groot_counterfactuals(
+                {
+                    "baseline": [episode(10, grasped=True, lifted=False)],
+                    "changed": [episode(11, grasped=True, lifted=True)],
+                }
+            )
 
 
 if __name__ == "__main__":

@@ -56,3 +56,66 @@ def summarize_groot_episodes(
         ),
         "results": rows,
     }
+
+
+def compare_groot_counterfactuals(
+    variants: Mapping[str, Iterable[Mapping[str, Any]]],
+    *,
+    baseline: str = "baseline",
+) -> dict[str, Any]:
+    rows = {
+        name: [dict(episode) for episode in episodes]
+        for name, episodes in variants.items()
+    }
+    if baseline not in rows:
+        raise ValueError("GR00T counterfactuals require the named baseline")
+    if len(rows) < 2:
+        raise ValueError("GR00T counterfactuals require at least two variants")
+    baseline_seeds = [int(row["seed"]) for row in rows[baseline]]
+    if not baseline_seeds:
+        raise ValueError("GR00T counterfactual baseline must not be empty")
+    summaries: dict[str, dict[str, Any]] = {}
+    for name, episodes in rows.items():
+        seeds = [int(row["seed"]) for row in episodes]
+        if seeds != baseline_seeds:
+            raise ValueError(
+                f"variant {name} must use the baseline seeds in the same order"
+            )
+        summaries[name] = summarize_groot_episodes(episodes)
+    reference = summaries[baseline]
+    effects = {}
+    for name, summary in summaries.items():
+        if name == baseline:
+            continue
+        paired = []
+        for reference_row, variant_row in zip(rows[baseline], rows[name], strict=True):
+            paired.append(
+                {
+                    "seed": int(reference_row["seed"]),
+                    "grasped_changed": variant_row.get("grasped")
+                    != reference_row.get("grasped"),
+                    "lifted_changed": variant_row.get("lifted")
+                    != reference_row.get("lifted"),
+                    "maximum_lift_m_delta": float(variant_row["maximum_lift_m"])
+                    - float(reference_row["maximum_lift_m"]),
+                }
+            )
+        effects[name] = {
+            "grasp_rate_delta": summary["stage_success_rate"]["grasped"]
+            - reference["stage_success_rate"]["grasped"],
+            "lift_rate_delta": summary["stage_success_rate"]["lifted"]
+            - reference["stage_success_rate"]["lifted"],
+            "strict_success_rate_delta": summary["strict_success_rate"]
+            - reference["strict_success_rate"],
+            "mean_maximum_lift_m_delta": summary["mean_maximum_lift_m"]
+            - reference["mean_maximum_lift_m"],
+            "paired_results": paired,
+        }
+    return {
+        "schema_version": 1,
+        "benchmark": "groot_g1_lift_counterfactuals",
+        "baseline": baseline,
+        "paired_seeds": baseline_seeds,
+        "variants": summaries,
+        "effects_vs_baseline": effects,
+    }

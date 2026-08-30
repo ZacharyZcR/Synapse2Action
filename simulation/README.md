@@ -42,6 +42,21 @@ PYTHONPATH=src python3 simulation/run_groot_seeded_benchmark.py \
   --seeds 1001 1002 1003
 ```
 
+Run paired lift counterfactuals with identical seeds across the baseline,
+shorter open-loop action horizon, and extended episode budget:
+
+```bash
+PYTHONPATH=src python3 simulation/run_groot_lift_counterfactual.py \
+  --seeds 1001 1002 1003 --resume
+```
+
+The experiment writes per-seed evidence beneath
+`reports/simulation/groot-lift-counterfactual/` and an aggregate `summary.json`
+with lift, grasp, strict-success, and maximum-lift deltas against the baseline.
+Changing the lift threshold alone is intentionally excluded because that changes
+the verdict, not the physical rollout. Scene-position interventions remain gated
+until the upstream environment exposes a validated reset contract.
+
 ### Future GR00T N1.7 + SONIC experiment
 
 The proposed future G1 control path replaces the task-specific C++ pick-and-place fixture

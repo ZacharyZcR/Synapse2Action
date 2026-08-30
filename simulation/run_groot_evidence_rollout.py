@@ -206,11 +206,16 @@ def main() -> int:
     parser = argparse.ArgumentParser()
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--max-episode-steps", type=int, default=1440)
+    parser.add_argument("--n-action-steps", type=int, default=20)
     parser.add_argument("--minimum-lift-m", type=float, required=True)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--policy-client-host", default="127.0.0.1")
     parser.add_argument("--policy-client-port", type=int, default=5555)
     args = parser.parse_args()
+    if args.max_episode_steps <= 0:
+        parser.error("--max-episode-steps must be positive")
+    if args.n_action_steps <= 0:
+        parser.error("--n-action-steps must be positive")
 
     original_get_gym_env = rollout_policy.get_gym_env
 
@@ -225,7 +230,7 @@ def main() -> int:
             max_episode_steps=args.max_episode_steps,
         ),
         multistep=rollout_policy.MultiStepConfig(
-            n_action_steps=20,
+            n_action_steps=args.n_action_steps,
             max_episode_steps=args.max_episode_steps,
             terminate_on_success=False,
         ),

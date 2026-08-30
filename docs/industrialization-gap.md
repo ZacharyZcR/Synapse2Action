@@ -114,7 +114,8 @@ LLM 与 VLA 永远不拥有急停、碰撞约束、力矩限制、工作空间�
 ### Milestone A — Explain and fix the measured lift failure / 解释并修复实测抬升失败
 
 - [x] Version the result schema into `outcome_success`, `process_compliance`, and `safety_passed`.
-- [ ] Replay seeds 1001–1020 with controlled counterfactuals for grasp height, action scale, object pose, contact state, and transport timing.
+- [x] Add a reproducible same-seed counterfactual harness for action horizon and episode budget, with paired effect aggregation.
+- [ ] Run seeds 1001–1020 on the GR00T host; add grasp/contact and scene interventions only through validated physical environment controls.
 - [ ] Determine whether the failure belongs to policy output, action decoding, controller tracking, contact dynamics, or verifier semantics.
 - [ ] Preserve the original 20-seed baseline; do not tune on the held-out acceptance set.
 
