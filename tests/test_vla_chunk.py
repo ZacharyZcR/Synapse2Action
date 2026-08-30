@@ -9,6 +9,7 @@ from synapse2action.vla_chunk import (
     OpenPIChunkClient,
     SmolVLAChunkClient,
     parse_g1_action_chunk,
+    validate_g1_action_chunk_motion,
 )
 
 
@@ -27,6 +28,65 @@ class Response:
 
 
 class VLAChunkTests(unittest.TestCase):
+    def test_motion_validator_accepts_bounded_chunk(self) -> None:
+        chunk = G1ActionChunk(
+            "run",
+            0,
+            tuple(tuple(0.1 * step if index == 12 else 0.0 for index in range(29)) for step in (1, 2)),
+            1.0,
+        )
+
+        validate_g1_action_chunk_motion(
+            chunk,
+            initial_position_rad=[0.0] * 29,
+            initial_velocity_rad_s=[0.0] * 29,
+            joint_indices=[12],
+            joint_limits_rad=[(-1.0, 1.0)],
+            frequency_hz=10.0,
+            maximum_velocity_rad_s=2.0,
+            maximum_acceleration_rad_s2=20.0,
+            maximum_duration_s=0.2,
+        )
+
+    def test_motion_validator_rejects_every_configured_limit(self) -> None:
+        def chunk(*values: float) -> G1ActionChunk:
+            return G1ActionChunk(
+                "run",
+                0,
+                tuple(tuple(value if index == 12 else 0.0 for index in range(29)) for value in values),
+                1.0,
+            )
+
+        common = {
+            "initial_position_rad": [0.0] * 29,
+            "initial_velocity_rad_s": [0.0] * 29,
+            "joint_indices": [12],
+            "joint_limits_rad": [(-1.0, 1.0)],
+            "frequency_hz": 10.0,
+            "maximum_velocity_rad_s": 100.0,
+            "maximum_acceleration_rad_s2": 1000.0,
+            "maximum_duration_s": 1.0,
+        }
+        cases = (
+            ("position", chunk(1.1), {}),
+            ("velocity", chunk(0.3), {"maximum_velocity_rad_s": 2.0}),
+            (
+                "acceleration",
+                chunk(0.1, 0.3),
+                {
+                    "initial_velocity_rad_s": [0.0] * 12 + [1.0] + [0.0] * 16,
+                    "maximum_acceleration_rad_s2": 5.0,
+                },
+            ),
+            ("duration", chunk(0.0, 0.0, 0.0), {"maximum_duration_s": 0.2}),
+        )
+        for label, action_chunk, overrides in cases:
+            with self.subTest(label=label), self.assertRaisesRegex(ValueError, label):
+                validate_g1_action_chunk_motion(
+                    action_chunk,
+                    **(common | overrides),
+                )
+
     def test_openpi_requires_explicit_observation_and_embodiment_mapping(self) -> None:
         class Policy:
             def __init__(self) -> None:

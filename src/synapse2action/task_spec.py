@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import json
+from math import isfinite
 from pathlib import Path
 from typing import Any, Mapping
 
@@ -41,6 +42,9 @@ class ControllerSpec:
     transport: tuple[float, ...]
     phase_end_s: tuple[float, float, float, float]
     start_delay_s: float
+    maximum_chunk_velocity_rad_s: float
+    maximum_chunk_acceleration_rad_s2: float
+    maximum_chunk_duration_s: float
 
 
 @dataclass(frozen=True, slots=True)
@@ -128,6 +132,13 @@ def load_task_spec(path: Path) -> TaskSpec:
             **poses,
             phase_end_s=_tuple(controller["phase_end_s"], 4, "controller.phase_end_s"),
             start_delay_s=float(controller["start_delay_s"]),
+            maximum_chunk_velocity_rad_s=float(
+                controller["maximum_chunk_velocity_rad_s"]
+            ),
+            maximum_chunk_acceleration_rad_s2=float(
+                controller["maximum_chunk_acceleration_rad_s2"]
+            ),
+            maximum_chunk_duration_s=float(controller["maximum_chunk_duration_s"]),
         ),
         display=raw["display"],
     )
@@ -139,6 +150,13 @@ def load_task_spec(path: Path) -> TaskSpec:
         raise ValueError("controller phase end times must be ordered")
     if any(end <= start for start, end in zip(spec.controller.phase_end_s, spec.controller.phase_end_s[1:])):
         raise ValueError("controller phases must have positive duration")
+    motion_limits = (
+        spec.controller.maximum_chunk_velocity_rad_s,
+        spec.controller.maximum_chunk_acceleration_rad_s2,
+        spec.controller.maximum_chunk_duration_s,
+    )
+    if not all(isfinite(value) and value > 0 for value in motion_limits):
+        raise ValueError("controller action chunk limits must be finite and positive")
     language_cases = (
         spec.instruction,
         *spec.paraphrases,

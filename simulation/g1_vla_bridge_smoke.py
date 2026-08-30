@@ -36,6 +36,11 @@ def main() -> None:
         UnitreeSdk2Bridge,
         joint_indices=task.controller.joint_indices,
         joint_limits_rad=task.controller.joint_limits_rad,
+        maximum_chunk_velocity_rad_s=task.controller.maximum_chunk_velocity_rad_s,
+        maximum_chunk_acceleration_rad_s2=(
+            task.controller.maximum_chunk_acceleration_rad_s2
+        ),
+        maximum_chunk_duration_s=task.controller.maximum_chunk_duration_s,
     )(model, data)
     command = unitree_hg_msg_dds__LowCmd_()
     for motor in command.motor_cmd[:29]:

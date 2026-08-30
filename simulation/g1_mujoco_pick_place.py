@@ -114,6 +114,11 @@ def main() -> None:
             apply_vla_targets=not args.vla_typed_skill_passthrough,
             joint_indices=task.controller.joint_indices,
             joint_limits_rad=task.controller.joint_limits_rad,
+            maximum_chunk_velocity_rad_s=task.controller.maximum_chunk_velocity_rad_s,
+            maximum_chunk_acceleration_rad_s2=(
+                task.controller.maximum_chunk_acceleration_rad_s2
+            ),
+            maximum_chunk_duration_s=task.controller.maximum_chunk_duration_s,
         )
         if args.vla_endpoint
         else UnitreeSdk2Bridge

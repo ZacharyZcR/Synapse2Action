@@ -124,6 +124,8 @@ LLM 与 VLA 永远不拥有急停、碰撞约束、力矩限制、工作空间�
 - [ ] Move standard processor, normalization, policy-server, and action-chunk operations behind a LeRobot-backed adapter contract.
 - [x] Unify SmolVLA and OpenPI proposals behind the bounded Action Chunk client contract.
 - [x] Add a tested OpenPI research adapter that requires explicit observation encoding and embodiment mapping without bypassing the Harness, safety supervisor, WBC, or verifier.
+- [x] Reject complete G1 action chunks before controller loading when configured joint-position, velocity, acceleration, or duration limits are violated.
+- [ ] Add trusted embodiment-specific forward kinematics and collision-scene validation before claiming Cartesian workspace enforcement.
 - [ ] First qualify the adapter on a supported tabletop/simulation embodiment; do not claim a G1 checkpoint where none exists.
 - [ ] Evaluate a second mature policy under the same TaskSpec, seeds, and evidence schema.
 

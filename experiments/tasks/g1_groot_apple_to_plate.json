@@ -29,7 +29,10 @@
     "lift": [0.0],
     "transport": [0.0],
     "phase_end_s": [1.0, 5.0, 9.0, 12.0],
-    "start_delay_s": 0.0
+    "start_delay_s": 0.0,
+    "maximum_chunk_velocity_rad_s": 2.0,
+    "maximum_chunk_acceleration_rad_s2": 20.0,
+    "maximum_chunk_duration_s": 20.0
   },
   "display": {
     "zh": {"target": "苹果", "destination": "盘子", "task": "抓起苹果并放到盘子上"},

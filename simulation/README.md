@@ -24,6 +24,15 @@ Action Chunk contract. The adapter proposes chunks only; the Harness, safety
 projection, controller, and verifier retain authority. This is a tested protocol
 integration, not a qualified OpenPI checkpoint or a G1 performance claim.
 
+At the G1 bridge boundary, every complete chunk is checked before it is loaded:
+configured manipulation joints must remain inside their position limits, each
+finite difference must satisfy velocity and acceleration limits, and the chunk
+horizon must fit its duration budget. One violation rejects the whole chunk;
+the downstream residual projector remains a second independent bound. Cartesian
+workspace enforcement is intentionally not claimed yet because the 29-joint
+proposal alone cannot prove end-effector position or collision clearance. That
+gate requires a trusted robot-specific forward-kinematics and collision model.
+
 Build the hardware-free language qualification manifest with:
 
 ```bash

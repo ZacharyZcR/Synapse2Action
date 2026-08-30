@@ -29,7 +29,10 @@
     "lift": [0.0, 0.17811, 0.46812, -0.37733, -0.36836, 0.17808, -0.46815, 0.37730, -0.36835],
     "transport": [0.0, -0.21138, 0.44107, 0.14765, 0.97303, 0.17808, -0.46815, 0.37730, -0.36835],
     "phase_end_s": [1.0, 5.0, 9.0, 12.0],
-    "start_delay_s": 12.0
+    "start_delay_s": 12.0,
+    "maximum_chunk_velocity_rad_s": 2.0,
+    "maximum_chunk_acceleration_rad_s2": 20.0,
+    "maximum_chunk_duration_s": 20.0
   },
   "display": {
     "zh": {"target": "红色方块", "destination": "绿色托盘", "task": "将红色方块放入绿色托盘"},

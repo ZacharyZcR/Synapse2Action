@@ -21,6 +21,73 @@ class G1ActionChunk:
     round_trip_ms: float = 0.0
 
 
+def validate_g1_action_chunk_motion(
+    chunk: G1ActionChunk,
+    *,
+    initial_position_rad: Sequence[float],
+    initial_velocity_rad_s: Sequence[float],
+    joint_indices: Sequence[int],
+    joint_limits_rad: Sequence[tuple[float, float]],
+    frequency_hz: float,
+    maximum_velocity_rad_s: float,
+    maximum_acceleration_rad_s2: float,
+    maximum_duration_s: float,
+) -> None:
+    """Reject a whole chunk before any sample can reach the controller."""
+
+    positions = tuple(float(value) for value in initial_position_rad)
+    velocities = tuple(float(value) for value in initial_velocity_rad_s)
+    indices = tuple(int(index) for index in joint_indices)
+    limits = tuple((float(lower), float(upper)) for lower, upper in joint_limits_rad)
+    scalars = (
+        frequency_hz,
+        maximum_velocity_rad_s,
+        maximum_acceleration_rad_s2,
+        maximum_duration_s,
+    )
+    if len(positions) != G1_MOTOR_COUNT or len(velocities) != G1_MOTOR_COUNT:
+        raise ValueError("G1 motion validation requires 29 position and velocity values")
+    if not all(isfinite(value) for value in (*positions, *velocities, *scalars)):
+        raise ValueError("G1 motion validation contains non-finite values")
+    if any(value <= 0 for value in scalars):
+        raise ValueError("G1 motion limits must be positive")
+    if not indices or len(indices) != len(set(indices)) or any(
+        not 0 <= index < G1_MOTOR_COUNT for index in indices
+    ):
+        raise ValueError("G1 motion validation requires unique valid joint indices")
+    if len(indices) != len(limits) or any(
+        not isfinite(lower) or not isfinite(upper) or lower >= upper
+        for lower, upper in limits
+    ):
+        raise ValueError("G1 motion validation requires ordered limits for every joint")
+    if not chunk.actions:
+        raise ValueError("G1 action chunk must not be empty")
+    if len(chunk.actions) / frequency_hz > maximum_duration_s:
+        raise ValueError("G1 action chunk exceeds the duration limit")
+
+    period_s = 1.0 / frequency_hz
+    previous_position = positions
+    previous_velocity = velocities
+    for action in chunk.actions:
+        if len(action) != G1_MOTOR_COUNT or not all(isfinite(value) for value in action):
+            raise ValueError("G1 action chunk contains an invalid action")
+        for index, (lower, upper) in zip(indices, limits, strict=True):
+            target = action[index]
+            if not lower <= target <= upper:
+                raise ValueError(f"G1 action chunk exceeds joint {index} position limit")
+            velocity = (target - previous_position[index]) / period_s
+            if abs(velocity) > maximum_velocity_rad_s:
+                raise ValueError(f"G1 action chunk exceeds joint {index} velocity limit")
+            acceleration = (velocity - previous_velocity[index]) / period_s
+            if abs(acceleration) > maximum_acceleration_rad_s2:
+                raise ValueError(f"G1 action chunk exceeds joint {index} acceleration limit")
+        next_velocity = list(previous_velocity)
+        for index in indices:
+            next_velocity[index] = (action[index] - previous_position[index]) / period_s
+        previous_position = action
+        previous_velocity = tuple(next_velocity)
+
+
 class PolicyChunkClient(Protocol):
     def infer(
         self,

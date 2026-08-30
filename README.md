@@ -132,7 +132,8 @@ The alternate `rtxpro-vllm/DeepSeek-V4-Flash-0731` Pi route currently returns 50
 - [x] Define three independent TaskSpecs and a versioned language qualification suite covering paraphrases, counterfactuals, forbidden requests, and impossible requests. / 定义三个独立 TaskSpec，并建立覆盖同义改写、反事实、禁止请求和不可完成请求的版本化语言准入集。
 - [x] Add a fail-closed Policy Admission Verifier for exact seeds, Result v3 consistency, confirmation traces, bounded recovery, manifest-bound language coverage, and configurable outcome reliability. / 加入 Fail-Closed Policy Admission Verifier，严格检查 Seed、Result v3 一致性、确认链、受限恢复、绑定 Manifest 的语言覆盖及可配置结果可靠性。
 - [x] Build immutable content-addressed policy evidence bundles and reject changed files, undeclared files, lowered reliability thresholds, or reduced seed sets. / 构建不可覆盖的内容寻址 Policy 证据包，并拒绝文件篡改、未登记文件、可靠性门槛降低或 Seed 集缩减。
-- [ ] Validate action chunks against workspace, joint, velocity, acceleration, and duration limits. / 对动作块执行空间、关节、速度、加速度与持续时间校验。
+- [x] Reject whole action chunks before controller admission when any sample violates configured joint-position, velocity, acceleration, or duration limits. / 在动作块进入 Controller 前整体验证；任一采样点违反关节位置、速度、加速度或持续时间限制时拒绝整个 Chunk。
+- [ ] Validate action chunks against a trusted forward-kinematics and collision model before claiming workspace enforcement. / 在声称完成工作空间约束前，使用可信正向运动学与碰撞模型验证动作块。
 - [x] Verify task outcomes using robot state and visual evidence instead of model self-reporting. / 使用机器人状态与视觉证据验证结果，而非相信模型自报成功。
 - [x] Add a one-attempt deterministic recovery path with fresh world validation, a new authorization challenge, second confirmation, stop preemption, and retained audit history. / 加入最多一次的确定性恢复路径，要求重新校验世界状态、签发新授权 Challenge、二次确认、急停可抢占并保留完整审计历史。
 - [x] Classify failed results into outcome, process, and safety failures; emit an audited recovery allowlist with no automatic execution. / 将失败结果分类为结果、过程与安全失败；输出可审计的恢复白名单，禁止自动执行。

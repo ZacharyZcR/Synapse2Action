@@ -6,7 +6,11 @@ from time import monotonic
 from typing import Sequence
 
 from .unitree_g1 import G1_MOTOR_COUNT
-from .vla_chunk import G1ActionChunk, G1ActionChunkPlayer
+from .vla_chunk import (
+    G1ActionChunk,
+    G1ActionChunkPlayer,
+    validate_g1_action_chunk_motion,
+)
 
 
 class G1VLAActionProjector:
@@ -80,6 +84,9 @@ def make_g1_vla_bridge(
     action_frequency_hz: float = 10.0,
     control_frequency_hz: float = 500.0,
     stale_after_s: float = 7.0,
+    maximum_chunk_velocity_rad_s: float = 2.0,
+    maximum_chunk_acceleration_rad_s2: float = 20.0,
+    maximum_chunk_duration_s: float | None = None,
     apply_vla_targets: bool = True,
 ) -> type:
     """Wrap Unitree's bridge at its LowCmd callback without changing DDS messages."""
@@ -113,6 +120,25 @@ def make_g1_vla_bridge(
 
         def set_vla_chunk(self, chunk: G1ActionChunk) -> None:
             with self._vla_lock:
+                positions = self.mj_data.sensordata[: self.num_motor]
+                velocities = self.mj_data.sensordata[
+                    self.num_motor : self.num_motor * 2
+                ]
+                validate_g1_action_chunk_motion(
+                    chunk,
+                    initial_position_rad=positions,
+                    initial_velocity_rad_s=velocities,
+                    joint_indices=joint_indices,
+                    joint_limits_rad=joint_limits_rad,
+                    frequency_hz=action_frequency_hz,
+                    maximum_velocity_rad_s=maximum_chunk_velocity_rad_s,
+                    maximum_acceleration_rad_s2=maximum_chunk_acceleration_rad_s2,
+                    maximum_duration_s=(
+                        stale_after_s
+                        if maximum_chunk_duration_s is None
+                        else maximum_chunk_duration_s
+                    ),
+                )
                 if self._vla_action is None and self._vla_chunks.chunk is None:
                     self._vla_projector.reset(self.mj_data.sensordata[: self.num_motor])
                 self._vla_action = None

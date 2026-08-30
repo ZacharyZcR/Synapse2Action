@@ -7,6 +7,7 @@ from synapse2action.g1_vla import (
     G1VLAActionProjector,
     make_g1_vla_bridge,
 )
+from synapse2action.vla_chunk import G1ActionChunk
 from synapse2action.task_spec import load_task_spec
 
 TASK = load_task_spec(Path(__file__).resolve().parents[1] / "experiments/tasks/g1_pick_place.json")
@@ -90,6 +91,24 @@ class G1VLAActionProjectorTests(unittest.TestCase):
         bridge = make_g1_vla_bridge(BaseBridge, **PROJECTOR_ARGS)()
         bridge.LowCmdHandler(SimpleNamespace())
         self.assertEqual(bridge.mj_data.ctrl, [7.0] * 29)
+
+    def test_bridge_rejects_unsafe_chunk_before_loading_it(self) -> None:
+        class BaseBridge:
+            def __init__(self) -> None:
+                self.num_motor = 29
+                self.mj_data = SimpleNamespace(
+                    time=0.0,
+                    sensordata=[0.0] * 58,
+                    ctrl=[0.0] * 29,
+                )
+
+        bridge = make_g1_vla_bridge(BaseBridge, **PROJECTOR_ARGS)()
+        unsafe = G1ActionChunk("run", 0, ((1.0,) * 29,), 1.0)
+
+        with self.assertRaisesRegex(ValueError, "velocity"):
+            bridge.set_vla_chunk(unsafe)
+
+        self.assertIsNone(bridge._vla_chunks.chunk)
 
     def test_typed_skill_passthrough_authorizes_official_command(self) -> None:
         class BaseBridge:

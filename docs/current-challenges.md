@@ -46,6 +46,7 @@ human or scripted intent
 9. **Language-to-work causality is unproven.** Three TaskSpecs and a versioned qualification manifest now cover paraphrases, changed goals, forbidden objects, and impossible requests, but candidate policies have not yet run the matched-observation evaluation.
 10. **The production gap is not a model-size problem.** Reliability, failure detection, deterministic safety, recovery, cycle time, intervention rate, embodiment transfer, and versioned requalification remain unresolved even with a stronger VLA.
 11. **The admission and retention gates exist, but candidate evidence is incomplete.** The verifier rejects wrong seeds, contradictory Result v3 verdicts, unconfirmed execution, recovery overreach, and incomplete or unbound language suites. Accepted inputs can now be frozen into a content-addressed bundle that rejects tampering, extra files, and weaker baselines. GR00T/OpenPI still require real matched evidence before either can pass it; the digest also needs external retention or signing for adversarial integrity.
+12. **Joint-space chunk admission is bounded; Cartesian workspace admission is not.** Complete chunks are now rejected before controller loading for joint-position, velocity, acceleration, or duration violations. A 29-joint vector does not by itself prove end-effector clearance, self-collision, or scene collision; those checks remain gated on a trusted embodiment-specific kinematics and collision model.
 
 1. **VLA 成熟度与覆盖不足。** 公开 checkpoint 绑定特定任务和本体，不同 Seed 结果波动，尚未证明跨物体、目标、相机扰动和任务的泛化。问题不能简单归因于模型参数较小；数据覆盖、长时序闭环和恢复示范是更直接的缺口。
 2. **受控恢复状态机已闭合，但尚无 Policy 级实测证据。** Outcome Failure 只有在重新校验世界状态、签发新授权 Challenge 并二次确认后才能重试一次；安全失败和预算耗尽均禁止重试，急停可抢占待确认恢复，报告保留两次失败提案。候选 Policy 的恢复成功率与失败检测召回率尚未测量。
@@ -58,6 +59,7 @@ human or scripted intent
 9. **尚未证明语言到工作的因果性。** 当前已有三个 TaskSpec 和覆盖同义改写、目标变化、禁止物体与不可能请求的版本化准入集，但候选 Policy 尚未完成匹配 Observation 的实际评测。
 10. **工业化差距不是模型大小问题。** 即使换成更强 VLA，可靠性、失败检测、确定性安全、恢复、节拍、人工介入率、本体迁移和版本化重新验收仍未解决。
 11. **准入与证据留存门已具备，但候选证据尚不完整。** Verifier 会拒绝错误 Seed、自相矛盾的 Result v3、未确认执行、恢复越权以及缺失或未绑定的语言准入集；通过后的输入可冻结为内容寻址证据包，并拒绝篡改、额外文件和弱化基线。GR00T/OpenPI 仍需真实匹配证据才能通过；若要抵御可重写整个目录的攻击者，根 Digest 仍必须外部留存或签名。
+12. **关节空间 Chunk 准入已受限，但笛卡尔工作空间准入尚未完成。** 整段 Chunk 现在会在装入 Controller 前检查关节位置、速度、加速度与持续时间，任一越界即整体拒绝。仅凭 29 维关节向量无法证明末端间隙、自碰撞或场景碰撞；这些检查仍需可信的本体专用运动学与碰撞模型。
 
 ### Immediate roadmap / 近期路线
 
