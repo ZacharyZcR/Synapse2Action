@@ -133,7 +133,8 @@ LLM 与 VLA 永远不拥有急停、碰撞约束、力矩限制、工作空间�
 - [x] Version a qualification manifest for paraphrases, counterfactuals, forbidden-object constraints, and impossible requests.
 - [ ] Execute the qualification manifest against each candidate policy under matched observations and seeds.
 - [ ] Require the structured plan to cross the exact Planner-to-VLA boundary recorded in evidence.
-- [ ] Add bounded recovery only for explicit failure classes and allowlisted recovery skills.
+- [x] Classify outcome, process, and safety failures and emit a deterministic recovery allowlist; safety violations permit no retry.
+- [ ] Route an allowlisted recovery plan through a second explicit confirmation before executing one bounded attempt.
 
 ### Milestone D — Physical G1 preflight / G1 真机预检
 

@@ -3,6 +3,7 @@ import unittest
 from synapse2action.components import FakeRobot, MockPlanner, RuleBasedVerifier
 from synapse2action.contracts import ExecutionResult, Intent, IntentKind, PlannerRefused, TaskState
 from synapse2action.harness import Harness, InvalidTransition
+from synapse2action.recovery import FailureClass
 
 
 def make_harness() -> tuple[Harness, FakeRobot]:
@@ -84,6 +85,10 @@ class HarnessTests(unittest.TestCase):
         self.assertFalse(harness.last_result.process_compliance)
         self.assertTrue(harness.last_result.safety_passed)
         self.assertFalse(harness.last_result.success)
+        self.assertEqual(harness.last_recovery.failure_class, FailureClass.PROCESS_NONCOMPLIANT)
+        self.assertEqual(harness.last_recovery.allowed_skills, ("reobserve",))
+        self.assertTrue(harness.last_recovery.requires_confirmation)
+        self.assertFalse(harness.last_recovery.automatic_execution)
 
     def test_safety_failure_is_independent_from_outcome_and_process(self) -> None:
         robot = FakeRobot(
@@ -103,6 +108,29 @@ class HarnessTests(unittest.TestCase):
         self.assertTrue(harness.last_result.process_compliance)
         self.assertFalse(harness.last_result.safety_passed)
         self.assertFalse(harness.last_result.success)
+        self.assertEqual(harness.last_recovery.failure_class, FailureClass.SAFETY_VIOLATION)
+        self.assertEqual(harness.last_recovery.allowed_skills, ())
+        self.assertFalse(harness.last_recovery.requires_confirmation)
+
+    def test_missed_outcome_only_proposes_confirmed_bounded_retry(self) -> None:
+        class RejectingVerifier:
+            def verify(self, result):
+                return False
+
+        robot = FakeRobot()
+        harness = Harness(MockPlanner(), robot, RejectingVerifier())
+        harness.handle(Intent(IntentKind.SELECT, "red_cube"))
+
+        state = harness.handle(Intent(IntentKind.CONFIRM))
+
+        self.assertEqual(state, TaskState.FAILED)
+        self.assertEqual(harness.last_recovery.failure_class, FailureClass.OUTCOME_NOT_REACHED)
+        self.assertEqual(
+            harness.last_recovery.allowed_skills,
+            ("reobserve", "retry_confirmed_plan"),
+        )
+        self.assertEqual(harness.last_recovery.remaining_attempts, 1)
+        self.assertFalse(harness.last_recovery.automatic_execution)
 
     def test_planner_failure_is_contained_before_robot(self) -> None:
         class FailedPlanner:

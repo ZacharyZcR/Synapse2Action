@@ -211,7 +211,14 @@ def main() -> int:
         "policy": args.policy,
         "seed": args.seed,
         "planner": observable_planner.report,
-        "result": ({"schema_version": RESULT_SCHEMA_VERSION, **asdict(harness.last_result)} if harness.last_result else None),
+        "result": (
+            {"schema_version": RESULT_SCHEMA_VERSION, **asdict(harness.last_result)}
+            if harness.last_result
+            else None
+        ),
+        "recovery_proposal": (
+            asdict(harness.last_recovery) if harness.last_recovery else None
+        ),
         "trace": [asdict(record) for record in harness.trace],
         "unitree_acceptance": robot.last_acceptance,
         "unitree_simulator": robot.last_simulator_report,

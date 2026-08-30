@@ -6,6 +6,7 @@ from .authorization import ChallengeStore
 from .components import ScriptedPolicy
 from .contracts import Action, ExecutionResult, Intent, IntentKind, Planner, PlannerRefused, Policy, Robot, TaskState, TraceRecord, Verifier
 from .skills import SkillContext, SkillRegistry, default_skill_registry
+from .recovery import BoundedRecoveryPolicy, RecoveryProposal
 from .world import FakeWorld
 
 
@@ -29,12 +30,15 @@ class Harness:
     policy: Policy = field(default_factory=ScriptedPolicy)
     pending_action: Action | None = None
     last_result: ExecutionResult | None = None
+    recovery_policy: BoundedRecoveryPolicy = field(default_factory=BoundedRecoveryPolicy)
+    last_recovery: RecoveryProposal | None = None
 
     def handle(self, intent: Intent) -> TaskState:
         if intent.kind is IntentKind.STOP:
             if self.authorizer:
                 self.authorizer.revoke()
             self.pending_action = None
+            self.last_recovery = None
             self.challenge_token = None
             self.robot.stop()
             return self._transition(TaskState.EMERGENCY_STOPPED, "stop", "global stop")
@@ -62,6 +66,7 @@ class Harness:
                 if not decision.accepted:
                     raise ValueError(decision.reason)
             self.target = intent.target
+            self.last_recovery = None
             self.target_revision = intent.target_revision
             self._transition(TaskState.TARGET_SELECTED, "select", intent.target)
             planned_action = self._plan_selected_target()
@@ -131,6 +136,7 @@ class Harness:
             safety_passed=safety_passed,
         )
         final_state = TaskState.COMPLETED if success else TaskState.FAILED
+        self.last_recovery = None if success else self.recovery_policy.propose(self.last_result)
         detail = result.detail
         if not process_compliance:
             detail = skill_result.reason
