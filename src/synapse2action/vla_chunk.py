@@ -6,7 +6,7 @@ from dataclasses import dataclass
 import json
 from math import isfinite
 from time import monotonic
-from typing import Callable, Mapping, Sequence
+from typing import Callable, Mapping, Protocol, Sequence
 from urllib.request import Request, urlopen
 
 from .unitree_g1 import G1_MOTOR_COUNT
@@ -19,6 +19,101 @@ class G1ActionChunk:
     actions: tuple[tuple[float, ...], ...]
     inference_ms: float
     round_trip_ms: float = 0.0
+
+
+class PolicyChunkClient(Protocol):
+    def infer(
+        self,
+        *,
+        session_id: str,
+        sequence: int,
+        task: str,
+        state: Sequence[float],
+        images: Mapping[str, bytes],
+    ) -> G1ActionChunk: ...
+
+
+class OpenPIPolicy(Protocol):
+    def infer(self, observation: Mapping[str, object]) -> Mapping[str, object]: ...
+
+    def reset(self) -> None: ...
+
+
+class OpenPIChunkClient:
+    """Adapt OpenPI proposals to the bounded G1 action-chunk contract.
+
+    Observation encoding and embodiment mapping are mandatory because an OpenPI
+    checkpoint's camera keys and action space are checkpoint-specific. This
+    adapter validates proposals; it never sends commands to a robot.
+    """
+
+    def __init__(
+        self,
+        policy: OpenPIPolicy,
+        *,
+        observation_encoder: Callable[
+            [str, Sequence[float], Mapping[str, bytes]], Mapping[str, object]
+        ],
+        action_mapper: Callable[[Sequence[float]], Sequence[float]],
+        maximum_actions: int = 50,
+    ) -> None:
+        if maximum_actions <= 0:
+            raise ValueError("maximum actions must be positive")
+        self.policy = policy
+        self.observation_encoder = observation_encoder
+        self.action_mapper = action_mapper
+        self.maximum_actions = maximum_actions
+        self._session_id: str | None = None
+
+    def infer(
+        self,
+        *,
+        session_id: str,
+        sequence: int,
+        task: str,
+        state: Sequence[float],
+        images: Mapping[str, bytes],
+    ) -> G1ActionChunk:
+        if len(state) != G1_MOTOR_COUNT:
+            raise ValueError("OpenPI G1 request requires 29 state values")
+        if self._session_id != session_id:
+            self.policy.reset()
+            self._session_id = session_id
+        observation = self.observation_encoder(task, state, images)
+        started = monotonic()
+        response = self.policy.infer(observation)
+        round_trip_ms = (monotonic() - started) * 1000
+        raw_actions = response.get("actions")
+        try:
+            actions = list(raw_actions)  # type: ignore[arg-type]
+        except TypeError as exc:
+            raise ValueError("OpenPI response must contain an action chunk") from exc
+        if not 1 <= len(actions) <= self.maximum_actions:
+            raise ValueError("OpenPI action chunk has an invalid horizon")
+        mapped = [list(self.action_mapper(action)) for action in actions]
+        timing = response.get("server_timing", {})
+        inference_ms = (
+            timing.get("infer_ms", round_trip_ms)
+            if isinstance(timing, Mapping)
+            else round_trip_ms
+        )
+        chunk = parse_g1_action_chunk(
+            {
+                "session_id": session_id,
+                "sequence": sequence,
+                "actions": mapped,
+                "inference_ms": inference_ms,
+            },
+            session_id=session_id,
+            sequence=sequence,
+        )
+        return G1ActionChunk(
+            chunk.session_id,
+            chunk.sequence,
+            chunk.actions,
+            chunk.inference_ms,
+            round_trip_ms,
+        )
 
 
 class SmolVLAChunkClient:
@@ -167,7 +262,7 @@ class G1ChunkCoordinator:
 
     def __init__(
         self,
-        client: SmolVLAChunkClient,
+        client: PolicyChunkClient,
         *,
         session_id: str,
         task: str,
@@ -177,7 +272,7 @@ class G1ChunkCoordinator:
         self.session_id = session_id
         self.task = task
         self.metrics = G1ChunkRuntimeMetrics(frequency_hz=frequency_hz)
-        self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="smolvla-chunk")
+        self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="policy-chunk")
         self._future: Future[G1ActionChunk] | None = None
         self._next_sequence = 0
 

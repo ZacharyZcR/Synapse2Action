@@ -6,6 +6,7 @@ from synapse2action.vla_chunk import (
     G1ActionChunkPlayer,
     G1ChunkCoordinator,
     G1ChunkRuntimeMetrics,
+    OpenPIChunkClient,
     SmolVLAChunkClient,
     parse_g1_action_chunk,
 )
@@ -26,6 +27,70 @@ class Response:
 
 
 class VLAChunkTests(unittest.TestCase):
+    def test_openpi_requires_explicit_observation_and_embodiment_mapping(self) -> None:
+        class Policy:
+            def __init__(self) -> None:
+                self.observations = []
+                self.resets = 0
+
+            def reset(self) -> None:
+                self.resets += 1
+
+            def infer(self, observation):
+                self.observations.append(observation)
+                return {
+                    "actions": [[1.0, 2.0], [3.0, 4.0]],
+                    "server_timing": {"infer_ms": 7.5},
+                }
+
+        policy = Policy()
+        client = OpenPIChunkClient(
+            policy,
+            observation_encoder=lambda task, state, images: {
+                "prompt": task,
+                "observation/state": tuple(state),
+                "camera_names": tuple(sorted(images)),
+            },
+            action_mapper=lambda action: [*action, *([0.0] * 27)],
+        )
+        images = {"base": b"rgb", "wrist": b"rgb"}
+
+        chunk = client.infer(
+            session_id="run",
+            sequence=0,
+            task="pick the apple",
+            state=[0.0] * 29,
+            images=images,
+        )
+
+        self.assertEqual(policy.resets, 1)
+        self.assertEqual(policy.observations[0]["prompt"], "pick the apple")
+        self.assertEqual(chunk.actions[0][:2], (1.0, 2.0))
+        self.assertEqual(len(chunk.actions[0]), 29)
+        self.assertEqual(chunk.inference_ms, 7.5)
+
+    def test_openpi_rejects_unmapped_or_unbounded_actions(self) -> None:
+        class Policy:
+            def reset(self) -> None:
+                pass
+
+            def infer(self, observation):
+                return {"actions": [[1.0, 2.0]]}
+
+        client = OpenPIChunkClient(
+            Policy(),
+            observation_encoder=lambda task, state, images: {},
+            action_mapper=lambda action: action,
+        )
+        with self.assertRaisesRegex(ValueError, "29"):
+            client.infer(
+                session_id="run",
+                sequence=0,
+                task="pick",
+                state=[0.0] * 29,
+                images={},
+            )
+
     def test_client_serializes_three_images_and_validates_chunk(self) -> None:
         def open_request(request: object, *, timeout: float) -> Response:
             payload = json.loads(request.data)

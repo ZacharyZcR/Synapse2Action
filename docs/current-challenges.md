@@ -43,7 +43,7 @@ human or scripted intent
 6. **Only one mature checkpoint is qualified.** The architecture claim requires a second LeRobot-supported policy under identical TaskSpec, seeds, and evidence gates.
 7. **Simulation is not hardware evidence.** Camera calibration, latency, joint mapping, payload behavior, physical emergency stop, workspace enforcement, and operator takeover remain unverified on a real G1.
 8. **Python runtime split.** The main Harness uses Python 3.12 while the compatible WBC runtime uses Python 3.10. The boundary must remain a versioned data contract; importing the main package inside the vendor runtime is not supported.
-9. **Language-to-work causality is unproven.** One TaskSpec cannot establish that language controls behavior across paraphrases, changed goals, forbidden objects, and impossible requests.
+9. **Language-to-work causality is unproven.** Three TaskSpecs and a versioned qualification manifest now cover paraphrases, changed goals, forbidden objects, and impossible requests, but candidate policies have not yet run the matched-observation evaluation.
 10. **The production gap is not a model-size problem.** Reliability, failure detection, deterministic safety, recovery, cycle time, intervention rate, embodiment transfer, and versioned requalification remain unresolved even with a stronger VLA.
 
 1. **VLA 成熟度与覆盖不足。** 公开 checkpoint 绑定特定任务和本体，不同 Seed 结果波动，尚未证明跨物体、目标、相机扰动和任务的泛化。问题不能简单归因于模型参数较小；数据覆盖、长时序闭环和恢复示范是更直接的缺口。
@@ -54,22 +54,22 @@ human or scripted intent
 6. **只验收了一个成熟 checkpoint。** 架构主张需要第二个 LeRobot 支持的 Policy 在相同 TaskSpec、Seed 和证据门下完成对照。
 7. **仿真不是真机证据。** 真机相机标定、延迟、关节映射、负载、实体急停、工作空间约束和人工接管均未验证。
 8. **Python Runtime 分裂。** 主 Harness 使用 Python 3.12，兼容 WBC Runtime 使用 Python 3.10；边界必须保持为版本化数据契约，不支持 Vendor Runtime 直接 Import 主包。
-9. **尚未证明语言到工作的因果性。** 单一 TaskSpec 无法证明语言能够跨同义改写、目标变化、禁止物体和不可能请求稳定控制行为。
+9. **尚未证明语言到工作的因果性。** 当前已有三个 TaskSpec 和覆盖同义改写、目标变化、禁止物体与不可能请求的版本化准入集，但候选 Policy 尚未完成匹配 Observation 的实际评测。
 10. **工业化差距不是模型大小问题。** 即使换成更强 VLA，可靠性、失败检测、确定性安全、恢复、节拍、人工介入率、本体迁移和版本化重新验收仍未解决。
 
 ### Immediate roadmap / 近期路线
 
 1. Use the completed 20-seed baseline to isolate lift failures with controlled action, contact, timing, and scene counterfactuals.
-2. Move standard policy operations behind LeRobot and introduce OpenPI only as a non-authoritative research backend.
+2. Move remaining processor and normalization operations behind LeRobot; the shared SmolVLA/OpenPI Action Chunk proposal boundary is complete.
 3. Qualify a second mature policy under the same TaskSpec, seeds, and verifier.
-4. Add at least three independent TaskSpecs and prove paraphrase invariance, counterfactual sensitivity, refusal, and constraint binding.
+4. Run the three-TaskSpec qualification manifest and prove paraphrase invariance, counterfactual sensitivity, refusal, and constraint binding.
 5. Add bounded recovery only after failure classes and allowed recovery skills are explicit.
 6. Begin physical-G1 work only with read-only preflight, physical emergency stop, supervised workspace, and operator takeover.
 
 1. 基于已完成的 20-Seed 基线，用受控动作、接触、时序与场景反事实定位抬升失败原因。
-2. 将标准 Policy 操作迁移到 LeRobot，并仅把 OpenPI 作为不拥有最终控制权的研究 Backend。
+2. 将剩余 Processor 与 Normalization 操作迁移到 LeRobot；SmolVLA/OpenPI 共用的 Action Chunk 提案边界已经完成。
 3. 让第二个成熟 Policy 在相同 TaskSpec、Seed 和 Verifier 下完成验收。
-4. 增加至少三个独立 TaskSpec，并证明同义改写不变性、反事实敏感性、拒绝能力与约束绑定。
+4. 运行三个 TaskSpec 的语言准入集，并证明同义改写不变性、反事实敏感性、拒绝能力与约束绑定。
 5. 仅在失败分类和允许的恢复技能明确后，增加有界恢复。
 6. 只有在只读预检、实体急停、受控工作区和人工接管就绪后，才开始 G1 真机工作。
 

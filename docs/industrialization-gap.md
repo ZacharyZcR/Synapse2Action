@@ -122,14 +122,16 @@ LLM 与 VLA 永远不拥有急停、碰撞约束、力矩限制、工作空间�
 ### Milestone B — Standard policy boundary and second policy / 标准 Policy 边界与第二个 Policy
 
 - [ ] Move standard processor, normalization, policy-server, and action-chunk operations behind a LeRobot-backed adapter contract.
-- [ ] Add OpenPI as a research backend without bypassing the Harness, safety supervisor, WBC, or verifier.
+- [x] Unify SmolVLA and OpenPI proposals behind the bounded Action Chunk client contract.
+- [x] Add a tested OpenPI research adapter that requires explicit observation encoding and embodiment mapping without bypassing the Harness, safety supervisor, WBC, or verifier.
 - [ ] First qualify the adapter on a supported tabletop/simulation embodiment; do not claim a G1 checkpoint where none exists.
 - [ ] Evaluate a second mature policy under the same TaskSpec, seeds, and evidence schema.
 
 ### Milestone C — Prove language-to-work causality / 证明语言到工作的因果链
 
-- [ ] Define at least three independent TaskSpecs with different targets, destinations, and physical success conditions.
-- [ ] Test paraphrases, forbidden-object constraints, changed destinations, and impossible requests.
+- [x] Define three independent TaskSpecs with different targets, destinations, and physical success conditions.
+- [x] Version a qualification manifest for paraphrases, counterfactuals, forbidden-object constraints, and impossible requests.
+- [ ] Execute the qualification manifest against each candidate policy under matched observations and seeds.
 - [ ] Require the structured plan to cross the exact Planner-to-VLA boundary recorded in evidence.
 - [ ] Add bounded recovery only for explicit failure classes and allowlisted recovery skills.
 

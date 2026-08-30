@@ -51,7 +51,10 @@ class TaskSpec:
     destination: str
     planner_instruction: str
     instruction: str
+    paraphrases: tuple[str, ...]
     counterfactual_instruction: str
+    forbidden_instructions: tuple[str, ...]
+    impossible_instructions: tuple[str, ...]
     target_entity: SceneEntity
     destination_entity: SceneEntity
     cameras: Mapping[str, tuple[float, float, float]]
@@ -88,7 +91,14 @@ def load_task_spec(path: Path) -> TaskSpec:
         destination=str(raw["arguments"]["destination"]),
         planner_instruction=str(raw["planner"]["instruction"]),
         instruction=str(raw["vla"]["instruction"]),
+        paraphrases=tuple(str(value) for value in raw["vla"].get("paraphrases", ())),
         counterfactual_instruction=str(raw["vla"]["counterfactual_instruction"]),
+        forbidden_instructions=tuple(
+            str(value) for value in raw["vla"].get("forbidden_instructions", ())
+        ),
+        impossible_instructions=tuple(
+            str(value) for value in raw["vla"].get("impossible_instructions", ())
+        ),
         target_entity=SceneEntity(
             str(target["name"]),
             _tuple(target["position_xyz_m"], 3, "scene.target.position"),
@@ -129,4 +139,13 @@ def load_task_spec(path: Path) -> TaskSpec:
         raise ValueError("controller phase end times must be ordered")
     if any(end <= start for start, end in zip(spec.controller.phase_end_s, spec.controller.phase_end_s[1:])):
         raise ValueError("controller phases must have positive duration")
+    language_cases = (
+        spec.instruction,
+        *spec.paraphrases,
+        spec.counterfactual_instruction,
+        *spec.forbidden_instructions,
+        *spec.impossible_instructions,
+    )
+    if any(not case.strip() for case in language_cases) or len(set(language_cases)) != len(language_cases):
+        raise ValueError("task language cases must be non-empty and unique")
     return spec

@@ -125,9 +125,11 @@ The alternate `rtxpro-vllm/DeepSeek-V4-Flash-0731` Pi route currently returns 50
 - [x] Connect a mature public GR00T N1.6 G1 checkpoint without training a replacement foundation model. / 接入成熟公开的 GR00T N1.6 G1 checkpoint，不自行训练替代基础模型。
 - [x] Add reproducible seeded stage benchmarks and preserve failed physical rollouts as evidence. / 加入可复现的 Seeded 阶段评测，并将失败物理 Rollout 保留为证据。
 - [ ] Route standard policy, processor, robot, and dataset operations through LeRobot; retain WBC-specific adapters only where LeRobot does not expose the required humanoid boundary. / 将标准 Policy、Processor、Robot 与 Dataset 操作收敛到 LeRobot；仅在 LeRobot 尚未暴露必要人形机器人边界时保留 WBC 专用 Adapter。
+- [x] Unify SmolVLA and OpenPI proposals behind the bounded Action Chunk client contract; require an explicit observation encoder and embodiment mapper for OpenPI. / 将 SmolVLA 与 OpenPI 提案统一到受限 Action Chunk Client 契约；OpenPI 必须显式提供 Observation Encoder 与 Embodiment Mapper。
 - [x] Separate `outcome_success`, `process_compliance`, and `safety_passed` in the versioned result schema. / 在版本化结果 Schema 中拆分最终结果成功、过程合规与安全通过。
 - [x] Run 20 fixed-seed episodes and report confidence intervals: strict all-stage success is currently 1/20 (5%, Wilson 95% CI 0.9%–23.6%). / 完成 20 个固定 Seed Episode 并报告置信区间：当前严格全阶段成功率为 1/20（5%，Wilson 95% CI 0.9%–23.6%）。
 - [ ] Evaluate a second mature LeRobot-supported policy under the same TaskSpec, seeds, and verifier. / 在同一 TaskSpec、Seed 与 Verifier 下评测第二个成熟的 LeRobot Policy。
+- [x] Define three independent TaskSpecs and a versioned language qualification suite covering paraphrases, counterfactuals, forbidden requests, and impossible requests. / 定义三个独立 TaskSpec，并建立覆盖同义改写、反事实、禁止请求和不可完成请求的版本化语言准入集。
 - [ ] Validate action chunks against workspace, joint, velocity, acceleration, and duration limits. / 对动作块执行空间、关节、速度、加速度与持续时间校验。
 - [x] Verify task outcomes using robot state and visual evidence instead of model self-reporting. / 使用机器人状态与视觉证据验证结果，而非相信模型自报成功。
 - [ ] Add bounded retry and deterministic recovery paths. / 加入有界重试与确定性恢复路径。

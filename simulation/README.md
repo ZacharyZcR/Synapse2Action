@@ -17,6 +17,24 @@ record is `simulation/openpi.lock.json`. The published OpenPI checkpoints do not
 provide a task-ready Unitree G1 action space, so G1 integration remains a future
 adapter and fine-tuning task rather than a current capability.
 
+`OpenPIChunkClient` now supplies the non-authoritative runtime boundary. It
+requires a checkpoint-specific observation encoder and an explicit embodiment
+mapper before OpenPI actions can enter the existing ordered, finite, bounded G1
+Action Chunk contract. The adapter proposes chunks only; the Harness, safety
+projection, controller, and verifier retain authority. This is a tested protocol
+integration, not a qualified OpenPI checkpoint or a G1 performance claim.
+
+Build the hardware-free language qualification manifest with:
+
+```bash
+PYTHONPATH=src python3 simulation/build_language_qualification.py
+```
+
+The manifest covers three TaskSpecs and records canonical instructions,
+paraphrases, behavior-changing counterfactuals, forbidden requests, and
+impossible requests. It defines future model acceptance cases; generating the
+manifest does not count as passing them.
+
 ## GR00T whole-body VLA status
 
 The accepted local baseline uses the public GR00T N1.6 Unitree G1
