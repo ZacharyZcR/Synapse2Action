@@ -1,0 +1,20 @@
+{
+  "schema_version": 1,
+  "policy_set": "synapse2action-project-policies",
+  "effective_date": "2026-08-31",
+  "documents": {
+    "contribution": "CONTRIBUTING.md",
+    "governance": "GOVERNANCE.md",
+    "privacy": "PRIVACY.md",
+    "responsible_use": "RESPONSIBLE_USE.md",
+    "security": "SECURITY.md"
+  },
+  "required_controls": [
+    "capability_claim_scope",
+    "confidential_vulnerability_reporting",
+    "human_data_consent",
+    "model_output_has_no_safety_authority",
+    "physical_operation_requires_human_override",
+    "reproducible_evidence"
+  ]
+}

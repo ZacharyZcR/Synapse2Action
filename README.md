@@ -58,6 +58,15 @@ LeRobot 已确定为 Synapse2Action 下层的机器人学习基础设施依赖�
 
 The maintained source register for integrated, staged, evaluated, and reference-only work is [References and Dependency Register](docs/references.md). / 已集成、已暂存、已评测及仅参考项目的统一登记见[参考材料与依赖登记](docs/references.md)。
 
+Project participation and release boundaries are defined by
+[Contributing](CONTRIBUTING.md), [Governance](GOVERNANCE.md),
+[Security](SECURITY.md), [Privacy](PRIVACY.md), and
+[Responsible Use](RESPONSIBLE_USE.md). Their versioned inventory is
+[`docs/policy-manifest.json`](docs/policy-manifest.json). / 项目参与、发布与使用边界
+由[贡献指南](CONTRIBUTING.md)、[治理](GOVERNANCE.md)、[安全](SECURITY.md)、
+[隐私](PRIVACY.md)和[负责任使用](RESPONSIBLE_USE.md)共同定义；版本化清单见
+[`docs/policy-manifest.json`](docs/policy-manifest.json)。
+
 ## Roadmap / 路线图
 
 The project follows a hardware-free-first strategy. Every external component begins with a deterministic substitute and is replaced one layer at a time: simulated intent before EEG, a fake robot before Unitree G1, a scripted policy before VLA, and a mock planner before a production LLM.
@@ -179,7 +188,7 @@ The alternate `rtxpro-vllm/DeepSeek-V4-Flash-0731` Pi route currently returns 50
 - [ ] Support additional EEG devices, planners, policies, simulators, and Unitree embodiments through adapters. / 通过 Adapter 支持更多 EEG 设备、Planner、Policy、仿真器与宇树本体。
 - [ ] Evaluate task success, latency, false activation, safety intervention, recovery, user workload, and agency separately. / 分别评估任务成功率、延迟、误触发、安全介入、恢复能力、用户负担与控制感。
 - [ ] Add reproducible deployment profiles for CPU-only CI, local GPU, simulation, and supervised physical operation. / 为纯 CPU CI、本地 GPU、仿真与受监督真机运行建立可复现部署配置。
-- [ ] Establish contribution, governance, security, privacy, and responsible-use policies. / 建立贡献、治理、安全、隐私与负责任使用政策。
+- [x] Establish versioned contribution, governance, security, privacy, and responsible-use policies with machine-checked safety invariants. / 建立版本化贡献、治理、安全、隐私与负责任使用政策，并以测试检查关键安全不变量。
 
 **Exit criterion / 完成标准:** third parties can reproduce a benchmark and add one new component without modifying the Harness core. / 第三方能够复现基准，并在不修改 Harness 核心的情况下接入一个新组件。
 
