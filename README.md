@@ -48,7 +48,7 @@ Simulation or physical robot / 仿真或实体机器人
 | Neural decoding / 神经解码 | Signal quality, preprocessing, intent classification / 信号质量、预处理、意图分类 | MNE, pyRiemann, Braindecode |
 | Orchestration / 任务编排 | State machine, confirmation, recovery / 状态机、确认与失败恢复 | Python, ROS 2 |
 | Robot-learning foundation / 机器人学习基础设施 | Policy, processor, dataset, robot, and inference interfaces / 策略、处理器、数据集、机器人与推理接口 | LeRobot |
-| Embodied policy / 具身策略 | Language- and vision-conditioned actions / 语言与视觉条件动作 | GR00T, SmolVLA, ACT, future LeRobot policies |
+| Embodied policy / 具身策略 | Language- and vision-conditioned actions / 语言与视觉条件动作 | GR00T, SmolVLA, OpenPI, ACT, future LeRobot policies |
 | Robot control / 机器人控制 | Kinematics, collision checks, execution / 运动学、碰撞检查与执行 | ROS 2, MoveIt 2 |
 | Environments / 运行环境 | Hardware-free validation and real deployment / 无硬件验证与真机部署 | MuJoCo, ManiSkill, physical robots |
 
@@ -56,11 +56,15 @@ LeRobot is the committed robot-learning dependency beneath Synapse2Action. Other
 
 LeRobot 已确定为 Synapse2Action 下层的机器人学习基础设施依赖；其他技术仍保持可替换，并且只有能够支撑对应里程碑最小可复现实验时才会纳入。Synapse2Action 负责意图、规划、确认、编排、安全策略、物理证据和审计语义，不重复实现 LeRobot 的 Policy、Dataset、Processor 与 Robot 抽象。
 
+The maintained source register for integrated, staged, evaluated, and reference-only work is [References and Dependency Register](docs/references.md). / 已集成、已暂存、已评测及仅参考项目的统一登记见[参考材料与依赖登记](docs/references.md)。
+
 ## Roadmap / 路线图
 
 The project follows a hardware-free-first strategy. Every external component begins with a deterministic substitute and is replaced one layer at a time: simulated intent before EEG, a fake robot before Unitree G1, a scripted policy before VLA, and a mock planner before a production LLM.
 
 项目采用“无设备优先”策略。所有外部组件首先使用确定性替身，并且每次只替换一层：先模拟意图再接 EEG，先 Fake Robot 再接宇树 G1，先固定策略再接 VLA，先 Mock Planner 再接生产级大模型。
+
+The active execution order is defined by measured failures rather than phase numbering: first isolate the GR00T post-grasp lift failure, then standardize the LeRobot policy boundary and qualify OpenPI or another mature policy under the same evidence contract, then demonstrate language causality across multiple TaskSpecs and bounded recovery, and only afterward begin physical-G1 preflight. The production gap and release gates are documented in [Language-to-Work Industrialization Gap](docs/industrialization-gap.md). / 当前执行顺序由实测失败决定，而不是机械地按阶段编号推进：先定位 GR00T 抓取后抬升失败，再统一 LeRobot Policy 边界并让 OpenPI 或另一成熟 Policy 通过同一证据契约，随后在多个 TaskSpec 上证明语言因果性与有界恢复，最后才进入 G1 真机预检。工业化差距和发布门槛见[语言到工作工业化差距](docs/industrialization-gap.md)。
 
 ### Phase 0 — Contracts and Safety Kernel / 阶段 0：契约与安全内核
 
@@ -122,7 +126,7 @@ The alternate `rtxpro-vllm/DeepSeek-V4-Flash-0731` Pi route currently returns 50
 - [x] Add reproducible seeded stage benchmarks and preserve failed physical rollouts as evidence. / 加入可复现的 Seeded 阶段评测，并将失败物理 Rollout 保留为证据。
 - [ ] Route standard policy, processor, robot, and dataset operations through LeRobot; retain WBC-specific adapters only where LeRobot does not expose the required humanoid boundary. / 将标准 Policy、Processor、Robot 与 Dataset 操作收敛到 LeRobot；仅在 LeRobot 尚未暴露必要人形机器人边界时保留 WBC 专用 Adapter。
 - [ ] Separate `outcome_success`, `process_compliance`, and `safety_passed` in the versioned result schema. / 在版本化结果 Schema 中拆分最终结果成功、过程合规与安全通过。
-- [ ] Run at least 20 fixed-seed episodes and report confidence intervals rather than treating the current three-episode sample as a model success-rate claim. / 至少运行 20 个固定 Seed Episode 并报告置信区间，不把当前三次样本当作模型成功率结论。
+- [x] Run 20 fixed-seed episodes and report confidence intervals: strict all-stage success is currently 1/20 (5%, Wilson 95% CI 0.9%–23.6%). / 完成 20 个固定 Seed Episode 并报告置信区间：当前严格全阶段成功率为 1/20（5%，Wilson 95% CI 0.9%–23.6%）。
 - [ ] Evaluate a second mature LeRobot-supported policy under the same TaskSpec, seeds, and verifier. / 在同一 TaskSpec、Seed 与 Verifier 下评测第二个成熟的 LeRobot Policy。
 - [ ] Validate action chunks against workspace, joint, velocity, acceleration, and duration limits. / 对动作块执行空间、关节、速度、加速度与持续时间校验。
 - [x] Verify task outcomes using robot state and visual evidence instead of model self-reporting. / 使用机器人状态与视觉证据验证结果，而非相信模型自报成功。
@@ -187,9 +191,9 @@ Synapse2Action 面向科研、教学与有人监督的原型验证，不属于�
 
 ## Status / 当前状态
 
-The active milestone is VLA qualification behind the Harness. A public GR00T N1.6 Unitree G1 checkpoint now runs through official whole-body control and MuJoCo on an RTX 4070. The first three fixed-seed episodes validate stage-level evidence for grasp, lift, transport, contact, release, stable placement, and standing, but they are not a reliability claim. The next gates are a versioned outcome/process/safety result, at least 20 fixed seeds, a LeRobot-backed standard policy boundary, and a second mature policy under the same TaskSpec and verifier. See [Current Challenges and Next Decisions](docs/current-challenges.md).
+The active milestone is VLA qualification behind the Harness. A public GR00T N1.6 Unitree G1 checkpoint runs through official whole-body control and MuJoCo on an RTX 4070. The completed 20-seed suite achieved strict all-stage success in 1/20 runs: standing remained 100%, while lift above 0.10 m passed only 5%, making post-grasp lift and transport the primary measured bottleneck. The next gates are a versioned outcome/process/safety result, controlled lift counterfactuals, a LeRobot-backed standard policy boundary, and a second mature policy under the same TaskSpec and verifier. See [Current Challenges and Next Decisions](docs/current-challenges.md).
 
-项目当前里程碑是 Harness 监督下的 VLA 准入评测。公开 GR00T N1.6 Unitree G1 checkpoint 已在 RTX 4070 上通过官方全身控制与 MuJoCo 运行；首批三个固定 Seed Episode 已验证抓取、抬升、运输、接触、释放、稳定放置与站立的阶段证据，但不能作为可靠性结论。下一道门槛是版本化拆分结果/过程/安全判定、至少 20 个固定 Seed、基于 LeRobot 的标准 Policy 边界，以及在同一 TaskSpec 和 Verifier 下验收第二个成熟 Policy。详见 [当前困难与下一步决策](docs/current-challenges.md)。
+项目当前里程碑是 Harness 监督下的 VLA 准入评测。公开 GR00T N1.6 Unitree G1 checkpoint 已在 RTX 4070 上通过官方全身控制与 MuJoCo 运行。已经完成的 20-Seed 评测仅有 1/20 严格全阶段通过：站立保持率为 100%，但抬升超过 0.10m 只有 5%，因此抓取后的有效抬升与运输是当前首要实测瓶颈。下一道门槛是版本化拆分结果/过程/安全判定、受控抬升反事实、基于 LeRobot 的标准 Policy 边界，以及在同一 TaskSpec 和 Verifier 下验收第二个成熟 Policy。详见[当前困难与下一步决策](docs/current-challenges.md)。
 
 The confirmation-gated Harness completes `select → plan → review → confirm → policy → execute → verify` with scripted, SmolVLA, and GR00T paths. LeRobot is the committed robot-learning dependency; current direct GR00T/WBC process management is a transitional humanoid adapter boundary, not a competing framework. Measured robot and object state independently determines success. Physical EEG acquisition, human-subject metrics, physical G1 integration, and safety certification are not yet claimed.
 

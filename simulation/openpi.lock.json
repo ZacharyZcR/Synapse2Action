@@ -1,0 +1,9 @@
+{
+  "schema_version": 1,
+  "openpi": {
+    "commit": "215abfb217dbac7d5f1273282331b9b1866c0479",
+    "commit_date": "2026-08-24T16:27:12Z",
+    "license": "Apache-2.0",
+    "repository": "https://github.com/Physical-Intelligence/openpi.git"
+  }
+}

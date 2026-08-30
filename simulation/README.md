@@ -1,5 +1,22 @@
 # Simulation
 
+## OpenPI policy research backend
+
+OpenPI is pinned as a candidate policy backend and a reference for LeRobot data
+transforms, normalization, action-chunk inference, and remote policy serving. It
+does not replace the Harness, safety supervisor, whole-body controller, or
+independent verifier. Fetch the exact source revision without installing Python
+dependencies or model checkpoints:
+
+```bash
+./simulation/bootstrap_openpi.sh
+```
+
+The checkout is stored under ignored `simulation/vendor/openpi/`; the committed
+record is `simulation/openpi.lock.json`. The published OpenPI checkpoints do not
+provide a task-ready Unitree G1 action space, so G1 integration remains a future
+adapter and fine-tuning task rather than a current capability.
+
 ## GR00T whole-body VLA status
 
 The accepted local baseline uses the public GR00T N1.6 Unitree G1
