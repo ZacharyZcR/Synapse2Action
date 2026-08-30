@@ -9,7 +9,7 @@ from time import perf_counter_ns
 from typing import Any, Callable
 
 from synapse2action.components import MockPlanner, ScriptedPolicy
-from synapse2action.contracts import Action, Intent, IntentKind, Planner, TaskState
+from synapse2action.contracts import RESULT_SCHEMA_VERSION, Action, Intent, IntentKind, Planner, TaskState
 from synapse2action.groot import GrootPolicy
 from synapse2action.harness import Harness
 from synapse2action.llm_planner import OpenAICompatiblePlanner
@@ -211,6 +211,7 @@ def main() -> int:
         "policy": args.policy,
         "seed": args.seed,
         "planner": observable_planner.report,
+        "result": ({"schema_version": RESULT_SCHEMA_VERSION, **asdict(harness.last_result)} if harness.last_result else None),
         "trace": [asdict(record) for record in harness.trace],
         "unitree_acceptance": robot.last_acceptance,
         "unitree_simulator": robot.last_simulator_report,

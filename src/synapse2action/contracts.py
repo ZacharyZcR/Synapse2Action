@@ -6,6 +6,7 @@ from typing import Any, Mapping, Protocol
 
 
 SCHEMA_VERSION = 2
+RESULT_SCHEMA_VERSION = 3
 
 
 class PlannerRefused(RuntimeError):
@@ -57,6 +58,14 @@ class ExecutionResult:
     success: bool
     detail: str
     duration_ms: int = 0
+    outcome_success: bool | None = None
+    process_compliance: bool | None = None
+    safety_passed: bool | None = None
+
+    def __post_init__(self) -> None:
+        for name in ("outcome_success", "process_compliance", "safety_passed"):
+            if getattr(self, name) is None:
+                object.__setattr__(self, name, self.success)
 
 
 @dataclass(frozen=True, slots=True)

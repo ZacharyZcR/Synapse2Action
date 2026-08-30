@@ -80,6 +80,29 @@ class HarnessTests(unittest.TestCase):
 
         self.assertEqual(state, TaskState.FAILED)
         self.assertTrue(robot.stopped)
+        self.assertTrue(harness.last_result.outcome_success)
+        self.assertFalse(harness.last_result.process_compliance)
+        self.assertTrue(harness.last_result.safety_passed)
+        self.assertFalse(harness.last_result.success)
+
+    def test_safety_failure_is_independent_from_outcome_and_process(self) -> None:
+        robot = FakeRobot(
+            result=ExecutionResult(
+                True,
+                "task outcome reached",
+                safety_passed=False,
+            )
+        )
+        harness = Harness(MockPlanner(), robot, RuleBasedVerifier())
+        harness.handle(Intent(IntentKind.SELECT, "red_cube"))
+
+        state = harness.handle(Intent(IntentKind.CONFIRM))
+
+        self.assertEqual(state, TaskState.FAILED)
+        self.assertTrue(harness.last_result.outcome_success)
+        self.assertTrue(harness.last_result.process_compliance)
+        self.assertFalse(harness.last_result.safety_passed)
+        self.assertFalse(harness.last_result.success)
 
     def test_planner_failure_is_contained_before_robot(self) -> None:
         class FailedPlanner:

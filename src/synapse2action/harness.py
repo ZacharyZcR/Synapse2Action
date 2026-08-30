@@ -1,10 +1,10 @@
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 
 from .authorization import ChallengeStore
 from .components import ScriptedPolicy
-from .contracts import Action, Intent, IntentKind, Planner, PlannerRefused, Policy, Robot, TaskState, TraceRecord, Verifier
+from .contracts import Action, ExecutionResult, Intent, IntentKind, Planner, PlannerRefused, Policy, Robot, TaskState, TraceRecord, Verifier
 from .skills import SkillContext, SkillRegistry, default_skill_registry
 from .world import FakeWorld
 
@@ -28,6 +28,7 @@ class Harness:
     world: FakeWorld | None = None
     policy: Policy = field(default_factory=ScriptedPolicy)
     pending_action: Action | None = None
+    last_result: ExecutionResult | None = None
 
     def handle(self, intent: Intent) -> TaskState:
         if intent.kind is IntentKind.STOP:
@@ -118,9 +119,23 @@ class Harness:
         skill_result = self.skills.evaluate(action, result)
         if not skill_result.accepted and skill_result.reason == "skill timeout":
             self.robot.stop()
-        verified = skill_result.accepted and self.verifier.verify(result)
-        final_state = TaskState.COMPLETED if verified else TaskState.FAILED
-        detail = result.detail if verified else skill_result.reason
+        outcome_success = self.verifier.verify(result)
+        process_compliance = skill_result.accepted
+        safety_passed = bool(result.safety_passed)
+        success = outcome_success and process_compliance and safety_passed
+        self.last_result = replace(
+            result,
+            success=success,
+            outcome_success=outcome_success,
+            process_compliance=process_compliance,
+            safety_passed=safety_passed,
+        )
+        final_state = TaskState.COMPLETED if success else TaskState.FAILED
+        detail = result.detail
+        if not process_compliance:
+            detail = skill_result.reason
+        elif not safety_passed:
+            detail = "safety gate failed"
         return self._transition(final_state, "result", detail)
 
     def _plan_selected_target(self) -> Action | None:

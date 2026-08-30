@@ -37,7 +37,7 @@ human or scripted intent
 
 1. **VLA maturity and coverage.** The public checkpoint is task- and embodiment-specific. Failures vary by seed, and the system has not demonstrated generalization across objects, destinations, camera perturbations, or tasks. Model size alone is not the primary diagnosis; data coverage, long-horizon closed-loop behavior, and recovery examples are more direct gaps.
 2. **No controlled recovery loop.** The current pipeline is one confirmed execution followed by verification. Evidence does not yet feed a bounded recovery plan back through the LLM and a second confirmation.
-3. **Result semantics are conflated.** `outcome_success`, `process_compliance`, and `safety_passed` must be independent. A useful final placement must not be hidden by an unnecessary intermediate threshold, while safety invariants must remain non-negotiable.
+3. **Result semantics are separated, but evidence depth varies.** Schema v3 and the Harness now report `outcome_success`, `process_compliance`, and `safety_passed` independently. Legacy robot adapters preserve compatibility by defaulting missing component verdicts to their prior aggregate result; controller-native safety evidence must replace that fallback before hardware qualification.
 4. **LeRobot boundary is incomplete.** The current GR00T/WBC runner directly manages vendor environments and JSON handoff. Standard policy, processor, dataset, and robot operations should move behind LeRobot; humanoid-specific WBC remains an explicit adapter boundary.
 5. **Benchmark throughput and telemetry.** The 20-seed baseline is complete, but serial episodes remain slow and provide no intra-episode heartbeat. A resident policy server, optional video, parallel environments, smoke/full profiles, and stage progress telemetry are required.
 6. **Only one mature checkpoint is qualified.** The architecture claim requires a second LeRobot-supported policy under identical TaskSpec, seeds, and evidence gates.
@@ -48,7 +48,7 @@ human or scripted intent
 
 1. **VLA 成熟度与覆盖不足。** 公开 checkpoint 绑定特定任务和本体，不同 Seed 结果波动，尚未证明跨物体、目标、相机扰动和任务的泛化。问题不能简单归因于模型参数较小；数据覆盖、长时序闭环和恢复示范是更直接的缺口。
 2. **尚无受控恢复循环。** 当前管线是确认后执行一次，再进行验收；失败证据尚未经过 LLM 生成有界恢复计划、再次确认并重试。
-3. **结果语义仍混杂。** 必须独立报告 `outcome_success`、`process_compliance` 和 `safety_passed`。不必要的中间阈值不能掩盖有价值的最终结果，而安全不变量必须保持强制。
+3. **结果语义已经拆分，但证据深度不同。** Schema v3 与 Harness 已独立报告 `outcome_success`、`process_compliance` 和 `safety_passed`。旧 Robot Adapter 为兼容性会将缺失的分项判定回退到原聚合结果；真机准入前必须用 Controller 原生安全证据替换该回退。
 4. **LeRobot 边界尚未收敛。** 当前 GR00T/WBC runner 仍直接管理 Vendor 环境与 JSON 交接；标准 Policy、Processor、Dataset 和 Robot 操作应迁移到 LeRobot，人形 WBC 保持为显式专用 Adapter 边界。
 5. **评测吞吐与遥测不足。** 20 个 Seed 的基线已完成，但串行 Episode 仍然缓慢，且单次运行内部没有心跳；需要常驻 Policy Server、可选视频、并行环境、Smoke/Full 两级评测和阶段进度遥测。
 6. **只验收了一个成熟 checkpoint。** 架构主张需要第二个 LeRobot 支持的 Policy 在相同 TaskSpec、Seed 和证据门下完成对照。
@@ -59,21 +59,19 @@ human or scripted intent
 
 ### Immediate roadmap / 近期路线
 
-1. Version the result schema with separate outcome, process, and safety decisions.
-2. Use the completed 20-seed baseline to isolate lift failures with controlled action, contact, timing, and scene counterfactuals.
-3. Move standard policy operations behind LeRobot and introduce OpenPI only as a non-authoritative research backend.
-4. Qualify a second mature policy under the same TaskSpec, seeds, and verifier.
-5. Add at least three independent TaskSpecs and prove paraphrase invariance, counterfactual sensitivity, refusal, and constraint binding.
-6. Add bounded recovery only after failure classes and allowed recovery skills are explicit.
-7. Begin physical-G1 work only with read-only preflight, physical emergency stop, supervised workspace, and operator takeover.
+1. Use the completed 20-seed baseline to isolate lift failures with controlled action, contact, timing, and scene counterfactuals.
+2. Move standard policy operations behind LeRobot and introduce OpenPI only as a non-authoritative research backend.
+3. Qualify a second mature policy under the same TaskSpec, seeds, and verifier.
+4. Add at least three independent TaskSpecs and prove paraphrase invariance, counterfactual sensitivity, refusal, and constraint binding.
+5. Add bounded recovery only after failure classes and allowed recovery skills are explicit.
+6. Begin physical-G1 work only with read-only preflight, physical emergency stop, supervised workspace, and operator takeover.
 
-1. 升级结果 Schema，分别输出结果、过程与安全判定。
-2. 基于已完成的 20-Seed 基线，用受控动作、接触、时序与场景反事实定位抬升失败原因。
-3. 将标准 Policy 操作迁移到 LeRobot，并仅把 OpenPI 作为不拥有最终控制权的研究 Backend。
-4. 让第二个成熟 Policy 在相同 TaskSpec、Seed 和 Verifier 下完成验收。
-5. 增加至少三个独立 TaskSpec，并证明同义改写不变性、反事实敏感性、拒绝能力与约束绑定。
-6. 仅在失败分类和允许的恢复技能明确后，增加有界恢复。
-7. 只有在只读预检、实体急停、受控工作区和人工接管就绪后，才开始 G1 真机工作。
+1. 基于已完成的 20-Seed 基线，用受控动作、接触、时序与场景反事实定位抬升失败原因。
+2. 将标准 Policy 操作迁移到 LeRobot，并仅把 OpenPI 作为不拥有最终控制权的研究 Backend。
+3. 让第二个成熟 Policy 在相同 TaskSpec、Seed 和 Verifier 下完成验收。
+4. 增加至少三个独立 TaskSpec，并证明同义改写不变性、反事实敏感性、拒绝能力与约束绑定。
+5. 仅在失败分类和允许的恢复技能明确后，增加有界恢复。
+6. 只有在只读预检、实体急停、受控工作区和人工接管就绪后，才开始 G1 真机工作。
 
 The full engineering and industrialization rationale is maintained in [Language-to-Work Industrialization Gap](industrialization-gap.md).
 

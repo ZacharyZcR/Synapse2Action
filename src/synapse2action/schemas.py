@@ -3,7 +3,7 @@ from __future__ import annotations
 from copy import deepcopy
 from typing import Any
 
-from .contracts import SCHEMA_VERSION
+from .contracts import RESULT_SCHEMA_VERSION, SCHEMA_VERSION
 
 
 def _object(properties: dict[str, Any], required: tuple[str, ...]) -> dict[str, Any]:
@@ -83,12 +83,23 @@ CONTRACT_SCHEMAS: dict[str, dict[str, Any]] = {
     ),
     "result": _object(
         {
-            "schema_version": {"const": SCHEMA_VERSION},
+            "schema_version": {"const": RESULT_SCHEMA_VERSION},
             "success": {"type": "boolean"},
+            "outcome_success": {"type": "boolean"},
+            "process_compliance": {"type": "boolean"},
+            "safety_passed": {"type": "boolean"},
             "detail": {"type": "string"},
             "duration_ms": {"type": "integer", "minimum": 0},
         },
-        ("schema_version", "success", "detail", "duration_ms"),
+        (
+            "schema_version",
+            "success",
+            "outcome_success",
+            "process_compliance",
+            "safety_passed",
+            "detail",
+            "duration_ms",
+        ),
     ),
 }
 
