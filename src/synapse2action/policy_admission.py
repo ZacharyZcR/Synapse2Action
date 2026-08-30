@@ -20,6 +20,14 @@ def qualification_digest(manifest: Mapping[str, Any]) -> str:
     return sha256(encoded).hexdigest()
 
 
+def file_digest(path: Path) -> str:
+    digest = sha256()
+    with path.open("rb") as source:
+        for chunk in iter(lambda: source.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
 def _valid_result(result: object) -> bool:
     if not isinstance(result, dict) or result.get("schema_version") != RESULT_SCHEMA_VERSION:
         return False
@@ -279,4 +287,9 @@ def verify_policy_admission(
         "source_runs": [str(path) for path in paths],
         "language_manifest": str(language_manifest_path),
         "language_evaluation": str(language_evaluation_path),
+        "evidence_sha256": {
+            "runs": [file_digest(path) for path in paths],
+            "language_manifest": file_digest(language_manifest_path),
+            "language_evaluation": file_digest(language_evaluation_path),
+        },
     }

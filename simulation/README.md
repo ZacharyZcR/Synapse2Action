@@ -54,6 +54,33 @@ unconfirmed execution, safety-violating recovery, excess retry, non-compliant
 process, or incomplete seed set. The command returning success proves only that
 the supplied evidence bundle meets the configured gates.
 
+Freeze an accepted report and its exact inputs into a non-overwriting,
+content-addressed release bundle. Release metadata must contain exactly
+`schema_version`, `policy_id`, `policy_version`, `model_sha256`,
+`dataset_sha256`, `controller_version`, and `code_revision`:
+
+```bash
+PYTHONPATH=src python3 simulation/build_policy_evidence_bundle.py build \
+  --output-directory reports/policy/releases/candidate-v1 \
+  --runs reports/policy/run-*.json \
+  --language-manifest reports/language/qualification.json \
+  --language-evaluation reports/language/policy-evaluation.json \
+  --admission-report reports/policy/admission.json \
+  --release-metadata reports/policy/release.json
+
+PYTHONPATH=src python3 simulation/build_policy_evidence_bundle.py verify \
+  --bundle reports/policy/releases/candidate-v1 \
+  --baseline reports/policy/releases/accepted-v0
+```
+
+Verification rejects modified, missing, symlinked, duplicate, or undeclared
+files and refuses a candidate that lowers the outcome threshold or removes a
+baseline seed. The bundle digest detects accidental or later modification only
+when its trusted value is retained outside the bundle; adversarial release
+integrity still requires an external signature or trusted transparency record.
+No candidate bundle is currently present because matched OpenPI/GR00T runs and
+language evaluations have not yet been produced.
+
 ## GR00T whole-body VLA status
 
 The accepted local baseline uses the public GR00T N1.6 Unitree G1
