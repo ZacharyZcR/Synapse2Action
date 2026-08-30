@@ -187,7 +187,8 @@ The alternate `rtxpro-vllm/DeepSeek-V4-Flash-0731` Pi route currently returns 50
 - [ ] Publish versioned protocols, scenario suites, model cards, datasets, and benchmark reports. / 发布版本化实验协议、场景集、模型卡、数据集与基准报告。
 - [ ] Support additional EEG devices, planners, policies, simulators, and Unitree embodiments through adapters. / 通过 Adapter 支持更多 EEG 设备、Planner、Policy、仿真器与宇树本体。
 - [ ] Evaluate task success, latency, false activation, safety intervention, recovery, user workload, and agency separately. / 分别评估任务成功率、延迟、误触发、安全介入、恢复能力、用户负担与控制感。
-- [ ] Add reproducible deployment profiles for CPU-only CI, local GPU, simulation, and supervised physical operation. / 为纯 CPU CI、本地 GPU、仿真与受监督真机运行建立可复现部署配置。
+- [x] Add a dependency-free CPU-only CI profile with a machine-readable report and GitHub Actions execution. / 建立零依赖纯 CPU CI Profile，输出机器可读报告并由 GitHub Actions 执行。
+- [ ] Add separately qualified local-GPU, vendor-simulation, and supervised-physical profiles without inheriting CPU-only claims. / 分别验收本地 GPU、Vendor 仿真与受监督真机 Profile，不得继承纯 CPU 能力声明。
 - [x] Establish versioned contribution, governance, security, privacy, and responsible-use policies with machine-checked safety invariants. / 建立版本化贡献、治理、安全、隐私与负责任使用政策，并以测试检查关键安全不变量。
 
 **Exit criterion / 完成标准:** third parties can reproduce a benchmark and add one new component without modifying the Harness core. / 第三方能够复现基准，并在不修改 Harness 核心的情况下接入一个新组件。
@@ -293,12 +294,17 @@ The accepted local action-control run received three real SmolVLA chunks, measur
 
 ## Development / 开发
 
-The core currently has no runtime dependencies. Run the deterministic test suite with Python 3.12 or newer:
+The core currently has no runtime dependencies. Run the versioned CPU-only
+acceptance profile with Python 3.12 or newer; it writes a machine-readable
+report and proves only hardware-free repository behavior. Profile boundaries
+are documented in [Deployment Profiles](docs/deployment-profiles.md).
 
-当前核心没有运行时依赖。使用 Python 3.12 或更高版本运行确定性测试：
+当前核心没有运行时依赖。使用 Python 3.12 或更高版本运行版本化纯 CPU 验收
+Profile；它会输出机器可读报告，并且只证明无设备仓库行为。Profile 边界见
+[部署配置](docs/deployment-profiles.md)。
 
 ```bash
-PYTHONPATH=src python3 -m unittest discover -v
+PYTHONPATH=src python3 simulation/run_cpu_ci.py --report reports/cpu-ci.json
 ```
 
 Run all hardware-free experiment scenarios and print a deterministic JSON report:

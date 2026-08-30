@@ -9,3 +9,4 @@ simulation/vendor/
 reports/simulation/
 reports/training/
 reports/eeg/
+reports/cpu-ci.json

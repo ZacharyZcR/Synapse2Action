@@ -39,7 +39,7 @@ human or scripted intent
 2. **The controlled recovery state machine is complete, but policy-level evidence is not.** Outcome failures can enter one retry only after fresh world validation, a new authorization challenge, and second confirmation. Safety failures and exhausted budgets cannot retry; stop preempts the pending recovery, and the report retains both failure proposals. Candidate policies have not yet been measured for recovery success or failure-detection recall.
 3. **Result semantics are separated, but evidence depth varies.** Schema v3 and the Harness now report `outcome_success`, `process_compliance`, and `safety_passed` independently. Legacy robot adapters preserve compatibility by defaulting missing component verdicts to their prior aggregate result; controller-native safety evidence must replace that fallback before hardware qualification.
 4. **LeRobot boundary is incomplete.** The current GR00T/WBC runner directly manages vendor environments and JSON handoff. Standard policy, processor, dataset, and robot operations should move behind LeRobot; humanoid-specific WBC remains an explicit adapter boundary.
-5. **Benchmark throughput and telemetry.** The 20-seed baseline is complete, but serial episodes remain slow and provide no intra-episode heartbeat. A resident policy server, optional video, parallel environments, smoke/full profiles, and stage progress telemetry are required.
+5. **Benchmark throughput and telemetry.** The dependency-free CPU profile is now reproducible and green, but the 20-seed vendor baseline remains serial and provides no intra-episode heartbeat. A resident policy server, optional video, parallel environments, separate GPU/simulation smoke/full profiles, and stage progress telemetry are still required.
 6. **Only one mature checkpoint is qualified.** The architecture claim requires a second LeRobot-supported policy under identical TaskSpec, seeds, and evidence gates.
 7. **Simulation is not hardware evidence.** Camera calibration, latency, joint mapping, payload behavior, physical emergency stop, workspace enforcement, and operator takeover remain unverified on a real G1.
 8. **Python runtime split.** The main Harness uses Python 3.12 while the compatible WBC runtime uses Python 3.10. The boundary must remain a versioned data contract; importing the main package inside the vendor runtime is not supported.
@@ -53,7 +53,7 @@ human or scripted intent
 2. **受控恢复状态机已闭合，但尚无 Policy 级实测证据。** Outcome Failure 只有在重新校验世界状态、签发新授权 Challenge 并二次确认后才能重试一次；安全失败和预算耗尽均禁止重试，急停可抢占待确认恢复，报告保留两次失败提案。候选 Policy 的恢复成功率与失败检测召回率尚未测量。
 3. **结果语义已经拆分，但证据深度不同。** Schema v3 与 Harness 已独立报告 `outcome_success`、`process_compliance` 和 `safety_passed`。旧 Robot Adapter 为兼容性会将缺失的分项判定回退到原聚合结果；真机准入前必须用 Controller 原生安全证据替换该回退。
 4. **LeRobot 边界尚未收敛。** 当前 GR00T/WBC runner 仍直接管理 Vendor 环境与 JSON 交接；标准 Policy、Processor、Dataset 和 Robot 操作应迁移到 LeRobot，人形 WBC 保持为显式专用 Adapter 边界。
-5. **评测吞吐与遥测不足。** 20 个 Seed 的基线已完成，但串行 Episode 仍然缓慢，且单次运行内部没有心跳；需要常驻 Policy Server、可选视频、并行环境、Smoke/Full 两级评测和阶段进度遥测。
+5. **评测吞吐与遥测不足。** 零依赖 CPU Profile 现在已经可复现并全绿，但 20 个 Seed 的 Vendor 基线仍然串行缓慢，且单次运行内部没有心跳；仍需常驻 Policy Server、可选视频、并行环境、独立 GPU/仿真的 Smoke/Full Profile 和阶段进度遥测。
 6. **只验收了一个成熟 checkpoint。** 架构主张需要第二个 LeRobot 支持的 Policy 在相同 TaskSpec、Seed 和证据门下完成对照。
 7. **仿真不是真机证据。** 真机相机标定、延迟、关节映射、负载、实体急停、工作空间约束和人工接管均未验证。
 8. **Python Runtime 分裂。** 主 Harness 使用 Python 3.12，兼容 WBC Runtime 使用 Python 3.10；边界必须保持为版本化数据契约，不支持 Vendor Runtime 直接 Import 主包。

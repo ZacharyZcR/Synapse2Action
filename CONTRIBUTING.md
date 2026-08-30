@@ -31,7 +31,7 @@ Mock 测试都不能作为真机能力证据。
 Run the narrow tests covering the change, then the complete CPU suite:
 
 ```bash
-PYTHONPATH=src python3 -m unittest discover -v
+PYTHONPATH=src python3 simulation/run_cpu_ci.py --report reports/cpu-ci.json
 ```
 
 Tests requiring loopback sockets need permission to bind `127.0.0.1`. Tests

@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "profile_id": "cpu-ci",
+  "purpose": "hardware-free deterministic repository acceptance",
+  "python": ">=3.12",
+  "command": [
+    "python3",
+    "simulation/run_cpu_ci.py",
+    "--report",
+    "reports/cpu-ci.json"
+  ],
+  "environment": {
+    "PYTHONPATH": "src"
+  },
+  "external_network": false,
+  "loopback_network": true,
+  "required_hardware": [],
+  "required_model_artifacts": [],
+  "excluded_evidence_claims": [
+    "live EEG performance",
+    "GPU model inference",
+    "MuJoCo vendor rollout",
+    "physical robot behavior"
+  ]
+}
