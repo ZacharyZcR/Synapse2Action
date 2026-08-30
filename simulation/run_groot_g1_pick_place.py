@@ -112,6 +112,8 @@ def main() -> int:
                         "1440",
                         "--minimum-lift-m",
                         str(task.verification.minimum_lift_m),
+                        "--seed",
+                        os.getenv("S2A_GROOT_SEED", "0"),
                         "--policy-client-host",
                         "127.0.0.1",
                         "--policy-client-port",
@@ -149,10 +151,20 @@ def main() -> int:
         "model": "cloudwalk-research/GR00T-N1.6-G1-PnPAppleToPlate",
         "instruction": task.instruction,
         "official_contact_success": official_success,
+        "seed": evidence.get("seed"),
         "gripper_contact": evidence.get("gripper_contact"),
         "maximum_consecutive_grasp_steps": evidence.get("maximum_consecutive_grasp_steps"),
         "grasped": evidence.get("grasped"),
         "maximum_lift_m": evidence.get("maximum_lift_m"),
+        "apple_plate_progress_m": evidence.get("apple_plate_progress_m"),
+        "minimum_apple_plate_xy_distance_m": evidence.get(
+            "minimum_apple_plate_xy_distance_m"
+        ),
+        "final_apple_plate_xy_distance_m": evidence.get("final_apple_plate_xy_distance_m"),
+        "minimum_robot_plate_xy_distance_m": evidence.get(
+            "minimum_robot_plate_xy_distance_m"
+        ),
+        "final_robot_plate_xy_distance_m": evidence.get("final_robot_plate_xy_distance_m"),
         "lifted": evidence.get("lifted"),
         "released": evidence.get("released_after_contact"),
         "stable_on_target": evidence.get("stable_on_plate"),

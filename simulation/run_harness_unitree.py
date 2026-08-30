@@ -90,7 +90,9 @@ def main() -> int:
     parser.add_argument("--planner-api-key-env", default="OPENAI_API_KEY")
     parser.add_argument("--progress-output", type=Path)
     parser.add_argument("--output", type=Path)
+    parser.add_argument("--seed", type=int, default=0)
     args = parser.parse_args()
+    os.environ["S2A_GROOT_SEED"] = str(args.seed)
     default_pick_place_spec = Path("experiments/tasks/g1_pick_place.json")
     if args.policy == "groot" and args.task_spec == default_pick_place_spec:
         args.task_spec = Path("experiments/tasks/g1_groot_apple_to_plate.json")
@@ -207,6 +209,7 @@ def main() -> int:
                   "instruction": task_spec.instruction, "display": task_spec.display} if task_spec else None),
         "intent_source": str(args.decoded_intents) if args.decoded_intents else "scripted",
         "policy": args.policy,
+        "seed": args.seed,
         "planner": observable_planner.report,
         "trace": [asdict(record) for record in harness.trace],
         "unitree_acceptance": robot.last_acceptance,

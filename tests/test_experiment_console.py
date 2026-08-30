@@ -1,4 +1,5 @@
 from importlib.util import module_from_spec, spec_from_file_location
+from unittest.mock import patch
 from pathlib import Path
 import unittest
 
@@ -15,14 +16,22 @@ class ExperimentConsoleTests(unittest.TestCase):
         html = MODULE.console_html()
 
         self.assertIn('id="start"', html)
-        self.assertIn("开始真实实验", html)
-        self.assertIn("Start real experiment", html)
+        self.assertIn("授权并运行", html)
+        self.assertIn("Authorize run", html)
+        self.assertIn('id="stop"', html)
+        self.assertIn("仿真控制，不是真机急停", html)
         self.assertIn('id="language"', html)
-        self.assertIn("MAMEM SSVEP Database", html)
-        self.assertIn("MuJoCo 实时环境", html)
+        self.assertIn("GR00T N1.6 + MockPlanner + scripted intent", html)
+        self.assertIn("GR00T N1.6 + live LLM Planner + scripted intent", html)
+        self.assertIn("MuJoCo 机器人环境", html)
         self.assertIn("/api/run", html)
         self.assertIn("/api/state", html)
         self.assertIn("/api/frame", html)
+        self.assertIn("/api/stop", html)
+        self.assertIn("/api/history", html)
+        self.assertIn("/api/video/", html)
+        self.assertIn('id="replay"', html)
+        self.assertIn("[hidden]{display:none!important}", html)
         self.assertIn("encodeURIComponent(token)", html)
         self.assertIn("s.log.join('\\n')", html)
         self.assertIn("prefers-reduced-motion", html)
@@ -35,6 +44,52 @@ class ExperimentConsoleTests(unittest.TestCase):
         self.assertFalse(state["running"])
         self.assertEqual(len(state["stages"]), 8)
         self.assertTrue(all(stage["status"] == "pending" for stage in state["stages"]))
+
+    def test_idle_controller_rejects_stop(self) -> None:
+        controller = MODULE.ExperimentController(ROOT, "http://127.0.0.1:18765/v1", "/model", "test")
+
+        self.assertFalse(controller.stop())
+        self.assertFalse(controller.snapshot()["stopped"])
+
+    def test_readiness_blocks_run_without_required_runtime(self) -> None:
+        with patch.object(MODULE.shutil, "which", return_value=None), patch.dict(MODULE.os.environ, {}, clear=True):
+            controller = MODULE.ExperimentController(ROOT, "http://127.0.0.1:18765/v1", "/model", "test")
+
+        self.assertFalse(controller.snapshot()["ready"])
+        self.assertFalse(controller.start())
+
+    def test_groot_local_profile_uses_installed_model_without_planner_key(self) -> None:
+        controller = MODULE.ExperimentController(ROOT, "", "/model", "test", "groot-local")
+
+        state = controller.snapshot()
+        self.assertTrue(state["ready"])
+        self.assertEqual(state["profile"], "groot-local")
+
+    def test_groot_live_planner_requires_endpoint_but_not_mock_fallback(self) -> None:
+        missing = MODULE.ExperimentController(ROOT, "", "/model", "test", "groot-live-planner")
+        with patch.dict(MODULE.os.environ, {"S2A_PLANNER_API_KEY": "test-key"}):
+            configured = MODULE.ExperimentController(
+                ROOT,
+                "http://127.0.0.1:18765/v1",
+                "/model",
+                "test",
+                "groot-live-planner",
+            )
+
+        self.assertFalse(missing.snapshot()["ready"])
+        self.assertTrue(configured.snapshot()["ready"])
+
+    def test_groot_history_pairs_seeded_evidence_with_video(self) -> None:
+        history = MODULE.groot_history(ROOT)
+
+        self.assertEqual([run["seed"] for run in history], list(range(1001, 1021)))
+        self.assertTrue(all(run["video"] for run in history))
+        self.assertTrue(next(run for run in history if run["seed"] == 1002)["lifted"])
+
+    def test_video_range_supports_mp4_tail_index_requests(self) -> None:
+        self.assertEqual(MODULE.parse_byte_range("bytes=-1024", 6000), (4976, 5999, True))
+        self.assertEqual(MODULE.parse_byte_range("bytes=1024-", 6000), (1024, 5999, True))
+        self.assertEqual(MODULE.parse_byte_range(None, 6000), (0, 5999, False))
 
     def test_controller_keeps_only_latest_log_for_each_stage(self) -> None:
         controller = MODULE.ExperimentController(ROOT, "http://127.0.0.1:18765/v1", "/model", "test")

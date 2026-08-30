@@ -47,13 +47,14 @@ Simulation or physical robot / 仿真或实体机器人
 | Neural interface / 神经接口 | EEG acquisition, markers, synchronization / EEG 采集、事件标记、时间同步 | BrainFlow, LSL, OpenBCI |
 | Neural decoding / 神经解码 | Signal quality, preprocessing, intent classification / 信号质量、预处理、意图分类 | MNE, pyRiemann, Braindecode |
 | Orchestration / 任务编排 | State machine, confirmation, recovery / 状态机、确认与失败恢复 | Python, ROS 2 |
-| Embodied policy / 具身策略 | Language- and vision-conditioned actions / 语言与视觉条件动作 | LeRobot, SmolVLA, OpenVLA |
+| Robot-learning foundation / 机器人学习基础设施 | Policy, processor, dataset, robot, and inference interfaces / 策略、处理器、数据集、机器人与推理接口 | LeRobot |
+| Embodied policy / 具身策略 | Language- and vision-conditioned actions / 语言与视觉条件动作 | GR00T, SmolVLA, ACT, future LeRobot policies |
 | Robot control / 机器人控制 | Kinematics, collision checks, execution / 运动学、碰撞检查与执行 | ROS 2, MoveIt 2 |
 | Environments / 运行环境 | Hardware-free validation and real deployment / 无硬件验证与真机部署 | MuJoCo, ManiSkill, physical robots |
 
-The listed technologies are candidates, not committed dependencies. Each integration will be accepted only when it supports the smallest reproducible experiment for its milestone.
+LeRobot is the committed robot-learning dependency beneath Synapse2Action. Other listed technologies remain replaceable integrations and are accepted only when they support the smallest reproducible experiment for a milestone. Synapse2Action owns intent, planning, confirmation, orchestration, safety policy, physical evidence, and audit semantics; it does not duplicate LeRobot's policy, dataset, processor, or robot abstractions.
 
-以上技术均为候选项，而不是已经确定的依赖。只有能够支撑对应里程碑最小可复现实验的组件，才会正式纳入项目。
+LeRobot 已确定为 Synapse2Action 下层的机器人学习基础设施依赖；其他技术仍保持可替换，并且只有能够支撑对应里程碑最小可复现实验时才会纳入。Synapse2Action 负责意图、规划、确认、编排、安全策略、物理证据和审计语义，不重复实现 LeRobot 的 Policy、Dataset、Processor 与 Robot 抽象。
 
 ## Roadmap / 路线图
 
@@ -106,6 +107,8 @@ The alternate `rtxpro-vllm/DeepSeek-V4-Flash-0731` Pi route currently returns 50
 - [ ] Normalize joint naming, units, coordinate frames, timestamps, and action limits at the adapter boundary. / 在 Adapter 边界统一关节命名、单位、坐标系、时间戳与动作范围。
 - [ ] Add watchdog, stale-state detection, action clipping, timeout, and safe-stop behavior. / 加入看门狗、状态过期检测、动作裁剪、超时与安全停止。
 - [x] Complete a scripted pick-and-place task in simulation. / 在仿真中完成固定策略抓取放置。
+- [x] Run the public GR00T N1.6 G1 apple-to-plate checkpoint through its official whole-body controller and MuJoCo environment on an RTX 4070. / 在 RTX 4070 上通过官方全身控制器与 MuJoCo 环境运行公开 GR00T N1.6 G1 苹果放盘 checkpoint。
+- [x] Record seeded MuJoCo evidence for grasp, lift, transport progress, plate contact, release, stable placement, and standing. / 记录带 Seed 的 MuJoCo 抓取、抬升、运输推进、接触盘子、释放、稳定放置与站立证据。
 
 **Exit criterion / 完成标准:** the Harness controls a simulated G1 through the same high-level interface reserved for the physical robot, while low-level safety remains outside the LLM. / Harness 通过为真机预留的同一高层接口控制仿真 G1，低层安全完全独立于 LLM。
 
@@ -115,11 +118,17 @@ The alternate `rtxpro-vllm/DeepSeek-V4-Flash-0731` Pi route currently returns 50
 - [x] Establish ACT or another deterministic imitation-learning baseline before VLA. / 在 VLA 前建立 ACT 或其他可控模仿学习基线。
 - [x] Integrate LeRobot data, training, inference, and checkpoint metadata. / 集成 LeRobot 数据、训练、推理与检查点元数据。
 - [x] Integrate SmolVLA as the first language-conditioned action policy. / 以 SmolVLA 作为首个语言条件动作策略。
+- [x] Connect a mature public GR00T N1.6 G1 checkpoint without training a replacement foundation model. / 接入成熟公开的 GR00T N1.6 G1 checkpoint，不自行训练替代基础模型。
+- [x] Add reproducible seeded stage benchmarks and preserve failed physical rollouts as evidence. / 加入可复现的 Seeded 阶段评测，并将失败物理 Rollout 保留为证据。
+- [ ] Route standard policy, processor, robot, and dataset operations through LeRobot; retain WBC-specific adapters only where LeRobot does not expose the required humanoid boundary. / 将标准 Policy、Processor、Robot 与 Dataset 操作收敛到 LeRobot；仅在 LeRobot 尚未暴露必要人形机器人边界时保留 WBC 专用 Adapter。
+- [ ] Separate `outcome_success`, `process_compliance`, and `safety_passed` in the versioned result schema. / 在版本化结果 Schema 中拆分最终结果成功、过程合规与安全通过。
+- [ ] Run at least 20 fixed-seed episodes and report confidence intervals rather than treating the current three-episode sample as a model success-rate claim. / 至少运行 20 个固定 Seed Episode 并报告置信区间，不把当前三次样本当作模型成功率结论。
+- [ ] Evaluate a second mature LeRobot-supported policy under the same TaskSpec, seeds, and verifier. / 在同一 TaskSpec、Seed 与 Verifier 下评测第二个成熟的 LeRobot Policy。
 - [ ] Validate action chunks against workspace, joint, velocity, acceleration, and duration limits. / 对动作块执行空间、关节、速度、加速度与持续时间校验。
 - [x] Verify task outcomes using robot state and visual evidence instead of model self-reporting. / 使用机器人状态与视觉证据验证结果，而非相信模型自报成功。
 - [ ] Add bounded retry and deterministic recovery paths. / 加入有界重试与确定性恢复路径。
 
-**Exit criterion / 完成标准:** the planner selects a registered skill and the VLA completes a simulated G1 manipulation task under Harness supervision. / Planner 选择已注册技能，VLA 在 Harness 监督下完成 G1 仿真操作任务。
+**Exit criterion / 完成标准:** at least two replaceable policies run through the same LeRobot-backed contract; a minimum 20-seed suite separately reports outcome, process, and safety; and no model self-report substitutes for measured physical evidence. / 至少两个可替换 Policy 通过同一套基于 LeRobot 的契约运行；不少于 20 个 Seed 的评测分别报告结果、过程与安全；任何模型自报结果均不得替代实测物理证据。
 
 ### Phase 5 — Offline EEG Intent Decoding / 阶段 5：离线 EEG 意图解码
 
@@ -178,13 +187,13 @@ Synapse2Action 面向科研、教学与有人监督的原型验证，不属于�
 
 ## Status / 当前状态
 
-The project is currently at an architecture decision point. The end-to-end hardware-free pipeline runs, but repeated G1 manipulation rollouts have exposed an unresolved mismatch between the lower-body RL controller and upper-body payload motion. Further feature expansion is paused until the primary research claim, control architecture, and repeated-run evidence gate are selected. See [Current Challenges and Next Decisions](docs/current-challenges.md).
+The active milestone is VLA qualification behind the Harness. A public GR00T N1.6 Unitree G1 checkpoint now runs through official whole-body control and MuJoCo on an RTX 4070. The first three fixed-seed episodes validate stage-level evidence for grasp, lift, transport, contact, release, stable placement, and standing, but they are not a reliability claim. The next gates are a versioned outcome/process/safety result, at least 20 fixed seeds, a LeRobot-backed standard policy boundary, and a second mature policy under the same TaskSpec and verifier. See [Current Challenges and Next Decisions](docs/current-challenges.md).
 
-项目目前处于架构决策点。无设备端到端链路已经能够运行，但重复 G1 操作实验暴露了下肢 RL Controller 与上肢携物运动之间尚未解决的不匹配。在明确首要研究命题、控制架构和重复实验门槛之前，暂停继续扩张功能。详见 [当前困难与下一步决策](docs/current-challenges.md)。
+项目当前里程碑是 Harness 监督下的 VLA 准入评测。公开 GR00T N1.6 Unitree G1 checkpoint 已在 RTX 4070 上通过官方全身控制与 MuJoCo 运行；首批三个固定 Seed Episode 已验证抓取、抬升、运输、接触、释放、稳定放置与站立的阶段证据，但不能作为可靠性结论。下一道门槛是版本化拆分结果/过程/安全判定、至少 20 个固定 Seed、基于 LeRobot 的标准 Policy 边界，以及在同一 TaskSpec 和 Verifier 下验收第二个成熟 Policy。详见 [当前困难与下一步决策](docs/current-challenges.md)。
 
-The project now has accepted Unitree G1 navigation, scripted manipulation, and bounded SmolVLA action-control paths through the official SDK2, RL controller, and MuJoCo bridge. The official LeRobot 0.6.1 pipeline trains SmolVLA on five independently simulated episodes and evaluates a held-out episode before deployment. A confirmation-gated Harness run completes `select → plan → review → confirm → policy → execute → verify`; measured robot and object state independently determines success. Live synthetic BrainFlow/LSL input also reaches the same simulation boundary. Physical EEG acquisition, human-subject metrics, physical G1 integration, and safety certification are not yet claimed.
+The confirmation-gated Harness completes `select → plan → review → confirm → policy → execute → verify` with scripted, SmolVLA, and GR00T paths. LeRobot is the committed robot-learning dependency; current direct GR00T/WBC process management is a transitional humanoid adapter boundary, not a competing framework. Measured robot and object state independently determines success. Physical EEG acquisition, human-subject metrics, physical G1 integration, and safety certification are not yet claimed.
 
-项目目前已通过官方 SDK2、RL Controller 与 MuJoCo Bridge 验收 Unitree G1 导航、固定策略抓放和 SmolVLA 受限残差动作抓放链路。官方 LeRobot 0.6.1 管线使用五条独立仿真 episode 训练 SmolVLA，并在部署前评估完全留出的 episode。确认门控 Harness 已跑通 `选择 → 规划 → 审阅 → 确认 → 策略 → 执行 → 验证`，用户确认的是已经生成并校验过的具体计划；成功状态由机器人与物体实测状态独立判定。BrainFlow/LSL 合成实时输入也已抵达同一仿真边界。真实 EEG 采集、受试者指标、G1 真机接入和安全认证仍未完成。
+确认门控 Harness 已通过固定策略、SmolVLA 与 GR00T 链路跑通 `选择 → 规划 → 审阅 → 确认 → 策略 → 执行 → 验证`。LeRobot 已确定为机器人学习基础设施依赖；当前直接管理 GR00T/WBC 进程只是过渡期的人形机器人 Adapter 边界，不是竞争框架。成功状态由机器人与物体实测状态独立判定。真实 EEG 采集、受试者指标、G1 真机接入和安全认证仍未完成。
 
 ### SmolVLA G1 closed loop / SmolVLA G1 闭环
 
@@ -211,6 +220,8 @@ The G1 Harness defaults to `MockPlanner`. A real OpenAI-compatible LLM is opt-in
 G1 Harness 默认使用 `MockPlanner`。真实 OpenAI-compatible LLM 必须显式启用，并在报告中记录 Provider、模型、耗时、结构化输入输出和阶段来源。控制台明确展示意图、LLM 规划、VLA、技能执行、运动控制和物理验证六个阶段；即使运行失败或没有相机帧，也能显示失败证据。
 
 `simulation/experiment_console.py` is the interactive experiment entry point. Its protected Run API executes the public PhysioNet/WFDB MAMEM SSVEP benchmark, live LLM planning, SmolVLA, Unitree SDK2, and MuJoCo in sequence. The browser polls stage state and displays a continuously updated MuJoCo camera feed during execution; it does not substitute selected post-run screenshots for the live environment.
+
+On Windows with the runtime in WSL2, start the console in WSL and open the printed localhost address in Edge or Chrome. Keep the default `127.0.0.1` binding; Windows localhost forwarding normally exposes it without opening a LAN listener. The console now requires an explicit run authorization and provides a simulation-process stop control. That control is not a physical robot E-Stop. See [Product Console Architecture](docs/product-console.md) for the product boundary and delivery gates.
 
 `simulation/experiment_console.py` 是交互实验入口。受访问 token 保护的运行 API 会依次执行公开 PhysioNet/WFDB MAMEM SSVEP 实验、真实 LLM 规划、SmolVLA、Unitree SDK2 和 MuJoCo。浏览器持续获取阶段状态，并在执行过程中显示不断更新的 MuJoCo 相机画面，不再用事后挑选的截图代替运行环境。
 

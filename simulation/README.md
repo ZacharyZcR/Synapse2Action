@@ -1,8 +1,33 @@
 # Simulation
 
-## GR00T + SONIC whole-body VLA transition
+## GR00T whole-body VLA status
 
-The next G1 control path replaces the task-specific C++ pick-and-place fixture
+The accepted local baseline uses the public GR00T N1.6 Unitree G1
+apple-to-plate checkpoint, the matching official whole-body controller, and its
+robosuite/MuJoCo environment. Synapse2Action launches that stack behind the
+confirmation-gated Harness and independently records seeded grasp, lift,
+transport, contact, release, stable-placement, and standing evidence. LeRobot
+is the committed standard policy/dataset/robot dependency; the direct N1.6/WBC
+process runner is a transitional humanoid adapter where the required upstream
+boundary is not yet exposed through LeRobot.
+
+Run one evidence-preserving Harness episode with:
+
+```bash
+PYTHONPATH=src python3 simulation/run_harness_unitree.py \
+  --task pick-place --policy groot --planner mock --seed 1001
+```
+
+Run a reproducible multi-seed suite with:
+
+```bash
+PYTHONPATH=src python3 simulation/run_groot_seeded_benchmark.py \
+  --seeds 1001 1002 1003
+```
+
+### Future GR00T N1.7 + SONIC experiment
+
+The proposed future G1 control path replaces the task-specific C++ pick-and-place fixture
 with NVIDIA's open-source Isaac-GR00T N1.7 and GEAR-SONIC whole-body controller.
 The VLA emits a 78-dimensional action: a 64-dimensional SONIC motion token and
 14 hand-joint targets. SONIC owns the 50 Hz whole-body rollout and balance layer;
@@ -127,6 +152,37 @@ PYTHONPATH=src python3 simulation/run_harness_unitree.py \
 ```
 
 ## Real SmolVLA inference boundary
+
+Check the independently installed GR00T N1.7 and GEAR-SONIC stack without
+starting a model server or simulator:
+
+```bash
+python3 simulation/check_groot_n17_readiness.py
+```
+
+Add `--check-access` to distinguish a missing Hugging Face login from a gated
+`nvidia/Cosmos-Reason2-2B` license that has not yet been granted. The JSON
+report contains no token or credential material. Local readiness does not mean
+the model fits GPU memory or completes a closed-loop rollout.
+
+After gated access is granted, start the local N1.7 policy server with:
+
+```bash
+./simulation/run_groot_n17_server.sh
+```
+
+The launcher refuses to start when local files or gated access are missing and
+uses `UNITREE_G1_SONIC`, port `5550`, and `cuda:0` by default. Override these
+with `S2A_GROOT_N17_MODEL_DIR`, `S2A_GROOT_N17_PORT`, or
+`S2A_GROOT_N17_DEVICE`. The matching SONIC policy client can be inspected or
+run through the compatible N1.7 environment with:
+
+```bash
+./simulation/run_groot_n17_sonic_client.sh --help
+```
+
+This wrapper avoids the upstream inference installer mismatch where the
+dependency is named `Isaac-GR00T` but the current package metadata is `gr00t`.
 
 Run the official 450M `lerobot/smolvla_base` checkpoint on three synthetic
 camera views, six-dimensional state, and two different language instructions:

@@ -1,6 +1,79 @@
 # Current Challenges and Next Decisions / 当前困难与下一步决策
 
-## Why development is paused here / 为什么在这里暂停推进
+## 2026-08-30 current priority / 2026-08-30 当前优先级
+
+The active engineering target is now the VLA execution boundary. LeRobot is a committed lower-level dependency for policy, processor, dataset, robot, and inference interfaces. Synapse2Action remains the upper orchestration and governance layer that connects human intent, an LLM planner, confirmation, VLA execution, whole-body control, measured verification, recovery, and audit. It is not a competing training framework.
+
+当前首要工程目标已经收敛为 VLA 执行边界。LeRobot 是 Policy、Processor、Dataset、Robot 与推理接口的确定依赖；Synapse2Action 保持为上层编排与治理层，负责串联人类意图、LLM Planner、确认、VLA 执行、全身控制、实测验收、恢复和审计，而不是与 LeRobot 竞争的训练框架。
+
+The accepted GR00T path currently runs:
+
+```text
+human or scripted intent
+→ Harness state machine
+→ Mock or OpenAI-compatible planner
+→ validated TaskSpec and confirmation
+→ GR00T N1.6 G1 policy
+→ official whole-body control
+→ MuJoCo G1
+→ independent physical evidence
+```
+
+当前已经验收的 GR00T 链路为：人类或脚本意图经过 Harness 状态机，由 Mock 或 OpenAI-compatible Planner 生成计划，经 TaskSpec 校验和人工确认后进入 GR00T N1.6 G1 Policy、官方全身控制与 MuJoCo G1，最后由独立物理证据判定结果。
+
+### Current measured evidence / 当前实测证据
+
+- The RTX 4070 runs the public G1 apple-to-plate checkpoint with approximately 10.4 GB VRAM use. A complete evidence-preserving rollout takes roughly three minutes; sampled GPU utilization was low, so serial simulation, WBC stepping, and policy IPC are more important throughput limits than raw GPU compute.
+- The fixed-seed suite now contains 20 consecutive runs, seeds 1001–1020. Strict all-stage success was 1/20 (5%, Wilson 95% CI 0.9%–23.6%); only seed 1002 passed every measured stage.
+- Stage rates were 85% contact, 75% grasp, 5% lift above 0.10 m, 40% plate contact/release/stable placement, and 100% standing. Mean maximum lift was only 0.0384 m.
+- The primary measured bottleneck is therefore effective post-grasp lift and transport, not balance or infrastructure stability. A successful replay proves path reachability, not representative task performance.
+
+- RTX 4070 可运行公开 G1 苹果放盘 checkpoint，显存约占 10.4GB。保留完整证据的单轮约需三分钟；抽样 GPU 利用率较低，当前吞吐瓶颈主要是串行仿真、WBC Step 和 Policy IPC，而非单纯 GPU 算力。
+- 固定 Seed 1001–1020 的 20 次连续评测已完成。严格全阶段成功率为 1/20（5%，Wilson 95% CI 0.9%–23.6%）；仅 Seed 1002 通过全部实测阶段。
+- 分阶段成功率为：接触 85%、抓取 75%、抬升超过 0.10m 为 5%、接触盘子/释放/稳定放置均为 40%、全程站立为 100%。平均最大抬升仅 0.0384m。
+- 因此当前首要瓶颈不是平衡层或基础设施稳定性，而是抓取后的有效抬升与运输。成功回放只能证明链路可达，不能代表总体任务效果。
+
+### Active problems / 当前问题
+
+1. **VLA maturity and coverage.** The public checkpoint is task- and embodiment-specific. Failures vary by seed, and the system has not demonstrated generalization across objects, destinations, camera perturbations, or tasks. Model size alone is not the primary diagnosis; data coverage, long-horizon closed-loop behavior, and recovery examples are more direct gaps.
+2. **No controlled recovery loop.** The current pipeline is one confirmed execution followed by verification. Evidence does not yet feed a bounded recovery plan back through the LLM and a second confirmation.
+3. **Result semantics are conflated.** `outcome_success`, `process_compliance`, and `safety_passed` must be independent. A useful final placement must not be hidden by an unnecessary intermediate threshold, while safety invariants must remain non-negotiable.
+4. **LeRobot boundary is incomplete.** The current GR00T/WBC runner directly manages vendor environments and JSON handoff. Standard policy, processor, dataset, and robot operations should move behind LeRobot; humanoid-specific WBC remains an explicit adapter boundary.
+5. **Benchmark throughput and telemetry.** The 20-seed baseline is complete, but serial episodes remain slow and provide no intra-episode heartbeat. A resident policy server, optional video, parallel environments, smoke/full profiles, and stage progress telemetry are required.
+6. **Only one mature checkpoint is qualified.** The architecture claim requires a second LeRobot-supported policy under identical TaskSpec, seeds, and evidence gates.
+7. **Simulation is not hardware evidence.** Camera calibration, latency, joint mapping, payload behavior, physical emergency stop, workspace enforcement, and operator takeover remain unverified on a real G1.
+8. **Python runtime split.** The main Harness uses Python 3.12 while the compatible WBC runtime uses Python 3.10. The boundary must remain a versioned data contract; importing the main package inside the vendor runtime is not supported.
+
+1. **VLA 成熟度与覆盖不足。** 公开 checkpoint 绑定特定任务和本体，不同 Seed 结果波动，尚未证明跨物体、目标、相机扰动和任务的泛化。问题不能简单归因于模型参数较小；数据覆盖、长时序闭环和恢复示范是更直接的缺口。
+2. **尚无受控恢复循环。** 当前管线是确认后执行一次，再进行验收；失败证据尚未经过 LLM 生成有界恢复计划、再次确认并重试。
+3. **结果语义仍混杂。** 必须独立报告 `outcome_success`、`process_compliance` 和 `safety_passed`。不必要的中间阈值不能掩盖有价值的最终结果，而安全不变量必须保持强制。
+4. **LeRobot 边界尚未收敛。** 当前 GR00T/WBC runner 仍直接管理 Vendor 环境与 JSON 交接；标准 Policy、Processor、Dataset 和 Robot 操作应迁移到 LeRobot，人形 WBC 保持为显式专用 Adapter 边界。
+5. **评测吞吐与遥测不足。** 20 个 Seed 的基线已完成，但串行 Episode 仍然缓慢，且单次运行内部没有心跳；需要常驻 Policy Server、可选视频、并行环境、Smoke/Full 两级评测和阶段进度遥测。
+6. **只验收了一个成熟 checkpoint。** 架构主张需要第二个 LeRobot 支持的 Policy 在相同 TaskSpec、Seed 和证据门下完成对照。
+7. **仿真不是真机证据。** 真机相机标定、延迟、关节映射、负载、实体急停、工作空间约束和人工接管均未验证。
+8. **Python Runtime 分裂。** 主 Harness 使用 Python 3.12，兼容 WBC Runtime 使用 Python 3.10；边界必须保持为版本化数据契约，不支持 Vendor Runtime 直接 Import 主包。
+
+### Immediate roadmap / 近期路线
+
+1. Commit the seeded-distance evidence and benchmark aggregator after review.
+2. Version the result schema with separate outcome, process, and safety decisions.
+3. Use the completed 20-seed baseline to isolate lift failures with controlled action and scene counterfactuals.
+4. Move standard policy and dataset operations behind LeRobot without hiding the WBC boundary.
+5. Qualify a second mature policy under the same task and verifier before adding more front-end or EEG features.
+6. Add a bounded recovery experiment only after failure classes and allowed recovery skills are explicit.
+
+1. 审查并提交 Seeded 距离证据与 Benchmark 聚合器。
+2. 升级结果 Schema，分别输出结果、过程与安全判定。
+3. 基于已完成的 20-Seed 基线，用受控动作与场景反事实定位抬升失败原因。
+4. 将标准 Policy 与 Dataset 操作迁移到 LeRobot，同时不隐藏 WBC 专用边界。
+5. 在增加前端或 EEG 功能前，以相同任务和 Verifier 验收第二个成熟 Policy。
+6. 仅在失败分类和允许的恢复技能明确后，增加有界恢复实验。
+
+The sections below preserve the earlier SmolVLA and controller findings as historical evidence. They no longer describe the active implementation priority.
+
+以下章节保留早期 SmolVLA 与 Controller 结论作为历史证据，但不再代表当前实现优先级。
+
+## Historical SmolVLA checkpoint / 历史 SmolVLA 检查点
 
 Synapse2Action has demonstrated that public EEG replay, a real LLM planner, real SmolVLA inference, the Harness, Unitree SDK2, and MuJoCo can execute in one pipeline. That result proves component connectivity, but it does not yet prove a stable human-to-robot system.
 

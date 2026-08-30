@@ -34,10 +34,11 @@ def longest_true_run(values: list[bool]) -> tuple[int | None, int]:
 
 
 class EvidenceWrapper(gym.Wrapper):
-    def __init__(self, env: gym.Env, output: Path, minimum_lift_m: float) -> None:
+    def __init__(self, env: gym.Env, output: Path, minimum_lift_m: float, seed: int) -> None:
         super().__init__(env)
         self.output = output
         self.minimum_lift_m = minimum_lift_m
+        self.seed = seed
         self.episodes: list[dict[str, object]] = []
         self.samples: list[dict[str, object]] = []
         self.initial_apple_z: float | None = None
@@ -48,6 +49,15 @@ class EvidenceWrapper(gym.Wrapper):
 
     def reset(self, **kwargs):
         self._finish_episode()
+        seed = kwargs.get("seed")
+        if seed is None:
+            seed = self.seed + len(self.episodes)
+            kwargs["seed"] = seed
+        scene = self.scene
+        scene.seed = seed
+        scene.rng = np.random.default_rng(seed)
+        if hasattr(scene, "scene"):
+            scene.scene._scene_sampler = scene.scene._get_sampler()
         observation, info = self.env.reset(**kwargs)
         self.initial_apple_z = self._body_position(self.scene.apple)[2]
         self._sample()
@@ -72,6 +82,7 @@ class EvidenceWrapper(gym.Wrapper):
         apple_pos = self._body_position(scene.apple)
         plate_pos = self._body_position(scene.plate)
         robot = scene.robots[0]
+        robot_pos = scene.sim.data.get_body_xpos(robot.robot_model.root_body).copy()
         grasped = any(
             scene._check_grasp(robot.gripper[side], scene.apple.mj_obj)
             for side in ("left", "right")
@@ -83,6 +94,7 @@ class EvidenceWrapper(gym.Wrapper):
             {
                 "apple_position": apple_pos.tolist(),
                 "plate_position": plate_pos.tolist(),
+                "robot_position": robot_pos.tolist(),
                 "grasped": bool(grasped),
                 "contact": bool(scene.check_contact(scene.apple.mj_obj, scene.plate.mj_obj)),
                 "standing": bool(torso_pos[2] > 0.55 and torso_up > 0.7),
@@ -96,11 +108,33 @@ class EvidenceWrapper(gym.Wrapper):
             return
         grasp_flags = [bool(sample["grasped"]) for sample in self.samples]
         grasp_index, grasp_steps = longest_true_run(grasp_flags)
+        grasp_end_index = None if grasp_index is None else grasp_index + grasp_steps - 1
         sustained_grasp = grasp_steps >= MIN_GRASP_STEPS
-        max_lift_m = max(
+        lifts = [
             float(sample["apple_position"][2]) - self.initial_apple_z
             for sample in self.samples
-        )
+        ]
+        peak_lift_step = int(np.argmax(lifts))
+        max_lift_m = lifts[peak_lift_step]
+        apple_plate_distances = [
+            float(
+                np.linalg.norm(
+                    np.array(sample["apple_position"][:2])
+                    - np.array(sample["plate_position"][:2])
+                )
+            )
+            for sample in self.samples
+        ]
+        robot_plate_distances = [
+            float(
+                np.linalg.norm(
+                    np.array(sample["robot_position"][:2])
+                    - np.array(sample["plate_position"][:2])
+                )
+            )
+            for sample in self.samples
+        ]
+        closest_plate_step = int(np.argmin(apple_plate_distances))
         contact_index = None
         if sustained_grasp and grasp_index is not None:
             contact_index = next(
@@ -132,10 +166,22 @@ class EvidenceWrapper(gym.Wrapper):
         self.episodes.append(
             {
                 "steps": len(self.samples),
+                "seed": self.seed + len(self.episodes),
                 "gripper_contact": any(grasp_flags),
                 "maximum_consecutive_grasp_steps": grasp_steps,
+                "sustained_grasp_start_step": grasp_index,
+                "sustained_grasp_end_step": grasp_end_index,
                 "grasped": sustained_grasp,
                 "maximum_lift_m": max_lift_m,
+                "peak_lift_step": peak_lift_step,
+                "initial_apple_plate_xy_distance_m": apple_plate_distances[0],
+                "minimum_apple_plate_xy_distance_m": min(apple_plate_distances),
+                "closest_plate_step": closest_plate_step,
+                "final_apple_plate_xy_distance_m": apple_plate_distances[-1],
+                "apple_plate_progress_m": apple_plate_distances[0] - min(apple_plate_distances),
+                "initial_robot_plate_xy_distance_m": robot_plate_distances[0],
+                "minimum_robot_plate_xy_distance_m": min(robot_plate_distances),
+                "final_robot_plate_xy_distance_m": robot_plate_distances[-1],
                 "lifted": sustained_grasp and grasp_index is not None and any(
                     sample["apple_position"][2] > self.initial_apple_z + self.minimum_lift_m
                     for sample in self.samples[grasp_index:]
@@ -161,6 +207,7 @@ def main() -> int:
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--max-episode-steps", type=int, default=1440)
     parser.add_argument("--minimum-lift-m", type=float, required=True)
+    parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--policy-client-host", default="127.0.0.1")
     parser.add_argument("--policy-client-port", type=int, default=5555)
     args = parser.parse_args()
@@ -169,7 +216,7 @@ def main() -> int:
 
     def instrumented_env(env_name: str, env_idx: int, total_n_envs: int):
         env = original_get_gym_env(env_name, env_idx, total_n_envs)
-        return EvidenceWrapper(env, args.output, args.minimum_lift_m)
+        return EvidenceWrapper(env, args.output, args.minimum_lift_m, args.seed)
 
     rollout_policy.get_gym_env = instrumented_env
     config = rollout_policy.WrapperConfigs(
