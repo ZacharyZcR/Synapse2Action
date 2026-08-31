@@ -81,6 +81,7 @@ G1 policy 与匹配 MJCF，确认 MuJoCo、PyTorch 和基础行走环境正常�
 simulation/vendor/OpenTrack/.venv/bin/python \
   simulation/run_unitree_locomotion_smoke.py \
   --duration 10 \
+  --video reports/simulation/unitree-locomotion-smoke.mp4 \
   --output reports/simulation/unitree-locomotion-smoke.json
 ```
 
@@ -92,7 +93,7 @@ simulation/vendor/OpenTrack/.venv/bin/python \
 - `unitree_rl_gym` 实际 commit 与 `whole_body.lock.json` 一致。
 
 这个 Smoke 只验证下肢 locomotion 与动态平衡，不验证 OpenTrack 动作跟踪、
-VLA、抓取、负载抬升或稳定放置。
+VLA、抓取、负载抬升或稳定放置。MP4 与 JSON 来自同一次 physics rollout。
 
 ### 4.1 安装训练/仿真 Python 环境
 

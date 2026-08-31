@@ -13,6 +13,11 @@ SPEC.loader.exec_module(MODULE)
 
 
 class UnitreeLocomotionSmokeTests(unittest.TestCase):
+    def test_runner_supports_same_rollout_video_evidence(self) -> None:
+        source = (ROOT / "simulation/run_unitree_locomotion_smoke.py").read_text()
+        self.assertIn('parser.add_argument("--video"', source)
+        self.assertIn('"video_frames": video_frames', source)
+
     def test_accepts_stable_finite_walk(self) -> None:
         verdict = MODULE.evaluate(
             {"finite": True, "minimum_height_m": 0.75, "forward_distance_m": 4.0, "physics_steps": 5000},
