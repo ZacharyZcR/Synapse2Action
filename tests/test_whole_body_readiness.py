@@ -25,6 +25,8 @@ class WholeBodyReadinessTests(unittest.TestCase):
                 "open_wbt": {"commit": "wbt"},
                 "open_track": {"commit": "track"},
                 "unitree_rl_gym": {"commit": "unitree"},
+                "unitree_rl_lab": {"commit": "lab"},
+                "unitree_mujoco": {"commit": "mujoco"},
             }
             lock_path = project / "simulation/whole_body.lock.json"
             lock_path.parent.mkdir(parents=True)
@@ -37,6 +39,8 @@ class WholeBodyReadinessTests(unittest.TestCase):
                 subprocess.CompletedProcess([], 0, "wbt\n", ""),
                 subprocess.CompletedProcess([], 0, "track\n", ""),
                 subprocess.CompletedProcess([], 0, "unitree\n", ""),
+                subprocess.CompletedProcess([], 0, "lab\n", ""),
+                subprocess.CompletedProcess([], 0, "mujoco\n", ""),
             ]
 
             report = MODULE.local_readiness(project, system="Linux")
@@ -54,11 +58,15 @@ class WholeBodyReadinessTests(unittest.TestCase):
                 "open_wbt": {"commit": "a"},
                 "open_track": {"commit": "b"},
                 "unitree_rl_gym": {"commit": "c"},
+                "unitree_rl_lab": {"commit": "d"},
+                "unitree_mujoco": {"commit": "e"},
             }))
             run.side_effect = [
                 subprocess.CompletedProcess([], 0, "wrong\n", ""),
                 subprocess.CompletedProcess([], 0, "b\n", ""),
                 subprocess.CompletedProcess([], 0, "c\n", ""),
+                subprocess.CompletedProcess([], 0, "d\n", ""),
+                subprocess.CompletedProcess([], 0, "e\n", ""),
             ]
 
             report = MODULE.local_readiness(project, system="Darwin")

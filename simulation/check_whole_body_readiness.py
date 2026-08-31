@@ -18,6 +18,9 @@ REQUIRED_PATHS = {
     "unitree_locomotion_policy": "simulation/vendor/unitree_rl_gym/deploy/pre_train/g1/motion.pt",
     "unitree_locomotion_config": "simulation/vendor/unitree_rl_gym/deploy/deploy_mujoco/configs/g1.yaml",
     "unitree_locomotion_model": "simulation/vendor/unitree_rl_gym/resources/robots/g1_description/scene.xml",
+    "unitree_29dof_policy": "simulation/vendor/unitree_rl_lab/deploy/robots/g1_29dof/config/policy/velocity/v0/exported/policy.onnx",
+    "unitree_29dof_config": "simulation/vendor/unitree_rl_lab/deploy/robots/g1_29dof/config/policy/velocity/v0/params/deploy.yaml",
+    "unitree_29dof_model": "simulation/vendor/unitree_mujoco/unitree_robots/g1/scene_29dof.xml",
 }
 
 
@@ -39,10 +42,14 @@ def local_readiness(project: Path, system: str | None = None) -> dict[str, objec
         "open_wbt": _head(vendor / "OpenWBT"),
         "open_track": _head(vendor / "OpenTrack"),
         "unitree_rl_gym": _head(vendor / "unitree_rl_gym"),
+        "unitree_rl_lab": _head(vendor / "unitree_rl_lab"),
+        "unitree_mujoco": _head(vendor / "unitree_mujoco"),
     }
     checks["open_wbt_commit"] = commits["open_wbt"] == lock["open_wbt"]["commit"]
     checks["open_track_commit"] = commits["open_track"] == lock["open_track"]["commit"]
     checks["unitree_rl_gym_commit"] = commits["unitree_rl_gym"] == lock["unitree_rl_gym"]["commit"]
+    checks["unitree_rl_lab_commit"] = commits["unitree_rl_lab"] == lock["unitree_rl_lab"]["commit"]
+    checks["unitree_mujoco_commit"] = commits["unitree_mujoco"] == lock["unitree_mujoco"]["commit"]
     checks["linux"] = (system or platform.system()) == "Linux"
     missing = [name for name, passed in checks.items() if not passed]
     return {

@@ -35,6 +35,8 @@ mkdir -p "${vendor_dir}"
 clone_locked open_wbt "${vendor_dir}/OpenWBT"
 clone_locked open_track "${vendor_dir}/OpenTrack"
 clone_locked unitree_rl_gym "${vendor_dir}/unitree_rl_gym"
+clone_locked unitree_rl_lab "${vendor_dir}/unitree_rl_lab"
+clone_locked unitree_mujoco "${vendor_dir}/unitree_mujoco"
 
 echo "Whole-body candidate sources are staged. No dependency, checkpoint, or robot command was installed or executed."
 echo "Run check_whole_body_readiness.py before selecting an experiment profile."

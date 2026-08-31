@@ -95,6 +95,25 @@ simulation/vendor/OpenTrack/.venv/bin/python \
 这个 Smoke 只验证下肢 locomotion 与动态平衡，不验证 OpenTrack 动作跟踪、
 VLA、抓取、负载抬升或稳定放置。MP4 与 JSON 来自同一次 physics rollout。
 
+### 4.0.1 Unitree 官方 29DoF velocity 基线
+
+不要把上述 12DoF policy 直接套到 29DoF 模型。全身模型必须使用
+`unitree_rl_lab` 随仓库发布的 480→29 ONNX、其 observation history、
+`joint_ids_map`、PD 参数和 `unitree_mujoco` 匹配 MJCF：
+
+```bash
+python3 -m venv .venv
+.venv/bin/pip install mujoco onnxruntime pyyaml imageio imageio-ffmpeg
+.venv/bin/python simulation/run_unitree_29dof_velocity_smoke.py \
+  --duration 10 --command-x 0.5 \
+  --video reports/simulation/unitree-29dof-velocity-smoke.mp4 \
+  --output reports/simulation/unitree-29dof-velocity-smoke.json
+```
+
+该基线验证 29DoF dynamic locomotion；它仍不是 VLA manipulation、抓取或
+带负载 whole-body control 的成功证据。无视频运行适合数值验收；软件 EGL
+较慢时，可用较短的同配置 rollout 单独生成视觉证据并保留各自 JSON。
+
 ### 4.1 安装训练/仿真 Python 环境
 
 ```bash

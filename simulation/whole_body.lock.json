@@ -17,5 +17,15 @@
     "commit_date": "2025-07-25T10:20:21Z",
     "license": "BSD-3-Clause",
     "repository": "https://github.com/unitreerobotics/unitree_rl_gym.git"
+  },
+  "unitree_rl_lab": {
+    "commit": "4960b84732b0c2ec593dccbfe963fda1bcd7b1e3",
+    "license": "BSD-3-Clause",
+    "repository": "https://github.com/unitreerobotics/unitree_rl_lab.git"
+  },
+  "unitree_mujoco": {
+    "commit": "4134cb5dc7ff1ba7f484deda48b5274b58694519",
+    "license": "BSD-3-Clause",
+    "repository": "https://github.com/unitreerobotics/unitree_mujoco.git"
   }
 }
