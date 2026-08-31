@@ -71,6 +71,29 @@ python3 simulation/check_whole_body_readiness.py \
 
 OpenTrack 更适合先验证，因为它支持 headless、自动按键、日志和仿真/部署共用 C++ Controller。它验证的是动作跟踪与状态机，不是抓取任务。
 
+### 4.0 Unitree 官方 locomotion 基线
+
+OpenTrack 的 `STAND` 只做关节位置插值，不证明动态平衡；其随仓库提供的
+`G1-Walk.onnx` 也没有携带可核验的训练配置。先运行锁定版本的 Unitree 官方
+G1 policy 与匹配 MJCF，确认 MuJoCo、PyTorch 和基础行走环境正常：
+
+```bash
+simulation/vendor/OpenTrack/.venv/bin/python \
+  simulation/run_unitree_locomotion_smoke.py \
+  --duration 10 \
+  --output reports/simulation/unitree-locomotion-smoke.json
+```
+
+报告只有同时满足以下条件才通过：
+
+- 所有状态均为有限数值；
+- 5000 个 physics steps 内最低 root height 不低于 `0.65 m`；
+- 默认前进指令产生至少 `1.0 m` 的位移；
+- `unitree_rl_gym` 实际 commit 与 `whole_body.lock.json` 一致。
+
+这个 Smoke 只验证下肢 locomotion 与动态平衡，不验证 OpenTrack 动作跟踪、
+VLA、抓取、负载抬升或稳定放置。
+
 ### 4.1 安装训练/仿真 Python 环境
 
 ```bash

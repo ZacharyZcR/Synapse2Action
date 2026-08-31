@@ -15,6 +15,9 @@ REQUIRED_PATHS = {
     "open_track_deployment": "simulation/vendor/OpenTrack/deploy/state_machine/main.cpp",
     "open_track_simulator": "simulation/vendor/OpenTrack/deploy/sim_interface/main.py",
     "open_track_limits": "simulation/vendor/OpenTrack/deploy/storage/g1_tracking_constant.yaml",
+    "unitree_locomotion_policy": "simulation/vendor/unitree_rl_gym/deploy/pre_train/g1/motion.pt",
+    "unitree_locomotion_config": "simulation/vendor/unitree_rl_gym/deploy/deploy_mujoco/configs/g1.yaml",
+    "unitree_locomotion_model": "simulation/vendor/unitree_rl_gym/resources/robots/g1_description/scene.xml",
 }
 
 
@@ -35,9 +38,11 @@ def local_readiness(project: Path, system: str | None = None) -> dict[str, objec
     commits = {
         "open_wbt": _head(vendor / "OpenWBT"),
         "open_track": _head(vendor / "OpenTrack"),
+        "unitree_rl_gym": _head(vendor / "unitree_rl_gym"),
     }
     checks["open_wbt_commit"] = commits["open_wbt"] == lock["open_wbt"]["commit"]
     checks["open_track_commit"] = commits["open_track"] == lock["open_track"]["commit"]
+    checks["unitree_rl_gym_commit"] = commits["unitree_rl_gym"] == lock["unitree_rl_gym"]["commit"]
     checks["linux"] = (system or platform.system()) == "Linux"
     missing = [name for name, passed in checks.items() if not passed]
     return {
