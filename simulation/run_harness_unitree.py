@@ -10,7 +10,7 @@ from typing import Any, Callable
 
 from synapse2action.components import MockPlanner, ScriptedPolicy
 from synapse2action.contracts import RESULT_SCHEMA_VERSION, Action, Intent, IntentKind, Planner, TaskState
-from synapse2action.groot import GrootPolicy
+from synapse2action.groot import ExternalVLAPolicy, GrootPolicy
 from synapse2action.harness import Harness
 from synapse2action.llm_planner import OpenAICompatiblePlanner
 from synapse2action.navigation import Pose2D
@@ -54,9 +54,15 @@ class ObservablePlanner:
         return action
 
 
-def decoded_execution_intents(path: Path | None) -> tuple[IntentKind, IntentKind]:
+def decoded_execution_intents(
+    path: Path | None,
+    *,
+    allow_test_doubles: bool = False,
+) -> tuple[IntentKind, IntentKind]:
     if path is None:
-        return IntentKind.SELECT, IntentKind.CONFIRM
+        if allow_test_doubles:
+            return IntentKind.SELECT, IntentKind.CONFIRM
+        raise ValueError("execution requires an explicit decoded intent artifact")
     payload = json.loads(path.read_text())
     replay = payload.get("harness_replay", {})
     examples = replay.get("decoded_examples", {})
@@ -70,19 +76,24 @@ def decoded_execution_intents(path: Path | None) -> tuple[IntentKind, IntentKind
 
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run confirmed navigation through SDK2 G1 MuJoCo")
-    parser.add_argument("--task", choices=("navigation", "pick-place"), default="navigation")
-    parser.add_argument("--policy", choices=("scripted", "smolvla", "groot"), default="scripted")
+    parser.add_argument("--task", choices=("navigation", "pick-place"), required=True)
+    parser.add_argument("--policy", choices=("scripted", "smolvla", "groot"), required=True)
     parser.add_argument("--destination", default="point_b")
     parser.add_argument(
         "--task-spec",
         type=Path,
-        default=Path("experiments/tasks/g1_pick_place.json"),
+        help="required explicit task contract for pick-place runs",
     )
     parser.add_argument("--target-x", type=float, default=0.8)
     parser.add_argument("--target-y", type=float, default=0.0)
     parser.add_argument("--target-yaw", type=float, default=0.0)
     parser.add_argument("--decoded-intents", type=Path)
-    parser.add_argument("--planner", choices=("mock", "live"), default="mock")
+    parser.add_argument("--planner", choices=("mock", "live"), required=True)
+    parser.add_argument(
+        "--allow-test-doubles",
+        action="store_true",
+        help="allow MockPlanner or ScriptedPolicy for tests only",
+    )
     parser.add_argument("--planner-base-url")
     parser.add_argument("--planner-model")
     parser.add_argument("--planner-provider", default="unspecified")
@@ -93,15 +104,27 @@ def main() -> int:
     parser.add_argument("--seed", type=int, default=0)
     args = parser.parse_args()
     os.environ["S2A_GROOT_SEED"] = str(args.seed)
-    default_pick_place_spec = Path("experiments/tasks/g1_pick_place.json")
-    if args.policy == "groot" and args.task_spec == default_pick_place_spec:
-        args.task_spec = Path("experiments/tasks/g1_groot_apple_to_plate.json")
+    if args.task == "pick-place" and args.task_spec is None:
+        parser.error("--task pick-place requires an explicit --task-spec")
+    if not args.allow_test_doubles:
+        if args.task != "pick-place":
+            parser.error("live execution currently supports only --task pick-place")
+        if args.policy == "scripted":
+            parser.error("live execution forbids ScriptedPolicy")
+        if args.planner != "live":
+            parser.error("live execution requires --planner live")
+        if args.decoded_intents is None:
+            parser.error("live execution requires --decoded-intents")
     if args.planner == "live" and (not args.planner_base_url or not args.planner_model):
         parser.error("--planner live requires --planner-base-url and --planner-model")
 
     project = Path(__file__).resolve().parents[1]
-    task_spec_path = args.task_spec if args.task_spec.is_absolute() else project / args.task_spec
-    task_spec = load_task_spec(task_spec_path) if args.task == "pick-place" else None
+    task_spec_path = (
+        args.task_spec if args.task_spec and args.task_spec.is_absolute()
+        else project / args.task_spec if args.task_spec
+        else None
+    )
+    task_spec = load_task_spec(task_spec_path) if task_spec_path else None
     selected_target = task_spec.target if task_spec else args.destination
     if args.planner == "live":
         active_planner: Planner = OpenAICompatiblePlanner(
@@ -172,7 +195,13 @@ def main() -> int:
             skills=unitree_pick_place_skill_registry(
                 timeout_ms=600_000 if groot else 120_000 if smolvla else 30_000
             ),
-            policy=GrootPolicy(task_spec) if groot else ScriptedPolicy(),
+            policy=(
+                GrootPolicy(task_spec)
+                if groot
+                else ExternalVLAPolicy(task_spec, "smolvla")
+                if smolvla
+                else ScriptedPolicy()
+            ),
         )
     else:
         robot = UnitreeSimulationRobot(
@@ -183,7 +212,10 @@ def main() -> int:
         harness = Harness(
             NavigateToPlanner(), robot, UnitreeSimulationVerifier(robot), policy=ScriptedPolicy()
         )
-    select_kind, confirm_kind = decoded_execution_intents(args.decoded_intents)
+    select_kind, confirm_kind = decoded_execution_intents(
+        args.decoded_intents,
+        allow_test_doubles=args.allow_test_doubles,
+    )
     progress("intent", "completed", {"selected": selected_target, "intent": select_kind.value})
     progress("llm_planner", "running", {"provider": args.planner_provider, "model": args.planner_model})
     selected = harness.handle(Intent(select_kind, selected_target))
@@ -207,7 +239,7 @@ def main() -> int:
         "task_spec": str(task_spec_path) if task_spec else None,
         "task": ({"id": task_spec.task_id, "skill": task_spec.skill, "arguments": task_spec.arguments,
                   "instruction": task_spec.instruction, "display": task_spec.display} if task_spec else None),
-        "intent_source": str(args.decoded_intents) if args.decoded_intents else "scripted",
+        "intent_source": str(args.decoded_intents) if args.decoded_intents else "test-double",
         "policy": args.policy,
         "seed": args.seed,
         "planner": observable_planner.report,
@@ -229,9 +261,9 @@ def main() -> int:
     report["intelligence_stages"] = [
         {
             "id": "intent",
-            "mode": "synthetic" if args.decoded_intents else "scripted",
+            "mode": "decoded_artifact" if args.decoded_intents else "test-double",
             "status": "completed",
-            "input": str(args.decoded_intents) if args.decoded_intents else "scripted select + confirm",
+            "input": str(args.decoded_intents) if args.decoded_intents else "explicit test double",
             "output": f"select({selected_target}) + confirm",
         },
         {"id": "llm_planner", **observable_planner.report},

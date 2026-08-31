@@ -18,6 +18,9 @@ docker run --rm \
   --report /workspace/reports/eeg/live-eeg-lsl.json
 PYTHONPATH="${project_dir}/src" python3 "${project_dir}/simulation/run_harness_unitree.py" \
   --task pick-place \
+  --policy scripted \
+  --planner mock \
+  --allow-test-doubles \
   --task-spec "${project_dir}/experiments/tasks/g1_pick_place.json" \
   --decoded-intents "${report_dir}/live-eeg-lsl.json" \
   --output "${report_dir}/live-eeg-unitree.json"

@@ -105,8 +105,13 @@ Run one evidence-preserving Harness episode with:
 
 ```bash
 PYTHONPATH=src python3 simulation/run_harness_unitree.py \
-  --task pick-place --policy groot --planner mock --seed 1001
+  --task pick-place --policy groot --planner mock --allow-test-doubles \
+  --task-spec experiments/tasks/g1_groot_apple_to_plate.json --seed 1001
 ```
+
+This command is an explicitly labelled deterministic benchmark baseline, not a
+live production entry. Live execution requires decoded intent evidence and a
+configured live Planner.
 
 Run a reproducible multi-seed suite with:
 
@@ -197,6 +202,7 @@ Run the same physical scenario through the complete confirmation-gated Harness:
 
 ```bash
 PYTHONPATH=src python3 simulation/run_harness_unitree.py \
+  --task navigation --policy scripted --planner mock --allow-test-doubles \
   --destination point_b --target-x 0.8 --target-y 0.0 --target-yaw 0.0 \
   --output reports/simulation/harness-unitree.json
 ```
@@ -252,7 +258,8 @@ Run the same task through selection and confirmation in the Harness:
 
 ```bash
 PYTHONPATH=src python3 simulation/run_harness_unitree.py \
-  --task pick-place --task-spec experiments/tasks/g1_pick_place.json \
+  --task pick-place --policy scripted --planner mock --allow-test-doubles \
+  --task-spec experiments/tasks/g1_pick_place.json \
   --output reports/simulation/harness-unitree-pick-place.json
 ```
 

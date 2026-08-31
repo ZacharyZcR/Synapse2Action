@@ -4,7 +4,7 @@ import tempfile
 import unittest
 
 from synapse2action.contracts import Action, ExecutionResult
-from synapse2action.groot import GrootPolicy
+from synapse2action.groot import ExternalVLAPolicy, GrootPolicy
 from synapse2action.task_spec import load_task_spec
 from synapse2action.unitree_simulation import GrootPickPlaceSimulationRobot, GrootPickPlaceVerifier
 
@@ -14,6 +14,13 @@ TASK_PATH = ROOT / "experiments" / "tasks" / "g1_groot_apple_to_plate.json"
 
 
 class GrootPolicyTests(unittest.TestCase):
+    def test_external_vla_policy_has_no_scripted_motion_phases(self) -> None:
+        task = load_task_spec(ROOT / "experiments" / "tasks" / "g1_pick_place.json")
+        prepared = ExternalVLAPolicy(task, "smolvla").prepare(
+            Action(task.skill, task.arguments)
+        )
+        self.assertEqual(prepared.steps, ("smolvla",))
+
     def test_policy_binds_validated_plan_to_groot_steps(self) -> None:
         task = load_task_spec(TASK_PATH)
         prepared = GrootPolicy(task).prepare(Action(task.skill, task.arguments))
@@ -76,7 +83,8 @@ class GrootPolicyTests(unittest.TestCase):
             "lifted": True,
             "released": True,
             "stable_on_target": True,
-            "remained_standing": True,
+            "maximum_lift_m": 0.11,
+            "minimum_base_height_m": 0.78,
         }
         self.assertTrue(GrootPickPlaceVerifier(robot).verify(ExecutionResult(True, "ok")))
 

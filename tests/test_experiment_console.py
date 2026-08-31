@@ -24,8 +24,9 @@ class ExperimentConsoleTests(unittest.TestCase):
         self.assertIn('id="stop"', html)
         self.assertIn("仿真控制，不是真机急停", html)
         self.assertIn('id="language"', html)
-        self.assertIn("GR00T N1.6 + MockPlanner + scripted intent", html)
-        self.assertIn("GR00T N1.6 + live LLM Planner + scripted intent", html)
+        self.assertNotIn("MockPlanner", html)
+        self.assertNotIn("scripted intent", html)
+        self.assertIn("decoded intent + live LLM Planner + GR00T N1.6", html)
         self.assertIn("MuJoCo 机器人环境", html)
         self.assertIn("/api/run", html)
         self.assertIn("/api/state", html)
@@ -61,26 +62,11 @@ class ExperimentConsoleTests(unittest.TestCase):
         self.assertFalse(controller.snapshot()["ready"])
         self.assertFalse(controller.start())
 
-    def test_groot_local_profile_uses_installed_model_without_planner_key(self) -> None:
-        with TemporaryDirectory() as directory:
-            project = Path(directory)
-            for relative in (
-                "simulation/vendor/Isaac-GR00T-N1.6/.venv/bin/python",
-                "simulation/vendor/GR00T-WholeBodyControl-N1.6/.venv_eval/bin/python",
-            ):
-                path = project / relative
-                path.parent.mkdir(parents=True, exist_ok=True)
-                path.touch()
-            (project / "simulation/vendor/models/GR00T-N1.6-G1-PnPAppleToPlate-CW").mkdir(
-                parents=True
-            )
-            controller = MODULE.ExperimentController(
-                project, "", "/model", "test", "groot-local"
-            )
+    def test_console_has_no_mock_groot_profile(self) -> None:
+        source = (ROOT / "simulation" / "experiment_console.py").read_text()
 
-            state = controller.snapshot()
-        self.assertTrue(state["ready"])
-        self.assertEqual(state["profile"], "groot-local")
+        self.assertNotIn('choices=("groot-local"', source)
+        self.assertIn('default="full-live"', source)
 
     def test_groot_live_planner_requires_endpoint_but_not_mock_fallback(self) -> None:
         with TemporaryDirectory() as directory:
@@ -95,6 +81,8 @@ class ExperimentConsoleTests(unittest.TestCase):
             (project / "simulation/vendor/models/GR00T-N1.6-G1-PnPAppleToPlate-CW").mkdir(
                 parents=True
             )
+            intents = project / "decoded-intents.json"
+            intents.write_text("{}")
             missing = MODULE.ExperimentController(
                 project, "", "/model", "test", "groot-live-planner"
             )
@@ -105,6 +93,7 @@ class ExperimentConsoleTests(unittest.TestCase):
                     "/model",
                     "test",
                     "groot-live-planner",
+                    decoded_intents=intents,
                 )
 
         self.assertFalse(missing.snapshot()["ready"])

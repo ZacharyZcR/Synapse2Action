@@ -22,3 +22,20 @@ class GrootPolicy:
         )
         self.prepared.append(prepared)
         return prepared
+
+
+@dataclass(slots=True)
+class ExternalVLAPolicy:
+    """Bind an approved action to a named external VLA runtime without scripted steps."""
+
+    task: TaskSpec
+    runtime: str
+    prepared: list[Action] = field(default_factory=list)
+
+    def prepare(self, action: Action) -> Action:
+        if not self.runtime:
+            raise ValueError("external VLA runtime must be named")
+        self.task.validate_action(action.skill, action.arguments)
+        prepared = Action(action.skill, action.arguments, (self.runtime,))
+        self.prepared.append(prepared)
+        return prepared

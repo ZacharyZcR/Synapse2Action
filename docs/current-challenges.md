@@ -21,6 +21,14 @@ human or scripted intent
 
 当前已经验收的 GR00T 链路为：人类或脚本意图经过 Harness 状态机，由 Mock 或 OpenAI-compatible Planner 生成计划，经 TaskSpec 校验和人工确认后进入 GR00T N1.6 G1 Policy、官方全身控制与 MuJoCo G1，最后由独立物理证据判定结果。
 
+This describes historical benchmark evidence. The live Unitree entry no longer
+defaults to that path: it requires an explicit TaskSpec, decoded intent
+artifact, live Planner, and real VLA policy. Mock and scripted components now
+require the explicit `--allow-test-doubles` flag and cannot silently replace a
+missing live dependency.
+
+以上是历史 Benchmark 证据链。当前 Unitree 真实入口已不再默认采用这条路径：它要求显式 TaskSpec、解码意图 Artifact、Live Planner 与真实 VLA Policy。Mock 与 Scripted 组件必须通过 `--allow-test-doubles` 明确启用，不能在真实依赖缺失时静默替换。
+
 ### Current measured evidence / 当前实测证据
 
 - The RTX 4070 runs the public G1 apple-to-plate checkpoint with approximately 10.4 GB VRAM use. A complete evidence-preserving rollout takes roughly three minutes; sampled GPU utilization was low, so serial simulation, WBC stepping, and policy IPC are more important throughput limits than raw GPU compute.

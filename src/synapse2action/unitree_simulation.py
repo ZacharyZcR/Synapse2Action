@@ -222,15 +222,18 @@ class GrootPickPlaceVerifier:
 
     def verify(self, result: ExecutionResult) -> bool:
         report = self.robot.last_simulator_report
+        task = load_task_spec(self.robot.task_spec_path) if self.robot.task_spec_path else None
         return bool(
             result.success
             and report
+            and task
             and report.get("official_contact_success") is True
             and report.get("grasped") is True
-            and report.get("lifted") is True
+            and float(report.get("maximum_lift_m", 0)) >= task.verification.minimum_lift_m
             and report.get("released") is True
             and report.get("stable_on_target") is True
-            and report.get("remained_standing") is True
+            and float(report.get("minimum_base_height_m", 0))
+            >= task.verification.minimum_base_height_m
         )
 
 

@@ -78,12 +78,12 @@ def parse_byte_range(requested: str | None, size: int) -> tuple[int, int, bool]:
 
 
 def console_html() -> str:
-    return """<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Synapse2Action 实验控制台</title><style>
+    html = """<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Synapse2Action 实验控制台</title><style>
 :root{color-scheme:dark;--bg:#070b12;--card:#111827;--line:#334155;--text:#f1f5f9;--muted:#a8b3c3;--ok:#34d399;--run:#38bdf8;--wait:#94a3b8;--bad:#f87171;--focus:#fbbf24}*{box-sizing:border-box}[hidden]{display:none!important}body{margin:0;background:var(--bg);color:var(--text);font:16px/1.5 "Segoe UI",system-ui,sans-serif}main{width:min(1480px,calc(100% - 32px));margin:auto;padding:20px 0 48px}header,.actions,.statusline,.view-tabs{display:flex;align-items:center;justify-content:space-between;gap:12px}h1{margin:0;font-size:clamp(1.6rem,3vw,2.5rem);letter-spacing:-.035em}h2{font-size:1rem}p{color:var(--muted)}button,select{min-height:44px;padding:9px 16px;border:1px solid var(--line);border-radius:8px;background:var(--ok);color:#052e16;font:inherit;font-weight:750;cursor:pointer;transition:background-color .18s,border-color .18s,opacity .18s}button:hover{filter:brightness(1.08)}button:focus-visible,select:focus-visible{outline:3px solid var(--focus);outline-offset:2px}#language,.tab,select{background:var(--card);color:var(--text)}.tab[aria-selected="true"]{border-color:var(--run);color:var(--run)}#stop{background:#3f1118;border-color:#991b1b;color:#fecaca}button:disabled{opacity:.42;cursor:not-allowed;filter:none}.layout{display:grid;grid-template-columns:minmax(0,1.55fr) minmax(340px,.75fr);gap:12px;margin-top:12px}.card{border:1px solid var(--line);border-radius:10px;background:var(--card);padding:16px}.viewer{position:relative;aspect-ratio:16/9;background:#030712;border-radius:8px;overflow:hidden}.viewer img,.viewer video{width:100%;height:100%;object-fit:cover}.viewer .empty{position:absolute;inset:0;display:grid;place-items:center;padding:24px;color:var(--muted);text-align:center}.view-tabs{justify-content:flex-start;margin-bottom:10px}.view-tabs select{margin-left:auto;max-width:340px}.evidence-summary{min-height:24px;margin:8px 0 0;font:13px/1.5 ui-monospace,monospace;color:var(--muted)}.live{color:var(--run);font:700 .75rem ui-monospace,monospace}.stages{display:grid;gap:6px}.stage{display:grid;grid-template-columns:28px 1fr auto;gap:10px;align-items:center;padding:9px 10px;border:1px solid var(--line);border-radius:8px}.num{display:grid;place-items:center;width:26px;height:26px;border-radius:6px;background:#1e293b;font:700 .75rem ui-monospace,monospace}.stage b{display:block}.stage small{color:var(--muted)}.pill{padding:3px 7px;border-radius:5px;background:#1e293b;color:var(--wait);font:700 .65rem ui-monospace,monospace}.stage.running{border-color:var(--run)}.stage.running .pill{color:var(--run)}.stage.completed{border-color:#166534}.stage.completed .pill{color:var(--ok)}.stage.failed{border-color:#991b1b}.stage.failed .pill{color:var(--bad)}pre{max-height:180px;overflow:auto;margin:10px 0 0;padding:12px;border-radius:8px;background:#030712;color:#cbd5e1;font:12px/1.5 ui-monospace,monospace;white-space:pre-wrap}.source{display:flex;justify-content:space-between;gap:16px;margin-top:12px;padding:10px 12px;border-left:3px solid var(--run);background:#0b1627;color:#cbd5e1}.safety{color:#fcd34d}.result{margin-top:14px}.ok{color:var(--ok)}.bad{color:var(--bad)}.warn{color:var(--focus)}@media(max-width:900px){.layout{grid-template-columns:1fr}header{display:block}.actions{margin-top:14px;flex-wrap:wrap}.source{display:block}.view-tabs{flex-wrap:wrap}.view-tabs select{width:100%;max-width:none;margin:0}}@media(prefers-reduced-motion:reduce){*{transition:none!important}}
 </style></head><body><main><header><div><div class="live">LOCAL SIMULATION CONTROL</div><h1 data-i18n="title">Synapse2Action 任务控制台</h1><p data-i18n="subtitle">审阅任务状态、VLA 推理和 MuJoCo 行为证据。</p></div><div class="actions"><button id="language" type="button">EN</button><button id="stop" type="button" disabled data-i18n="stop">停止仿真</button><button id="start" data-i18n="start">授权并运行</button></div></header><div class="source"><span><b data-i18n="source">输入：</b><span id="profileSource">正在检测 Runtime</span><br><small id="readiness"></small></span><strong class="safety" data-i18n="safety">仿真控制，不是真机急停</strong></div><div class="layout"><section class="card"><div class="statusline"><h2 data-i18n="viewer">MuJoCo 机器人环境</h2><span class="live" id="frameStatus">WAITING</span></div><div class="view-tabs" role="tablist"><button class="tab" id="liveTab" type="button" role="tab" aria-selected="true" data-i18n="liveView">实时画面</button><button class="tab" id="replayTab" type="button" role="tab" aria-selected="false" data-i18n="replayView">GR00T 回放</button><select id="runSelect" aria-label="GR00T evidence run" hidden></select></div><div class="viewer"><img id="frame" hidden alt="MuJoCo G1 live simulation"><video id="replay" controls preload="metadata" hidden aria-label="GR00T G1 MuJoCo evidence replay"></video><div class="empty" id="empty" data-i18n="empty">授权运行后显示实时仿真画面</div></div><p class="evidence-summary" id="evidenceSummary" aria-live="polite"></p><div class="result" aria-live="polite"><b id="verdict"></b><p id="summary"></p></div><pre id="log" tabindex="0">Ready.</pre></section><aside class="card"><h2 data-i18n="stages">运行阶段</h2><div class="stages" id="stages"></div></aside></div></main><script>
 const copy={zh:{title:'Synapse2Action 任务控制台',subtitle:'审阅任务状态、VLA 推理和 MuJoCo 行为证据。',start:'授权并运行',stop:'停止仿真',source:'输入：',subjects:'受试者 001-004，留出 004',safety:'仿真控制，不是真机急停',confirm:'确认授权这次仿真运行？',viewer:'MuJoCo 机器人环境',liveView:'实时画面',replayView:'GR00T 回放',empty:'授权运行后显示实时仿真画面',stages:'运行阶段',running:'实验运行中',success:'实验成功',partial:'任务完成，严格净空门槛未通过',failed:'实验失败',stopped:'已停止',notReady:'环境未就绪',idle:'尚未运行',waiting:'等待操作员授权。',successSummary:'八个阶段全部通过。',failedSummary:'物理闭环未通过，请查看失败阶段和实时画面。',stoppedSummary:'仿真进程已停止，机器人真机安全状态不由此按钮保证。',labels:{dataset:['开源 EEG 数据','读取 MAMEM 原始记录'],intent:['EEG 目标选择','解码选择意图并暂存确认输入'],llm_planner:['LLM 规划','输出结构化技能'],plan_review:['计划审阅与确认','校验计划后才允许执行'],vla:['视觉动作模型','读取相机与关节状态'],skill_executor:['技能执行器','生成受约束目标'],motion_control:['机器人控制','RL Controller + SDK2 LowCmd'],physical_verification:['物理验证','检查抓取、抬升与落盘']}},en:{title:'Synapse2Action Mission Console',subtitle:'Review task state, VLA inference, and MuJoCo behavior evidence.',start:'Authorize run',stop:'Stop simulation',source:'Input:',subjects:'Subjects 001-004, held-out 004',safety:'Simulation control, not a hardware E-Stop',confirm:'Authorize this simulation run?',viewer:'MuJoCo robot environment',liveView:'Live view',replayView:'GR00T replay',empty:'Authorize a run to view the live simulation',stages:'Run stages',running:'Experiment running',success:'Experiment succeeded',partial:'Task completed; strict clearance gate missed',failed:'Experiment failed',stopped:'Stopped',notReady:'Environment not ready',idle:'Not started',waiting:'Waiting for operator authorization.',successSummary:'All eight stages passed.',failedSummary:'The physical loop failed. Inspect the failed stage and live view.',stoppedSummary:'The simulation process stopped. This control does not guarantee physical robot safety.',labels:{dataset:['Open EEG data','Read raw MAMEM records'],intent:['EEG target selection','Decode selection and hold confirmation input'],llm_planner:['LLM planning','Emit a typed skill'],plan_review:['Plan review and confirmation','Execute only after plan validation'],vla:['Vision-action model','Read cameras and joint state'],skill_executor:['Skill executor','Emit constrained targets'],motion_control:['Robot control','RL Controller + SDK2 LowCmd'],physical_verification:['Physical verification','Check grasp, lift, and placement']}}};let lang=(navigator.language||'').startsWith('zh')?'zh':'en',frameSeen=0,lastState=null,history=[];const token=new URLSearchParams(location.search).get('token')||'',api=path=>path+'?token='+encodeURIComponent(token);
 function translate(){const t=copy[lang];document.documentElement.lang=lang==='zh'?'zh-CN':'en';document.querySelectorAll('[data-i18n]').forEach(x=>x.textContent=t[x.dataset.i18n]);document.querySelector('#language').textContent=lang==='zh'?'EN':'中文';if(lastState)render(lastState)}
-function render(s){lastState=s;const t=copy[lang],labels=t.labels,sources={"groot-local":'GR00T N1.6 + MockPlanner + scripted intent',"groot-live-planner":'GR00T N1.6 + live LLM Planner + scripted intent',"full-live":'MAMEM SSVEP + live Planner + SmolVLA'};document.querySelector('#start').disabled=s.running||!s.ready;document.querySelector('#stop').disabled=!s.running;document.querySelector('#profileSource').textContent=sources[s.profile]||s.profile;document.querySelector('#readiness').textContent=s.readiness.message;document.querySelector('#readiness').className=s.ready?'ok':'bad';document.querySelector('#stages').innerHTML=s.stages.map((x,i)=>`<div class="stage ${x.status}"><span class="num">${i+1}</span><span><b>${labels[x.id][0]}</b><small>${x.detail||labels[x.id][1]}</small></span><span class="pill">${x.status.toUpperCase()}</span></div>`).join('');document.querySelector('#log').textContent=s.log.join('\\n')||'Ready.';const v=document.querySelector('#verdict'),partial=s.accepted===false&&s.task_completed===true;v.textContent=s.running?t.running:s.stopped?t.stopped:!s.ready?t.notReady:s.accepted===true?t.success:partial?t.partial:s.accepted===false?t.failed:t.idle;v.className=s.accepted===true?'ok':partial?'warn':s.accepted===false||!s.ready?'bad':'';document.querySelector('#summary').textContent=s.stopped?t.stoppedSummary:!s.ready?s.summary:s.accepted===true?t.successSummary:s.accepted===false?(s.summary||t.failedSummary):t.waiting;if(s.frame_version>frameSeen){frameSeen=s.frame_version;const img=document.querySelector('#frame');img.src=api('/api/frame')+'&v='+frameSeen;img.hidden=false;document.querySelector('#empty').hidden=true;document.querySelector('#frameStatus').textContent='LIVE '+frameSeen}}
+function render(s){lastState=s;const t=copy[lang],labels=t.labels,sources={"groot-live-planner":'decoded intent + live LLM Planner + GR00T N1.6',"full-live":'MAMEM SSVEP + live Planner + SmolVLA'};document.querySelector('#start').disabled=s.running||!s.ready;document.querySelector('#stop').disabled=!s.running;document.querySelector('#profileSource').textContent=sources[s.profile]||s.profile;document.querySelector('#readiness').textContent=s.readiness.message;document.querySelector('#readiness').className=s.ready?'ok':'bad';document.querySelector('#stages').innerHTML=s.stages.map((x,i)=>`<div class="stage ${x.status}"><span class="num">${i+1}</span><span><b>${labels[x.id][0]}</b><small>${x.detail||labels[x.id][1]}</small></span><span class="pill">${x.status.toUpperCase()}</span></div>`).join('');document.querySelector('#log').textContent=s.log.join('\\n')||'Ready.';const v=document.querySelector('#verdict'),partial=s.accepted===false&&s.task_completed===true;v.textContent=s.running?t.running:s.stopped?t.stopped:!s.ready?t.notReady:s.accepted===true?t.success:partial?t.partial:s.accepted===false?t.failed:t.idle;v.className=s.accepted===true?'ok':partial?'warn':s.accepted===false||!s.ready?'bad':'';document.querySelector('#summary').textContent=s.stopped?t.stoppedSummary:!s.ready?s.summary:s.accepted===true?t.successSummary:s.accepted===false?(s.summary||t.failedSummary):t.waiting;if(s.frame_version>frameSeen){frameSeen=s.frame_version;const img=document.querySelector('#frame');img.src=api('/api/frame')+'&v='+frameSeen;img.hidden=false;document.querySelector('#empty').hidden=true;document.querySelector('#frameStatus').textContent='LIVE '+frameSeen}}
 function showLive(){document.querySelector('#liveTab').setAttribute('aria-selected','true');document.querySelector('#replayTab').setAttribute('aria-selected','false');document.querySelector('#runSelect').hidden=true;document.querySelector('#replay').pause();document.querySelector('#replay').hidden=true;document.querySelector('#frame').hidden=frameSeen===0;document.querySelector('#empty').hidden=frameSeen!==0;document.querySelector('#evidenceSummary').textContent='';document.querySelector('#frameStatus').textContent=frameSeen?'LIVE '+frameSeen:'WAITING'}
 function showReplay(){document.querySelector('#liveTab').setAttribute('aria-selected','false');document.querySelector('#replayTab').setAttribute('aria-selected','true');document.querySelector('#runSelect').hidden=false;document.querySelector('#frame').hidden=true;document.querySelector('#empty').hidden=history.length>0;document.querySelector('#frameStatus').textContent='REPLAY';renderReplay()}
 function renderReplay(){const select=document.querySelector('#runSelect'),run=history[Number(select.value)||0],video=document.querySelector('#replay');if(!run){video.hidden=true;document.querySelector('#empty').hidden=false;document.querySelector('#empty').textContent=lang==='zh'?'没有可用的 GR00T 证据。':'No GR00T evidence is available.';return}video.src=api('/api/video/'+encodeURIComponent(run.webm||run.video));video.load();video.hidden=false;document.querySelector('#evidenceSummary').textContent=`Seed ${run.seed} | VP9/WebM | lift ${(run.maximum_lift_m*100).toFixed(1)} cm | stable placement ${run.stable_on_plate?'PASS':'FAIL'} | standing ${run.remained_standing?'PASS':'FAIL'}`}
@@ -91,16 +91,18 @@ async function loadHistory(){const r=await fetch(api('/api/history'),{cache:'no-
 async function action(path){const r=await fetch(api(path),{method:'POST'});if(r.ok)poll()}async function poll(){try{const r=await fetch(api('/api/state'),{cache:'no-store'});if(r.ok)render(await r.json())}catch(e){}setTimeout(poll,500)}document.querySelector('#start').onclick=()=>{if(confirm(copy[lang].confirm))action('/api/run')};document.querySelector('#stop').onclick=()=>action('/api/stop');document.querySelector('#language').onclick=()=>{lang=lang==='zh'?'en':'zh';translate()};translate();poll();
 document.querySelector('#liveTab').onclick=showLive;document.querySelector('#replayTab').onclick=showReplay;document.querySelector('#runSelect').onchange=renderReplay;loadHistory();
 </script></body></html>"""
+    return html
 
 
 class ExperimentController:
-    def __init__(self, project: Path, planner_base_url: str, planner_model: str, planner_provider: str, profile: str = "full-live", seed: int = 1002) -> None:
+    def __init__(self, project: Path, planner_base_url: str, planner_model: str, planner_provider: str, profile: str = "full-live", seed: int = 1002, decoded_intents: Path | None = None) -> None:
         self.project = project
         self.planner_base_url = planner_base_url
         self.planner_model = planner_model
         self.planner_provider = planner_provider
         self.profile = profile
         self.seed = seed
+        self.decoded_intents = decoded_intents
         self.lock = Lock()
         self.process: subprocess.Popen[str] | None = None
         self.stop_requested = False
@@ -111,18 +113,18 @@ class ExperimentController:
         return {"running": False, "accepted": None, "task_completed": None, "stopped": False, "profile": self.profile, "seed": self.seed, "ready": readiness["ready"], "readiness": readiness, "summary": "等待实验开始。" if readiness["ready"] else readiness["message"], "frame_version": 0, "log": [], "stages": [{"id": key, "name": name, "status": "pending", "detail": ""} for key, name in STAGES]}
 
     def readiness(self) -> dict[str, object]:
-        if self.profile in {"groot-local", "groot-live-planner"}:
+        if self.profile == "groot-live-planner":
             checks = {
                 "groot": (self.project / "simulation/vendor/Isaac-GR00T-N1.6/.venv/bin/python").is_file(),
                 "wbc": (self.project / "simulation/vendor/GR00T-WholeBodyControl-N1.6/.venv_eval/bin/python").is_file(),
                 "checkpoint": (self.project / "simulation/vendor/models/GR00T-N1.6-G1-PnPAppleToPlate-CW").is_dir(),
             }
-            if self.profile == "groot-live-planner":
-                checks.update(
-                    planner_url=bool(self.planner_base_url),
-                    planner_model=bool(self.planner_model),
-                    planner_key=bool(os.getenv("S2A_PLANNER_API_KEY")),
-                )
+            checks.update(
+                planner_url=bool(self.planner_base_url),
+                planner_model=bool(self.planner_model),
+                planner_key=bool(os.getenv("S2A_PLANNER_API_KEY")),
+                decoded_intents=bool(self.decoded_intents and self.decoded_intents.is_file()),
+            )
         else:
             checks = {
                 "docker": shutil.which("docker") is not None,
@@ -183,8 +185,8 @@ class ExperimentController:
         return process
 
     def _run(self) -> None:
-        if self.profile in {"groot-local", "groot-live-planner"}:
-            self._run_groot_local()
+        if self.profile == "groot-live-planner":
+            self._run_groot_live()
             return
         try:
             if self.stop_requested:
@@ -254,17 +256,12 @@ class ExperimentController:
             with self.lock:
                 self.process = None
 
-    def _run_groot_local(self) -> None:
+    def _run_groot_live(self) -> None:
         try:
-            self.update("dataset", "completed", "Local scripted intent profile")
-            self.update("intent", "completed", "select apple + confirm")
-            live_planner = self.profile == "groot-live-planner"
-            planner_detail = (
-                f"{self.planner_provider} · {self.planner_model}"
-                if live_planner
-                else "MockPlanner + typed TaskSpec"
-            )
-            self.update("llm_planner", "running" if live_planner else "completed", planner_detail)
+            self.update("dataset", "completed", str(self.decoded_intents))
+            self.update("intent", "completed", "decoded select + confirm evidence")
+            planner_detail = f"{self.planner_provider} · {self.planner_model}"
+            self.update("llm_planner", "running", planner_detail)
             self.update("plan_review", "completed", "apple -> plate authorized")
             for key in ("vla", "skill_executor", "motion_control"):
                 self.update(key, "running", "GR00T N1.6 + official WBC")
@@ -272,9 +269,7 @@ class ExperimentController:
             report = self.project / "reports/simulation/harness-console-groot.json"
             progress.unlink(missing_ok=True)
             report.unlink(missing_ok=True)
-            command = ["python3", "simulation/run_harness_unitree.py", "--task", "pick-place", "--policy", "groot", "--planner", "live" if live_planner else "mock", "--seed", str(self.seed), "--progress-output", str(progress), "--output", str(report)]
-            if live_planner:
-                command.extend(["--planner-provider", self.planner_provider, "--planner-base-url", self.planner_base_url, "--planner-model", self.planner_model, "--planner-output-mode", "prompt-json", "--planner-api-key-env", "S2A_PLANNER_API_KEY"])
+            command = ["python3", "simulation/run_harness_unitree.py", "--task", "pick-place", "--policy", "groot", "--task-spec", "experiments/tasks/g1_groot_apple_to_plate.json", "--decoded-intents", str(self.decoded_intents), "--planner", "live", "--planner-provider", self.planner_provider, "--planner-base-url", self.planner_base_url, "--planner-model", self.planner_model, "--planner-output-mode", "prompt-json", "--planner-api-key-env", "S2A_PLANNER_API_KEY", "--seed", str(self.seed), "--progress-output", str(progress), "--output", str(report)]
             process = self._command(command)
             output, _ = process.communicate()
             if self.stop_requested:
@@ -336,14 +331,17 @@ def main() -> None:
     parser.add_argument("--planner-base-url", default="")
     parser.add_argument("--planner-model", default="/model")
     parser.add_argument("--planner-provider", default="yuesheng-vllm")
-    parser.add_argument("--profile", choices=("groot-local", "groot-live-planner", "full-live"), default="groot-local")
+    parser.add_argument("--profile", choices=("groot-live-planner", "full-live"), default="full-live")
+    parser.add_argument("--decoded-intents", type=Path)
     parser.add_argument("--seed", type=int, default=1002)
     parser.add_argument("--access-token", required=True)
     args = parser.parse_args()
-    if args.profile in {"groot-live-planner", "full-live"} and not args.planner_base_url:
+    if not args.planner_base_url:
         parser.error(f"--profile {args.profile} requires --planner-base-url")
+    if args.profile == "groot-live-planner" and args.decoded_intents is None:
+        parser.error("--profile groot-live-planner requires --decoded-intents")
     project = Path(__file__).resolve().parents[1]
-    controller = ExperimentController(project, args.planner_base_url, args.planner_model, args.planner_provider, args.profile, args.seed)
+    controller = ExperimentController(project, args.planner_base_url, args.planner_model, args.planner_provider, args.profile, args.seed, args.decoded_intents)
 
     class Handler(BaseHTTPRequestHandler):
         def authorized(self) -> bool:
