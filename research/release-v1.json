@@ -1,0 +1,462 @@
+{
+  "files": [
+    {
+      "collection": "data_cards",
+      "path": "docs/data-cards/research-data.md",
+      "sha256": "2e80a2cd71f7920698739fc3f1a66780a246ad72337af972056ec35013ccd3d5",
+      "size_bytes": 4043
+    },
+    {
+      "collection": "protocols",
+      "path": "docs/experiments.md",
+      "sha256": "071056711758381219944b912d09760dc4d0dfbccc291b1bdaf3d59f8bf316be",
+      "size_bytes": 15672
+    },
+    {
+      "collection": "protocols",
+      "path": "docs/live-planner-benchmark.md",
+      "sha256": "92ee95dd6791c1a832ff7b449f4c9a6ebbc99969e73f5a5da7fff00aa421ab3d",
+      "size_bytes": 3011
+    },
+    {
+      "collection": "model_cards",
+      "path": "docs/model-cards/policy-models.md",
+      "sha256": "b9b4aeeb7e246b82e4ab3ff0bb5e2bef44ef3ddbc9f6d864ba2ceea589486316",
+      "size_bytes": 4057
+    },
+    {
+      "collection": "protocols",
+      "path": "docs/pre-simulation-audit.md",
+      "sha256": "f735ad14332d88e7f468678fb93ff2ce21a0dd24f702e48ee83b03516ec3e4c1",
+      "size_bytes": 3405
+    },
+    {
+      "collection": "protocols",
+      "path": "docs/pre-simulation.md",
+      "sha256": "88ce046beb3d280e92f290d0323c0b162357a1a388f7c2a37f14a1ca8ae5581c",
+      "size_bytes": 3605
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/demos/blue_block.json",
+      "sha256": "669c28c151581d6cae02b2cd3ddc405e7dfcb056b8cafbb1427bbf47bbea95e1",
+      "size_bytes": 535
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/demos/cancel_selection.json",
+      "sha256": "945b90d639c0213c0939094d3dd12d286711de17fee1cff1c114e85fa31a16b2",
+      "size_bytes": 538
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/demos/emergency_stop.json",
+      "sha256": "86a3128fea9badd712ed7e586da197ccf2a54785064bae6b9ba1e6401cbe7e94",
+      "size_bytes": 549
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/demos/red_cube.json",
+      "sha256": "f2f2d8ee3077d28d3dfd2237ce42c2deb0e37eacd02b2230fdc1a6debb46a2ad",
+      "size_bytes": 529
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/intent_streams/01_clean.json",
+      "sha256": "5fb0eb9da0041d93d1bb119d00ec4b3c88ffcded389771ceddc8344e07670c68",
+      "size_bytes": 310
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/intent_streams/02_abstention.json",
+      "sha256": "aa587d10f86f034a52ba6b94fe6f332243d40de0a29f0fd2d0471adf953890d3",
+      "size_bytes": 369
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/intent_streams/03_false_activation.json",
+      "sha256": "22113b77fb570a421c79352468be967a737e3644d127018a6af788badb21c6dd",
+      "size_bytes": 263
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/intent_streams/04_duplicate_stop.json",
+      "sha256": "ebb67c70fb57997e0fbd94a6a5b9ba1034a1eb2ce8233663a4c0ebc594a7aca8",
+      "size_bytes": 261
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/monte_carlo/false_activation.json",
+      "sha256": "1c699a3535560e522c5bdd7076cfc83df0ad6cfb4050799a93b6446256e85998",
+      "size_bytes": 336
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/navigation/01_clear_short.json",
+      "sha256": "bc64c4bd813b0a41405ec73de0ce5395bf3c65602c8442c376ce6fc96d0f5b98",
+      "size_bytes": 258
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/navigation/02_center_crate_early.json",
+      "sha256": "5c8b4251694385e8db750e5898cecd6f8e52d1b32232ea90ffe83025c1f8b959",
+      "size_bytes": 382
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/navigation/03_center_crate_late.json",
+      "sha256": "7f553656c254a3ffe7ffe29d7f4e09c06acfdd84314fc72a5c66466daaeb799f",
+      "size_bytes": 379
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/navigation/04_diagonal_dynamic.json",
+      "sha256": "1891b5c1866023d1a0da86939e5fa5a80a889226bcd7a14b5818e4408283fef2",
+      "size_bytes": 385
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/navigation/05_offset_obstacle.json",
+      "sha256": "52b45149211092e0113a3733d9c6fd6ec0a2746821e421f8f11eee09311bbe33",
+      "size_bytes": 382
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/navigation/06_vertical_clear.json",
+      "sha256": "b795e8acd5d719cd0c0ae7f03d354c3e4cc4eac82683c9781a074eb0d61f2ea6",
+      "size_bytes": 267
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/navigation/07_vertical_obstacle.json",
+      "sha256": "3c6378db65654912ba09e47203d4b27e2ad5752e7eab60e17db3b31afcbd1487",
+      "size_bytes": 381
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/navigation/08_reverse_diagonal.json",
+      "sha256": "37d15d6a53d5bb10245a13d69d2f7f3564e5c9f46de5e8a2fd02b7846d9c1e2c",
+      "size_bytes": 382
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/navigation/09_offset_dynamic.json",
+      "sha256": "357554a35e323875b2aca9de2af0251eab0aed92b611e059d4105f4158ba7d6e",
+      "size_bytes": 385
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/navigation/10_short_range_blocked.json",
+      "sha256": "6fae24fbe20f5624e15e972091343828ef02baee28a11f76403e22e2401275d5",
+      "size_bytes": 379
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/planner/01_valid.json",
+      "sha256": "111e26a571241cb3fa51f5a62f06930d874a4d42439a2db98ae7eedf5d17bedf",
+      "size_bytes": 366
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/planner/02_invented_skill.json",
+      "sha256": "15ed17476f17bb71503e3c95fbd07b12c3593ed10a8875f298a0a770df23a45b",
+      "size_bytes": 365
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/planner/03_extra_argument.json",
+      "sha256": "b1e3df3bb39f96fd9fedb90e016b41c899850c5db3bd16119bb45cb4f3521bb7",
+      "size_bytes": 378
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/planner/04_target_substitution.json",
+      "sha256": "7589ffafc03ca0443de94a5d508d8e690bb6150dc9c00d94b09dbd7da5c3ada7",
+      "size_bytes": 382
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/planner/05_provider_timeout.json",
+      "sha256": "c394ee9e849e22d0195abbbeb7204e8507761e7be1f483ada728b422ab0b18fd",
+      "size_bytes": 209
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/planner/06_unsafe_skill.json",
+      "sha256": "f15d292e4634e549ec09a7fecb63f2d9b50ec86b48524d413f480b8f7eadd8cc",
+      "size_bytes": 389
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/planner/07_malformed_json.json",
+      "sha256": "86df0c94a289909f2086ce2a39ae3a1a08237ba3ff6a61eb0b5668c7f76b76d2",
+      "size_bytes": 198
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/planner/08_valid_refusal.json",
+      "sha256": "f025a395497b0ab414a8208170f5c4a219e9ca54a1374b9dde74527e3fd4fe88",
+      "size_bytes": 357
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/planner_live/01_red_cube.json",
+      "sha256": "980336cf093f9cd761afbbaa2f7fff22e8c8223c5e4dfd378f98c67061a4d61a",
+      "size_bytes": 96
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/planner_live/02_blue_block.json",
+      "sha256": "5d9d37e4401b2309e059a22782623a4231b422130d09a6f9c58df41453a7f53d",
+      "size_bytes": 100
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/planner_live/03_human_hand.json",
+      "sha256": "eb98ac7d07f2959a971474c8adbe213517d7708c0b0987547f7a23b6a767704f",
+      "size_bytes": 101
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/planner_live/04_safety_switch.json",
+      "sha256": "c75d2a3e48249936c9536a91ef400e1801750f62f60a0335f6c4d9ae8fe16276",
+      "size_bytes": 116
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/planner_live/05_weapon.json",
+      "sha256": "8499d74bed8b004145d4a4f00bb25015153348d870d35c95c60a58cac0c4bec0",
+      "size_bytes": 102
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/planner_live/06_prompt_injection.json",
+      "sha256": "03a6fc8300c92f3aecea4097ac12a1c28f119ebbe4d6aec7268cedc0302e2374",
+      "size_bytes": 140
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/planner_live/_suite.json",
+      "sha256": "9f168c408a790975df84312aace96b60328ccb2a55938ec155b20318320c1cba",
+      "size_bytes": 305
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/scenarios/01_success.json",
+      "sha256": "2ad3a67c82ca735442e15ffea394b2ee3ca1120355c4cfe0f00dd6aaa21a0a83",
+      "size_bytes": 201
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/scenarios/02_cancel.json",
+      "sha256": "40452bf3dd649c756c4b41534f1007b2e09c3c9e5ec45f997290abdbdc74e64f",
+      "size_bytes": 198
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/scenarios/03_emergency_stop.json",
+      "sha256": "e30da8ac9ca581fc951c874bd6c1686d6610ce966d2e33f9bc197a76ddd66043",
+      "size_bytes": 223
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/scenarios/04_unknown_skill.json",
+      "sha256": "b7a8ce7714276f4502eb1630947f74475b3514081dc32afb40e9987b64b89cee",
+      "size_bytes": 242
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/scenarios/05_robot_failure.json",
+      "sha256": "00a2b8aedaaf51aa09d092b1c4a38ff889d30b1c4d9898ae1ef3a1131a39fdb7",
+      "size_bytes": 259
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/scenarios/06_unconfirmed.json",
+      "sha256": "c3fba9570f8bd4c19f81d40ad9c3a5e3416979565a4d178485100fbb5842a016",
+      "size_bytes": 181
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/scenarios/07_authorized_confirmation.json",
+      "sha256": "d873e24f2ed2743ddc7a61fcd9c191ea83d86d4a199199cf71695588de9c1b77",
+      "size_bytes": 356
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/scenarios/08_expired_challenge.json",
+      "sha256": "50a3744b6b3e3f49897cba3aa41afd0bcbd09f200f74cd0aca9490a81ab06750",
+      "size_bytes": 374
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/scenarios/09_revision_drift.json",
+      "sha256": "9ea6f69ddb0c971bf8d5c31643d83316182b9cf7b62daef9565d0623cb0a8472",
+      "size_bytes": 371
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/scenarios/10_world_target_moved.json",
+      "sha256": "89220a0b69e03c2a3e7ba265dca9a6835481bef630933eef460cea25da3d0473",
+      "size_bytes": 510
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/scenarios/11_world_target_removed.json",
+      "sha256": "884204473e722a940497cad286415c34a809e4cfe9aba465d6d6d77ad99826ca",
+      "size_bytes": 477
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/scenarios/12_world_target_occupied.json",
+      "sha256": "2c2c06bf7552de1db8c6d273620d999460dd3ba0faac4a7c783e624dd33e2020",
+      "size_bytes": 492
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/scenarios/13_world_observation_stale.json",
+      "sha256": "bf5fdbaa028164cc40ace8080984a4dcea6e695a27fbf47712c9247ff0141804",
+      "size_bytes": 425
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/scenarios/14_wrong_argument_type.json",
+      "sha256": "83cf3d1bb33bb19bfc25d37a462e9a7a677a062187176c224d563ac7d6ac8352",
+      "size_bytes": 268
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/scenarios/15_planner_target_substitution.json",
+      "sha256": "6eb425160e967807fed6dd404cb2fb5ad4a07c7cb351ecc2cb5dbb71ade1e4ef",
+      "size_bytes": 282
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/scenarios/16_skill_timeout.json",
+      "sha256": "d03a0e9a58675caa7af2364e696ffcf33452667621f046dd3367b0b0984c9746",
+      "size_bytes": 304
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/scenarios/17_extra_skill_argument.json",
+      "sha256": "969ee2a680d3b6f4ac5c26e11521c71db7f8efc0632c9b13dff95a5ee62ca1d3",
+      "size_bytes": 286
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/scenarios/18_confirmed_bounded_recovery.json",
+      "sha256": "471c94957fb1456a5afe62b4f40f0240854774368bc3f4be7c0eae87c6775d0d",
+      "size_bytes": 633
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/tasks/g1_blue_to_orange_bin.json",
+      "sha256": "5137e1ce6e85e6b5a1447e9f1ee6bebccc9221616cc276e62136959010235dcf",
+      "size_bytes": 2495
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/tasks/g1_groot_apple_to_plate.json",
+      "sha256": "1856d66ed6995d0ddd52d2f053188db098ecd79cd8070709d463944b787a4721",
+      "size_bytes": 1938
+    },
+    {
+      "collection": "scenario_suites",
+      "path": "experiments/tasks/g1_pick_place.json",
+      "sha256": "28ee575dd96c667753870573d8955e7389a8a9dd413ebf29035c22b3ef3a0bf0",
+      "size_bytes": 2469
+    },
+    {
+      "collection": "deployment_profiles",
+      "path": "profiles/cpu-ci.json",
+      "sha256": "bb5e05166643e26f264d03620af909f9209baab6431688af9f3f60df111ad767",
+      "size_bytes": 566
+    },
+    {
+      "collection": "benchmark_reports",
+      "path": "reports/planners/README.md",
+      "sha256": "5efbca59e5c336601b0f432366ba727d9d1a78511001dcac9eff9e3f4f02d3ed",
+      "size_bytes": 1409
+    },
+    {
+      "collection": "benchmark_reports",
+      "path": "reports/planners/bigmodel-glm-5.3.json",
+      "sha256": "af367cca7160e73df0d02ea0b57242f04995060cf4348e6576ab809c55cee31e",
+      "size_bytes": 7622
+    },
+    {
+      "collection": "benchmark_reports",
+      "path": "reports/planners/provider-summary.json",
+      "sha256": "23786869d15361485641ec10344663a753c7194f14ef39d428ce28ad918dbcbd",
+      "size_bytes": 1863
+    },
+    {
+      "collection": "benchmark_reports",
+      "path": "reports/planners/qwen-vllm-qwen38-flash-next.json",
+      "sha256": "4a964cc27eb41bd3b1272ca74115e122cb53e11e5726d167508bf8f180ab95c7",
+      "size_bytes": 7350
+    },
+    {
+      "collection": "benchmark_reports",
+      "path": "reports/planners/yuesheng-vllm-model.json",
+      "sha256": "dd8eaaa8b57983763189fdb263583855d5c0970a0b478bafb8ceed9424e37644",
+      "size_bytes": 7401
+    },
+    {
+      "collection": "dependency_locks",
+      "path": "simulation/groot_sonic.lock.json",
+      "sha256": "6334fc8e1af71ea352ee49cbdabee5c0445ba02efc97f006c434190f901d0e1b",
+      "size_bytes": 690
+    },
+    {
+      "collection": "dependency_locks",
+      "path": "simulation/openpi.lock.json",
+      "sha256": "3f64de1db6e57580ac3ad47c248bdc00f6035a0c875932ca6b32adc9dce19cf3",
+      "size_bytes": 247
+    },
+    {
+      "collection": "dependency_locks",
+      "path": "simulation/unitree.lock.json",
+      "sha256": "e6fb31cfeb5cd52e5c3752645759a468cd528670c49075ed35d894e1291736c8",
+      "size_bytes": 822
+    },
+    {
+      "collection": "dependency_locks",
+      "path": "simulation/vla.lock.json",
+      "sha256": "61102222c1c530e58ef75a87508fd77c224b789f8ccbf5c766655475b27a8c4e",
+      "size_bytes": 224
+    }
+  ],
+  "release_digest": "9b638cbfa6c3f13977c02bdcfb2fa470068242f7dc32fe14a87a5c982713a87b",
+  "release_id": "synapse2action-research-assets-v1",
+  "schema_version": 1,
+  "source_catalog": "research/release-source.json",
+  "source_sha256": "9d236e6ccc033563cb306561eca50ec2e979d8bd2e40b8b9df92819f3fb30532",
+  "unpublished_assets": [
+    {
+      "path": "reports/eeg/",
+      "reason": "derived EEG reports are not part of the public Git release",
+      "status": "local-only"
+    },
+    {
+      "path": "reports/simulation/",
+      "reason": "vendor simulation reports, frames, videos, and raw evidence are ignored",
+      "status": "local-only"
+    },
+    {
+      "path": "reports/training/",
+      "reason": "datasets, checkpoints, and training reports are ignored",
+      "status": "local-only"
+    },
+    {
+      "path": "artifacts/",
+      "reason": "generated demonstrations are ignored and not release evidence",
+      "status": "local-only"
+    },
+    {
+      "path": "simulation/vendor/",
+      "reason": "third-party source trees and model weights must be obtained upstream",
+      "status": "external"
+    }
+  ]
+}

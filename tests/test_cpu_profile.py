@@ -44,8 +44,9 @@ class CPUProfileTests(unittest.TestCase):
     def test_runner_reports_claim_boundary_and_real_test_counts(self) -> None:
         source = (ROOT / "simulation/run_cpu_ci.py").read_text()
 
-        self.assertIn('"accepted": result.wasSuccessful()', source)
+        self.assertIn('accepted = result.wasSuccessful() and release["accepted"]', source)
         self.assertIn('"run": result.testsRun', source)
+        self.assertIn('"research_release": release', source)
         self.assertIn('discover("tests", top_level_dir=".")', source)
         self.assertIn("hardware-free repository acceptance only", source)
         self.assertNotIn("mock success", source)

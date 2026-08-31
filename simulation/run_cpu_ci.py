@@ -9,6 +9,8 @@ import sys
 from time import monotonic
 import unittest
 
+from synapse2action.research_release import verify_research_release
+
 
 def main() -> int:
     parser = argparse.ArgumentParser(
@@ -22,10 +24,16 @@ def main() -> int:
     started = monotonic()
     suite = unittest.defaultTestLoader.discover("tests", top_level_dir=".")
     result = unittest.TextTestRunner(verbosity=2).run(suite)
+    release = verify_research_release(
+        Path("."),
+        Path("research/release-source.json"),
+        Path("research/release-v1.json"),
+    )
+    accepted = result.wasSuccessful() and release["accepted"]
     report = {
         "schema_version": 1,
         "profile_id": "cpu-ci",
-        "accepted": result.wasSuccessful(),
+        "accepted": accepted,
         "environment": {
             "python": platform.python_version(),
             "implementation": platform.python_implementation(),
@@ -39,6 +47,7 @@ def main() -> int:
             "expected_failures": len(result.expectedFailures),
             "unexpected_successes": len(result.unexpectedSuccesses),
         },
+        "research_release": release,
         "duration_ms": round((monotonic() - started) * 1000, 3),
         "claim_boundary": [
             "hardware-free repository acceptance only",
@@ -48,7 +57,7 @@ def main() -> int:
     args.report.parent.mkdir(parents=True, exist_ok=True)
     args.report.write_text(json.dumps(report, indent=2, sort_keys=True) + "\n")
     print(json.dumps(report, sort_keys=True))
-    return int(not result.wasSuccessful())
+    return int(not accepted)
 
 
 if __name__ == "__main__":

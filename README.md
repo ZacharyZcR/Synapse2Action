@@ -58,6 +58,13 @@ LeRobot 已确定为 Synapse2Action 下层的机器人学习基础设施依赖�
 
 The maintained source register for integrated, staged, evaluated, and reference-only work is [References and Dependency Register](docs/references.md). / 已集成、已暂存、已评测及仅参考项目的统一登记见[参考材料与依赖登记](docs/references.md)。
 
+The exact Git-published research surface is recorded in the
+[Research Release Catalog](docs/research-release.md), with separate
+[model](docs/model-cards/policy-models.md) and
+[data](docs/data-cards/research-data.md) cards. / Git 实际发布的研究资产由
+[研究发布清单](docs/research-release.md)精确记录，并分别提供
+[模型卡](docs/model-cards/policy-models.md)与[数据卡](docs/data-cards/research-data.md)。
+
 Project participation and release boundaries are defined by
 [Contributing](CONTRIBUTING.md), [Governance](GOVERNANCE.md),
 [Security](SECURITY.md), [Privacy](PRIVACY.md), and
@@ -184,7 +191,8 @@ The alternate `rtxpro-vllm/DeepSeek-V4-Flash-0731` Pi route currently returns 50
 
 ### Phase 8 — Reproducible Research Platform / 阶段 8：可复现研究平台
 
-- [ ] Publish versioned protocols, scenario suites, model cards, datasets, and benchmark reports. / 发布版本化实验协议、场景集、模型卡、数据集与基准报告。
+- [x] Publish a hash-verifiable catalog of tracked protocols, scenario suites, model/data cards, dependency locks, deployment profiles, and planner benchmark reports. / 发布可通过哈希验证的已跟踪实验协议、场景集、模型卡/数据卡、依赖锁、部署 Profile 与 Planner 基准报告清单。
+- [ ] Publish redistributable benchmark datasets and raw model, EEG, training, simulation, and physical-robot evidence under explicit licenses. / 在明确许可下发布可再分发基准数据集，以及原始模型、EEG、训练、仿真和真机证据。
 - [ ] Support additional EEG devices, planners, policies, simulators, and Unitree embodiments through adapters. / 通过 Adapter 支持更多 EEG 设备、Planner、Policy、仿真器与宇树本体。
 - [ ] Evaluate task success, latency, false activation, safety intervention, recovery, user workload, and agency separately. / 分别评估任务成功率、延迟、误触发、安全介入、恢复能力、用户负担与控制感。
 - [x] Add a dependency-free CPU-only CI profile with a machine-readable report and GitHub Actions execution. / 建立零依赖纯 CPU CI Profile，输出机器可读报告并由 GitHub Actions 执行。

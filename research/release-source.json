@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "release_id": "synapse2action-research-assets-v1",
+  "collections": [
+    {
+      "name": "protocols",
+      "patterns": [
+        "docs/experiments.md",
+        "docs/live-planner-benchmark.md",
+        "docs/pre-simulation-audit.md",
+        "docs/pre-simulation.md"
+      ]
+    },
+    {
+      "name": "scenario_suites",
+      "patterns": ["experiments/**/*.json"]
+    },
+    {
+      "name": "model_cards",
+      "patterns": ["docs/model-cards/*.md"]
+    },
+    {
+      "name": "data_cards",
+      "patterns": ["docs/data-cards/*.md"]
+    },
+    {
+      "name": "benchmark_reports",
+      "patterns": ["reports/planners/*"]
+    },
+    {
+      "name": "dependency_locks",
+      "patterns": ["simulation/*.lock.json"]
+    },
+    {
+      "name": "deployment_profiles",
+      "patterns": ["profiles/*.json"]
+    }
+  ],
+  "unpublished_assets": [
+    {
+      "path": "reports/eeg/",
+      "status": "local-only",
+      "reason": "derived EEG reports are not part of the public Git release"
+    },
+    {
+      "path": "reports/simulation/",
+      "status": "local-only",
+      "reason": "vendor simulation reports, frames, videos, and raw evidence are ignored"
+    },
+    {
+      "path": "reports/training/",
+      "status": "local-only",
+      "reason": "datasets, checkpoints, and training reports are ignored"
+    },
+    {
+      "path": "artifacts/",
+      "status": "local-only",
+      "reason": "generated demonstrations are ignored and not release evidence"
+    },
+    {
+      "path": "simulation/vendor/",
+      "status": "external",
+      "reason": "third-party source trees and model weights must be obtained upstream"
+    }
+  ]
+}

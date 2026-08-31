@@ -195,6 +195,17 @@ No result currently establishes physical G1 safety, network timing, joint mappin
 
 当前没有任何结果能够证明 G1 真机安全、网络时序、关节映射、相机标定、负载行为、实体急停或人工接管。MuJoCo 验收不能直接作为真机证据。
 
+### Publication gap / 发布证据缺口
+
+The versioned research catalog now makes the Git-published protocols, scenarios,
+cards, locks, profiles, and planner reports hash-verifiable. It does not publish
+the ignored raw EEG, model, training, simulation, or physical-robot artifacts.
+Independent reproduction therefore remains limited to the tracked CPU research
+surface until redistributable datasets and raw evidence are released under
+explicit licenses.
+
+版本化研究清单现已使 Git 中发布的协议、场景、卡片、依赖锁、Profile 和 Planner 报告可通过哈希验证；它并未发布被忽略的原始 EEG、模型、训练、仿真或真机资产。在具备明确许可的可再分发数据集和原始证据发布前，第三方复现范围仍仅限仓库已跟踪的 CPU 研究表面。
+
 ## Decisions required before more implementation / 继续实现前必须作出的决策
 
 ### 1. Fix the primary engineering claim / 固定首要工程命题
