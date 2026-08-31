@@ -14,6 +14,7 @@ from synapse2action.groot import ExternalVLAPolicy, GrootPolicy
 from synapse2action.harness import Harness
 from synapse2action.llm_planner import OpenAICompatiblePlanner
 from synapse2action.navigation import Pose2D
+from synapse2action.policy_registry import PolicyRegistry
 from synapse2action.task_spec import load_task_spec
 from synapse2action.unitree_simulation import (
     NavigateToPlanner,
@@ -77,7 +78,13 @@ def decoded_execution_intents(
 def main() -> int:
     parser = argparse.ArgumentParser(description="Run confirmed navigation through SDK2 G1 MuJoCo")
     parser.add_argument("--task", choices=("navigation", "pick-place"), required=True)
-    parser.add_argument("--policy", choices=("scripted", "smolvla", "groot"), required=True)
+    parser.add_argument("--policy", required=True, help="policy id or auto")
+    parser.add_argument("--policy-registry", type=Path, default=Path("policies"))
+    parser.add_argument(
+        "--allow-candidate-policy",
+        action="store_true",
+        help="permit an unadmitted candidate for supervised research only",
+    )
     parser.add_argument("--destination", default="point_b")
     parser.add_argument(
         "--task-spec",
@@ -125,6 +132,28 @@ def main() -> int:
         else None
     )
     task_spec = load_task_spec(task_spec_path) if task_spec_path else None
+    selected_policy = args.policy
+    policy_manifest = None
+    if args.policy != "scripted":
+        if task_spec is None:
+            parser.error("registered policies require an explicit TaskSpec")
+        registry_path = (
+            args.policy_registry
+            if args.policy_registry.is_absolute()
+            else project / args.policy_registry
+        )
+        try:
+            policy_manifest = PolicyRegistry.load(registry_path).select(
+                task_spec,
+                embodiment="unitree-g1",
+                requested_policy=args.policy,
+                allow_candidate=args.allow_candidate_policy or args.allow_test_doubles,
+            )
+        except (OSError, ValueError, TypeError) as exc:
+            parser.error(str(exc))
+        selected_policy = policy_manifest.policy_id
+        if selected_policy not in {"smolvla", "groot"}:
+            parser.error(f"policy runtime is not configured: {selected_policy}")
     selected_target = task_spec.target if task_spec else args.destination
     if args.planner == "live":
         active_planner: Planner = OpenAICompatiblePlanner(
@@ -169,8 +198,8 @@ def main() -> int:
         lambda report: progress("llm_planner", report["status"], report),
     )
     if args.task == "pick-place":
-        smolvla = args.policy == "smolvla"
-        groot = args.policy == "groot"
+        smolvla = selected_policy == "smolvla"
+        groot = selected_policy == "groot"
         robot_type = GrootPickPlaceSimulationRobot if groot else UnitreePickPlaceSimulationRobot
         runner = (
             "run_groot_g1_pick_place.py"
@@ -240,7 +269,17 @@ def main() -> int:
         "task": ({"id": task_spec.task_id, "skill": task_spec.skill, "arguments": task_spec.arguments,
                   "instruction": task_spec.instruction, "display": task_spec.display} if task_spec else None),
         "intent_source": str(args.decoded_intents) if args.decoded_intents else "test-double",
-        "policy": args.policy,
+        "policy": selected_policy,
+        "policy_manifest": (
+            {
+                "policy_id": policy_manifest.policy_id,
+                "backend": policy_manifest.backend,
+                "release": policy_manifest.release,
+                "qualification": policy_manifest.qualification,
+            }
+            if policy_manifest
+            else {"policy_id": "scripted", "qualification": "test-double"}
+        ),
         "seed": args.seed,
         "planner": observable_planner.report,
         "result": (
@@ -276,7 +315,7 @@ def main() -> int:
         },
         {
             "id": "vla",
-            "mode": "live" if args.policy in {"smolvla", "groot"} else "scripted",
+            "mode": "live" if selected_policy in {"smolvla", "groot"} else "scripted",
             "status": (
                 "completed"
                 if simulator.get("vla_runtime") or simulator.get("official_contact_success") is not None
@@ -284,18 +323,18 @@ def main() -> int:
             ),
             "input": (
                 "2 camera streams + G1 state + task text"
-                if args.policy == "groot"
-                else "3 camera frames + 29-DoF joint state + task text" if args.policy == "smolvla" else None
+                if selected_policy == "groot"
+                else "3 camera frames + 29-DoF joint state + task text" if selected_policy == "smolvla" else None
             ),
             "output": (
                 "GR00T whole-body action sequence"
-                if args.policy == "groot"
+                if selected_policy == "groot"
                 else f"{simulator.get('vla_runtime', {}).get('chunks_received', 0)} action chunks"
             ),
             "role": (
                 "public VLA with official whole-body control"
-                if args.policy == "groot"
-                else "bounded manipulation-joint action chunks" if args.policy == "smolvla" else "scripted policy"
+                if selected_policy == "groot"
+                else "bounded manipulation-joint action chunks" if selected_policy == "smolvla" else "scripted policy"
             ),
         },
         {

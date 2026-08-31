@@ -64,6 +64,18 @@ OpenPI 已作为源码参考固定，并通过要求显式 Observation Encoding 
 Mapping 的提案 Adapter 接入；尚无 OpenPI Checkpoint 通过本仓库 TaskSpec、Seed、
 语言、运动和证据门。当前仅证明协议集成能力。
 
+## Routing and admission / 路由与准入
+
+Versioned manifests for GR00T, SmolVLA, and OpenPI are published under
+`policies/`. All three are marked `candidate`, not `admitted`. Automatic
+production selection accepts only a uniquely matched admitted Policy with
+immutable evidence; supervised research must explicitly opt into a named
+candidate.
+
+GR00T、SmolVLA 与 OpenPI 的版本化 Manifest 位于 `policies/`。三者当前均标记为
+`candidate`，而非 `admitted`。生产自动选择只接受唯一匹配、具有不可变证据的已准入
+Policy；受监督研究必须显式启用指定 Candidate。
+
 ## Safety and evaluation / 安全与评测
 
 All learned outputs are untrusted proposals. Harness confirmation, deterministic

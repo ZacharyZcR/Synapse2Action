@@ -48,7 +48,7 @@ missing live dependency.
 3. **Result semantics are separated, but evidence depth varies.** Schema v3 and the Harness now report `outcome_success`, `process_compliance`, and `safety_passed` independently. Legacy robot adapters preserve compatibility by defaulting missing component verdicts to their prior aggregate result; controller-native safety evidence must replace that fallback before hardware qualification.
 4. **LeRobot boundary is incomplete.** The current GR00T/WBC runner directly manages vendor environments and JSON handoff. Standard policy, processor, dataset, and robot operations should move behind LeRobot; humanoid-specific WBC remains an explicit adapter boundary.
 5. **Benchmark throughput and telemetry.** The dependency-free CPU profile is now reproducible and green, but the 20-seed vendor baseline remains serial and provides no intra-episode heartbeat. A resident policy server, optional video, parallel environments, separate GPU/simulation smoke/full profiles, and stage progress telemetry are still required.
-6. **Only one mature checkpoint is qualified.** The architecture claim requires a second LeRobot-supported policy under identical TaskSpec, seeds, and evidence gates.
+6. **Candidates are registered, but none is admitted.** GR00T, SmolVLA, and OpenPI now have versioned capability manifests and deterministic routing. GR00T remains at 1/20 strict success, while SmolVLA/OpenPI lack complete matched admission evidence; automatic production selection therefore rejects all current candidates.
 7. **Simulation is not hardware evidence.** Camera calibration, latency, joint mapping, payload behavior, physical emergency stop, workspace enforcement, and operator takeover remain unverified on a real G1.
 8. **Python runtime split.** The main Harness uses Python 3.12 while the compatible WBC runtime uses Python 3.10. The boundary must remain a versioned data contract; importing the main package inside the vendor runtime is not supported.
 9. **Language-to-work causality is unproven.** Three TaskSpecs and a versioned qualification manifest now cover paraphrases, changed goals, forbidden objects, and impossible requests, but candidate policies have not yet run the matched-observation evaluation.
@@ -62,7 +62,7 @@ missing live dependency.
 3. **结果语义已经拆分，但证据深度不同。** Schema v3 与 Harness 已独立报告 `outcome_success`、`process_compliance` 和 `safety_passed`。旧 Robot Adapter 为兼容性会将缺失的分项判定回退到原聚合结果；真机准入前必须用 Controller 原生安全证据替换该回退。
 4. **LeRobot 边界尚未收敛。** 当前 GR00T/WBC runner 仍直接管理 Vendor 环境与 JSON 交接；标准 Policy、Processor、Dataset 和 Robot 操作应迁移到 LeRobot，人形 WBC 保持为显式专用 Adapter 边界。
 5. **评测吞吐与遥测不足。** 零依赖 CPU Profile 现在已经可复现并全绿，但 20 个 Seed 的 Vendor 基线仍然串行缓慢，且单次运行内部没有心跳；仍需常驻 Policy Server、可选视频、并行环境、独立 GPU/仿真的 Smoke/Full Profile 和阶段进度遥测。
-6. **只验收了一个成熟 checkpoint。** 架构主张需要第二个 LeRobot 支持的 Policy 在相同 TaskSpec、Seed 和证据门下完成对照。
+6. **候选已登记，但尚无 Policy 获得准入。** GR00T、SmolVLA 与 OpenPI 现已有版本化能力 Manifest 和确定性路由；GR00T 仍只有 1/20 严格成功，SmolVLA/OpenPI 则缺少完整匹配准入证据，因此生产自动选择会拒绝全部当前候选。
 7. **仿真不是真机证据。** 真机相机标定、延迟、关节映射、负载、实体急停、工作空间约束和人工接管均未验证。
 8. **Python Runtime 分裂。** 主 Harness 使用 Python 3.12，兼容 WBC Runtime 使用 Python 3.10；边界必须保持为版本化数据契约，不支持 Vendor Runtime 直接 Import 主包。
 9. **尚未证明语言到工作的因果性。** 当前已有三个 TaskSpec 和覆盖同义改写、目标变化、禁止物体与不可能请求的版本化准入集，但候选 Policy 尚未完成匹配 Observation 的实际评测。

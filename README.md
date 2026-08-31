@@ -56,6 +56,12 @@ LeRobot is the committed robot-learning dependency beneath Synapse2Action. Other
 
 LeRobot 已确定为 Synapse2Action 下层的机器人学习基础设施依赖；其他技术仍保持可替换，并且只有能够支撑对应里程碑最小可复现实验时才会纳入。Synapse2Action 负责意图、规划、确认、编排、安全策略、物理证据和审计语义，不重复实现 LeRobot 的 Policy、Dataset、Processor 与 Robot 抽象。
 
+Policy selection is deterministic and capability-based. Versioned manifests,
+admission status, automatic matching, and safe switching semantics are defined
+in [Policy Routing and Lifecycle](docs/policy-routing.md). / Policy 选择由确定性的
+能力匹配完成；版本化 Manifest、准入状态、自动匹配与安全切换语义见
+[Policy 路由与生命周期](docs/policy-routing.md)。
+
 The maintained source register for integrated, staged, evaluated, and reference-only work is [References and Dependency Register](docs/references.md). / 已集成、已暂存、已评测及仅参考项目的统一登记见[参考材料与依赖登记](docs/references.md)。
 
 The exact Git-published research surface is recorded in the
@@ -149,6 +155,7 @@ The alternate `rtxpro-vllm/DeepSeek-V4-Flash-0731` Pi route currently returns 50
 - [x] Add a fail-closed Policy Admission Verifier for exact seeds, Result v3 consistency, confirmation traces, bounded recovery, manifest-bound language coverage, and configurable outcome reliability. / 加入 Fail-Closed Policy Admission Verifier，严格检查 Seed、Result v3 一致性、确认链、受限恢复、绑定 Manifest 的语言覆盖及可配置结果可靠性。
 - [x] Build immutable content-addressed policy evidence bundles and reject changed files, undeclared files, lowered reliability thresholds, or reduced seed sets. / 构建不可覆盖的内容寻址 Policy 证据包，并拒绝文件篡改、未登记文件、可靠性门槛降低或 Seed 集缩减。
 - [x] Reject whole action chunks before controller admission when any sample violates configured joint-position, velocity, acceleration, or duration limits. / 在动作块进入 Controller 前整体验证；任一采样点违反关节位置、速度、加速度或持续时间限制时拒绝整个 Chunk。
+- [x] Add versioned Policy manifests, a deterministic capability registry, admitted-only automatic selection, and safe switch lifecycle semantics. / 加入版本化 Policy Manifest、确定性能力注册表、仅限已准入模型的自动选择，以及安全切换生命周期语义。
 - [ ] Validate action chunks against a trusted forward-kinematics and collision model before claiming workspace enforcement. / 在声称完成工作空间约束前，使用可信正向运动学与碰撞模型验证动作块。
 - [x] Verify task outcomes using robot state and visual evidence instead of model self-reporting. / 使用机器人状态与视觉证据验证结果，而非相信模型自报成功。
 - [x] Add a one-attempt deterministic recovery path with fresh world validation, a new authorization challenge, second confirmation, stop preemption, and retained audit history. / 加入最多一次的确定性恢复路径，要求重新校验世界状态、签发新授权 Challenge、二次确认、急停可抢占并保留完整审计历史。
@@ -233,7 +240,7 @@ SmolVLA 不直接写入力矩或 DDS 指令。其 50-action chunk 以 3Hz 运行
 ./simulation/run_smolvla_g1_suite_train.sh
 ./simulation/run_smolvla_g1_closed_loop.sh
 PYTHONPATH=src python3 simulation/run_harness_unitree.py \
-  --task pick-place --policy smolvla \
+  --task pick-place --policy smolvla --allow-candidate-policy \
   --task-spec experiments/tasks/g1_pick_place.json \
   --decoded-intents reports/eeg/live-eeg-lsl.json \
   --planner live --planner-provider your-provider \
@@ -291,7 +298,7 @@ PYTHONPATH=src S2A_PLANNER_API_KEY=... python3 simulation/experiment_console.py 
 
 ```bash
 S2A_PLANNER_API_KEY=... PYTHONPATH=src python3 simulation/run_harness_unitree.py \
-  --task pick-place --policy smolvla \
+  --task pick-place --policy smolvla --allow-candidate-policy \
   --task-spec experiments/tasks/g1_pick_place.json \
   --decoded-intents reports/eeg/live-eeg-lsl.json \
   --planner live --planner-provider your-provider \

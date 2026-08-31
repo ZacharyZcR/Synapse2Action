@@ -21,8 +21,14 @@
     {
       "collection": "model_cards",
       "path": "docs/model-cards/policy-models.md",
-      "sha256": "b9b4aeeb7e246b82e4ab3ff0bb5e2bef44ef3ddbc9f6d864ba2ceea589486316",
-      "size_bytes": 4057
+      "sha256": "199cb74491fd5ba9c5f50c37cadcd2022ec38bbb4a5213fa11bbdbff7e86845f",
+      "size_bytes": 4672
+    },
+    {
+      "collection": "policy_routing_docs",
+      "path": "docs/policy-routing.md",
+      "sha256": "24d8d459e8c2635752525fafa47c656fce37331777fae29ca3764dffbcc60530",
+      "size_bytes": 3260
     },
     {
       "collection": "protocols",
@@ -367,6 +373,24 @@
       "size_bytes": 2469
     },
     {
+      "collection": "policy_manifests",
+      "path": "policies/groot-n16-g1-apple-plate.json",
+      "sha256": "f590295c1879f44f4779928ba718118a60fa5ce9fa396eafd1f8c8e9fdf12aa2",
+      "size_bytes": 526
+    },
+    {
+      "collection": "policy_manifests",
+      "path": "policies/openpi-g1-research.json",
+      "sha256": "eaa1d42b83c623282571229828a448a18c7ee94e8a328600972f9fca4ef84190",
+      "size_bytes": 566
+    },
+    {
+      "collection": "policy_manifests",
+      "path": "policies/smolvla-g1-pick-place.json",
+      "sha256": "efcd151dd289cf643e57fd2a1d9e53d6fda5132a5e3a42177e0f59eece1e39b9",
+      "size_bytes": 558
+    },
+    {
       "collection": "deployment_profiles",
       "path": "profiles/cpu-ci.json",
       "sha256": "bb5e05166643e26f264d03620af909f9209baab6431688af9f3f60df111ad767",
@@ -427,11 +451,11 @@
       "size_bytes": 224
     }
   ],
-  "release_digest": "9b638cbfa6c3f13977c02bdcfb2fa470068242f7dc32fe14a87a5c982713a87b",
+  "release_digest": "d402d12b7fa3acd3ff1fdc313cad867f4c840acf49b363112986e6b5315f4283",
   "release_id": "synapse2action-research-assets-v1",
   "schema_version": 1,
   "source_catalog": "research/release-source.json",
-  "source_sha256": "9d236e6ccc033563cb306561eca50ec2e979d8bd2e40b8b9df92819f3fb30532",
+  "source_sha256": "1d2f2e76ec56591dbcea3e33c3a0d6664bf5998bcd2a2add7160fc4fa898278a",
   "unpublished_assets": [
     {
       "path": "reports/eeg/",

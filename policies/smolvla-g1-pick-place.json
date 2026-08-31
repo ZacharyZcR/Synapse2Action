@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "policy_id": "smolvla",
+  "backend": "lerobot-smolvla",
+  "release": "local-g1-finetune",
+  "embodiment": "unitree-g1",
+  "capabilities": {"task_ids": ["g1_pick_place_red_to_green", "g1_pick_place_blue_to_orange_bin"], "skills": ["pick_and_place"]},
+  "observation": {"state_dimension": 29, "cameras": ["camera1", "camera2", "camera3"]},
+  "action": {"dimension": 29, "representation": "joint_position_chunk", "control_frequency_hz": 3.0},
+  "admission": {"status": "candidate", "evidence_bundle": null, "evidence_sha256": null}
+}

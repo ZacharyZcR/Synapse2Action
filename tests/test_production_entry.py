@@ -64,6 +64,26 @@ class ProductionEntryTests(unittest.TestCase):
         self.assertEqual(result.returncode, 2)
         self.assertIn("forbids ScriptedPolicy", result.stderr)
 
+    def test_auto_selection_rejects_when_no_policy_is_admitted(self) -> None:
+        result = self.run_entry(
+            "--task",
+            "pick-place",
+            "--policy",
+            "auto",
+            "--planner",
+            "live",
+            "--task-spec",
+            "experiments/tasks/g1_groot_apple_to_plate.json",
+            "--decoded-intents",
+            "missing.json",
+            "--planner-base-url",
+            "http://127.0.0.1:1/v1",
+            "--planner-model",
+            "test",
+        )
+        self.assertEqual(result.returncode, 2)
+        self.assertIn("no admitted policy", result.stderr)
+
     def test_test_doubles_require_explicit_opt_in(self) -> None:
         source = RUNNER.read_text()
         self.assertIn('action="store_true"', source)

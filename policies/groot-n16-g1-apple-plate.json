@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "policy_id": "groot",
+  "backend": "groot-n1.6",
+  "release": "GR00T-N1.6-G1-PnPAppleToPlate-CW",
+  "embodiment": "unitree-g1",
+  "capabilities": {"task_ids": ["g1_groot_apple_to_plate"], "skills": ["pick_and_place"]},
+  "observation": {"state_dimension": 29, "cameras": ["ego_view", "third_person"]},
+  "action": {"dimension": 29, "representation": "whole_body_joint_action", "control_frequency_hz": 20.0},
+  "admission": {"status": "candidate", "evidence_bundle": null, "evidence_sha256": null}
+}
