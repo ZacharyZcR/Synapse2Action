@@ -101,6 +101,13 @@ is the committed standard policy/dataset/robot dependency; the direct N1.6/WBC
 process runner is a transitional humanoid adapter where the required upstream
 boundary is not yet exposed through LeRobot.
 
+`map_groot_unitree_action` now defines the fail-closed boundary from the GR00T
+N1.6 `unitree_g1` embodiment to SDK2 order: relative seven-axis arm actions and
+absolute three-axis waist targets become bounded 29-DoF proposals, while the
+three-axis navigation command remains a locomotion input. The 14 hand dimensions
+are reported as unsupported because the official 29-DoF MJCF has no finger
+actuators. Mapping compatibility is not inference or manipulation acceptance.
+
 Run one evidence-preserving Harness episode with:
 
 ```bash
