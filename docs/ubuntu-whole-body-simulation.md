@@ -114,6 +114,21 @@ python3 -m venv .venv
 带负载 whole-body control 的成功证据。无视频运行适合数值验收；软件 EGL
 较慢时，可用较短的同配置 rollout 单独生成视觉证据并保留各自 JSON。
 
+在 locomotion 基线通过后，验证生产 `G1VLAActionProjector` 能否把受限腰部和
+双臂 proposal 合入同一个 29DoF physics loop：
+
+```bash
+.venv/bin/python simulation/run_unitree_29dof_velocity_smoke.py \
+  --duration 5 --command-x 0.5 --vla-overlay \
+  --task-spec experiments/tasks/g1_pick_place.json \
+  --video reports/simulation/unitree-29dof-vla-overlay-smoke.mp4 \
+  --output reports/simulation/unitree-29dof-vla-overlay-smoke.json
+```
+
+报告必须额外满足 `vla_overlay_applied`，并记录 overlay frame 数和最大关节
+贡献。该 profile 使用确定性的有界 proposal 来验证控制合成与稳定性，不包含
+真实 VLA inference，不证明语义理解、接触、抓取、负载搬运或放置。
+
 ### 4.1 安装训练/仿真 Python 环境
 
 ```bash

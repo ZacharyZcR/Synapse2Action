@@ -28,6 +28,12 @@ class Unitree29DofVelocitySmokeTests(unittest.TestCase):
         )
         self.assertFalse(verdict["passed"])
 
+    def test_vla_overlay_uses_production_projector_and_is_evidence_gated(self) -> None:
+        source = (ROOT / "simulation/run_unitree_29dof_velocity_smoke.py").read_text()
+        self.assertIn("G1VLAActionProjector", source)
+        self.assertIn('verdict["checks"]["vla_overlay_applied"]', source)
+        self.assertIn('"maximum_vla_joint_delta_rad"', source)
+
 
 if __name__ == "__main__":
     unittest.main()

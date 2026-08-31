@@ -57,6 +57,8 @@ def run(
     minimum_height: float,
     minimum_distance: float,
     video_path: Path | None,
+    vla_overlay: bool = False,
+    task_spec_path: Path | None = None,
 ) -> dict[str, object]:
     os.environ.setdefault("MUJOCO_GL", "egl")
     try:
@@ -75,6 +77,22 @@ def run(
     model_path = simulator / "unitree_robots/g1/scene_29dof.xml"
     config = yaml.safe_load(config_path.read_text())
 
+    projector = None
+    task = None
+    if vla_overlay:
+        sys.path.insert(0, str(project / "src"))
+        from synapse2action.g1_vla import G1VLAActionProjector
+        from synapse2action.task_spec import load_task_spec
+
+        if task_spec_path is None:
+            raise RuntimeError("VLA overlay requires a TaskSpec")
+        task = load_task_spec(task_spec_path)
+        projector = G1VLAActionProjector(
+            joint_indices=task.controller.joint_indices,
+            joint_limits_rad=task.controller.joint_limits_rad,
+            frequency_hz=1.0 / float(config["step_dt"]),
+        )
+
     joint_map = np.asarray(config["joint_ids_map"], dtype=np.int32)
     stiffness = np.asarray(config["stiffness"], dtype=np.float64)
     damping = np.asarray(config["damping"], dtype=np.float64)
@@ -92,6 +110,8 @@ def run(
     # The official FixStand target is the policy default expressed in policy order.
     target_dds = np.zeros(29, dtype=np.float64)
     target_dds[joint_map] = default
+    if projector:
+        projector.reset(target_dds)
     data.qpos[7:] = target_dds
     mujoco.mj_forward(model, data)
 
@@ -116,6 +136,8 @@ def run(
     minimum_z = math.inf
     video_frames = 0
     next_frame_time = 0.0
+    overlay_frames = 0
+    maximum_overlay_rad = 0.0
 
     def observations() -> dict[str, object]:
         inverse_quat = data.qpos[3:7].copy()
@@ -162,6 +184,16 @@ def run(
                 raise RuntimeError(f"unexpected policy observation shape: {obs.shape}")
             action = session.run([output_name], {input_name: obs})[0].squeeze().astype(np.float32)
             target_dds[joint_map] = default + action_scale * action
+            if projector and task:
+                phase = 2.0 * math.pi * simulation_time / 2.0
+                vla_target = target_dds.copy()
+                for offset, joint in enumerate(task.controller.joint_indices):
+                    direction = 1.0 if offset % 2 == 0 else -1.0
+                    vla_target[joint] += direction * 0.25 * math.sin(phase)
+                target_dds[:] = projector.project(target_dds, vla_target)
+                if projector.last_contribution_rad > 1e-6:
+                    overlay_frames += 1
+                    maximum_overlay_rad = max(maximum_overlay_rad, projector.last_contribution_rad)
     finally:
         if writer:
             writer.close()
@@ -181,16 +213,24 @@ def run(
         "model_dofs": int(model.nu),
         "observation_width": 480,
         "action_width": int(action.size),
+        "vla_overlay_frames": overlay_frames,
+        "maximum_vla_joint_delta_rad": maximum_overlay_rad,
     }
     verdict = evaluate(metrics, minimum_height, minimum_distance)
     lock = json.loads((project / "simulation/whole_body.lock.json").read_text())
     commits = {"unitree_rl_lab": git_head(lab), "unitree_mujoco": git_head(simulator)}
     for name, actual in commits.items():
         verdict["checks"][f"{name}_commit"] = actual == lock[name]["commit"]
+    if vla_overlay:
+        verdict["checks"]["vla_overlay_applied"] = overlay_frames > 0 and maximum_overlay_rad > 0
     verdict["passed"] = all(verdict["checks"].values())
     return {
         "schema_version": 1,
-        "profile": "unitree-official-g1-29dof-velocity-headless",
+        "profile": (
+            "unitree-official-g1-29dof-vla-overlay-headless"
+            if vla_overlay
+            else "unitree-official-g1-29dof-velocity-headless"
+        ),
         "passed": verdict["passed"],
         "checks": verdict["checks"],
         "thresholds": {"minimum_height_m": minimum_height, "minimum_forward_distance_m": minimum_distance},
@@ -201,6 +241,7 @@ def run(
             "model": str(model_path.relative_to(project)),
             "config": str(config_path.relative_to(project)),
             "commits": commits,
+            "task_spec": str(task_spec_path.relative_to(project)) if task_spec_path else None,
         },
     }
 
@@ -214,15 +255,31 @@ def main() -> None:
     parser.add_argument("--minimum-distance", type=float, default=1.0)
     parser.add_argument("--output", type=Path, default=Path("reports/simulation/unitree-29dof-velocity-smoke.json"))
     parser.add_argument("--video", type=Path)
+    parser.add_argument(
+        "--vla-overlay",
+        action="store_true",
+        help="apply a bounded deterministic arm/waist proposal through the production VLA projector",
+    )
+    parser.add_argument("--task-spec", type=Path, default=Path("experiments/tasks/g1_pick_place.json"))
     args = parser.parse_args()
     if args.duration <= 0:
         parser.error("--duration must be positive")
     project = args.project.resolve()
     video = None if args.video is None else (args.video if args.video.is_absolute() else project / args.video)
+    task_spec = args.task_spec if args.task_spec.is_absolute() else project / args.task_spec
     if video:
         video.parent.mkdir(parents=True, exist_ok=True)
     try:
-        report = run(project, args.duration, args.command_x, args.minimum_height, args.minimum_distance, video)
+        report = run(
+            project,
+            args.duration,
+            args.command_x,
+            args.minimum_height,
+            args.minimum_distance,
+            video,
+            args.vla_overlay,
+            task_spec if args.vla_overlay else None,
+        )
     except (OSError, RuntimeError, ValueError) as error:
         print(f"error: {error}", file=sys.stderr)
         raise SystemExit(2) from error
