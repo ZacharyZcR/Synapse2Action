@@ -43,6 +43,18 @@
       "size_bytes": 3605
     },
     {
+      "collection": "protocols",
+      "path": "docs/ubuntu-whole-body-simulation.md",
+      "sha256": "aef183a1723f3f0dae355d39688802da2885d9417132c4c2085a97ad7af82b31",
+      "size_bytes": 8443
+    },
+    {
+      "collection": "protocols",
+      "path": "docs/whole-body-lift-baseline.md",
+      "sha256": "5a1bb9bff3e308e16e393c09267b5722b15dbdd1437dc44342c3cb44d1018234",
+      "size_bytes": 3405
+    },
+    {
       "collection": "scenario_suites",
       "path": "experiments/demos/blue_block.json",
       "sha256": "669c28c151581d6cae02b2cd3ddc405e7dfcb056b8cafbb1427bbf47bbea95e1",
@@ -449,13 +461,19 @@
       "path": "simulation/vla.lock.json",
       "sha256": "61102222c1c530e58ef75a87508fd77c224b789f8ccbf5c766655475b27a8c4e",
       "size_bytes": 224
+    },
+    {
+      "collection": "dependency_locks",
+      "path": "simulation/whole_body.lock.json",
+      "sha256": "7a57224e0ea2ea58f33133c77d4bb8ec1f140cb7428529d332a86f099acb6d58",
+      "size_bytes": 478
     }
   ],
-  "release_digest": "d402d12b7fa3acd3ff1fdc313cad867f4c840acf49b363112986e6b5315f4283",
+  "release_digest": "044f8411b3a0a41ddfeaf43b6b5f6f2ccf188322d080658e0288086fe8826ac7",
   "release_id": "synapse2action-research-assets-v1",
   "schema_version": 1,
   "source_catalog": "research/release-source.json",
-  "source_sha256": "1d2f2e76ec56591dbcea3e33c3a0d6664bf5998bcd2a2add7160fc4fa898278a",
+  "source_sha256": "64b58aa3de6a7a650281c0047c6c09bba7c76485c1eb433b1aa92b023ae5fea6",
   "unpublished_assets": [
     {
       "path": "reports/eeg/",

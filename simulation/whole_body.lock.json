@@ -1,0 +1,15 @@
+{
+  "schema_version": 1,
+  "open_track": {
+    "commit": "cb9b751993a2483e5d1805a2565ddbfe950c04c9",
+    "commit_date": "2026-06-04T14:09:15Z",
+    "license": "Apache-2.0",
+    "repository": "https://github.com/GalaxyGeneralRobotics/OpenTrack.git"
+  },
+  "open_wbt": {
+    "commit": "a0154ca822815c8eca26f5174afa6268f8e3d465",
+    "commit_date": "2025-07-30T09:41:28Z",
+    "license": "Apache-2.0",
+    "repository": "https://github.com/GalaxyGeneralRobotics/OpenWBT.git"
+  }
+}

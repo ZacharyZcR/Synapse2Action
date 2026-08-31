@@ -52,6 +52,8 @@ This register records the libraries, models, datasets, papers, and external syst
 | NVIDIA Isaac GR00T | Staged / 已暂存 | Candidate humanoid VLA backend; full Ubuntu/CUDA path remains unaccepted | `51d4c89f72fda44cbf77285c6a8114b52676b8a1` | [NVIDIA/Isaac-GR00T](https://github.com/NVIDIA/Isaac-GR00T) |
 | GR00T Whole-Body Control | Staged / 已暂存 | G1 whole-body deployment and VLA-to-controller reference | `a0732b642c0333077e127a2f56ab0014c196bca4` | [NVlabs/GR00T-WholeBodyControl](https://github.com/NVlabs/GR00T-WholeBodyControl) |
 | GEAR-SONIC v1.1 | Staged / 已暂存 | Whole-body latent controller candidate; ONNX files are checksum-pinned | See `simulation/groot_sonic.lock.json` | [Model card](https://huggingface.co/nvidia/GEAR-SONIC) |
+| OpenWBT | Staged / 已暂存 | G1 whole-body teleoperation, upper/lower-body decomposition, IK, and matched lift-reference candidate | `a0154ca822815c8eca26f5174afa6268f8e3d465` | [GalaxyGeneralRobotics/OpenWBT](https://github.com/GalaxyGeneralRobotics/OpenWBT) |
+| OpenTrack | Staged / 已暂存 | G1 specialist-to-generalist motion tracking, dynamics adaptation, torque-projected deployment, and lift-controller candidate | `cb9b751993a2483e5d1805a2565ddbfe950c04c9` | [GalaxyGeneralRobotics/OpenTrack](https://github.com/GalaxyGeneralRobotics/OpenTrack) |
 
 ## Intent and biosignal stack / 意图与生物信号栈
 
@@ -86,6 +88,8 @@ These names appear in project planning but are not current dependencies. They re
 | *LeRobot: State-of-the-art Machine Learning for Real-World Robotics in Pytorch* | Integrated / 已集成 | Reproducible datasets, policy training, evaluation, and hardware adapters | [LeRobot repository](https://github.com/huggingface/lerobot) |
 | *NVIDIA Isaac GR00T N1: An Open Foundation Model for Generalist Humanoid Robots* | Staged / 已暂存 | Humanoid VLA architecture and cross-embodiment training reference | [arXiv:2503.14734](https://arxiv.org/abs/2503.14734) |
 | *SONIC: Supersizing Motion Tracking for Natural Humanoid Whole-Body Control* | Staged / 已暂存 | Shared latent motion representation and whole-body control | [Project and paper](https://nvlabs.github.io/GEAR-SONIC/) |
+| *Unleashing Humanoid Reaching Potential via Real-world-Ready Skill Space* | Reference / 仅参考 | OpenWBT/R2S2 whole-body skill-space decomposition and real-world teleoperation design | [arXiv:2505.10918](https://arxiv.org/abs/2505.10918) |
+| *Track Any Motions under Any Disturbances* | Reference / 仅参考 | OpenTrack specialist teachers, DAgger generalist distillation, and dynamics adapter design | [arXiv:2509.13833](https://arxiv.org/abs/2509.13833) |
 | *π0: A Vision-Language-Action Flow Model for General Robot Control* | Reference / 仅参考 | Flow-matching VLA and cross-embodiment policy design | [Official paper](https://www.physicalintelligence.company/download/pi0.pdf) |
 | *π0.5: A Vision-Language-Action Model with Open-World Generalization* | Reference / 仅参考 | Unified high-level subtask prediction and low-level action inference | [Official paper](https://www.physicalintelligence.company/download/pi05.pdf) |
 | *RoboArena: Distributed Real-World Evaluation of Generalist Robot Policies* | Reference / 仅参考 | Multi-site physical evaluation methodology and evidence that real-world policy ranking requires repeated, distributed trials | [Proceedings of Machine Learning Research](https://proceedings.mlr.press/v270/karen25a.html) |
@@ -117,6 +121,7 @@ These names appear in project planning but are not current dependencies. They re
 | SmolVLA/LeRobot runtime | `simulation/vla.lock.json` |
 | GR00T/SONIC source and weights | `simulation/groot_sonic.lock.json` |
 | OpenPI source | `simulation/openpi.lock.json` |
+| OpenWBT/OpenTrack source | `simulation/whole_body.lock.json` |
 | Planner evidence | `reports/planners/` |
 | Experiment methodology and gates | `docs/experiments.md` |
 | Current limitations and decisions | `docs/current-challenges.md` |

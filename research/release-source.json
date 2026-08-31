@@ -8,7 +8,9 @@
         "docs/experiments.md",
         "docs/live-planner-benchmark.md",
         "docs/pre-simulation-audit.md",
-        "docs/pre-simulation.md"
+        "docs/pre-simulation.md",
+        "docs/ubuntu-whole-body-simulation.md",
+        "docs/whole-body-lift-baseline.md"
       ]
     },
     {

@@ -73,7 +73,7 @@ missing live dependency.
 
 ### Immediate roadmap / 近期路线
 
-1. Use the completed 20-seed baseline to isolate lift failures with controlled action, contact, timing, and scene counterfactuals.
+1. Use the completed 20-seed baseline to isolate lift failures with controlled action, contact, timing, and scene counterfactuals, including the pinned OpenWBT/OpenTrack matched lift baseline.
 2. Move remaining processor and normalization operations behind LeRobot; the shared SmolVLA/OpenPI Action Chunk proposal boundary is complete.
 3. Qualify a second mature policy under the same TaskSpec, seeds, and verifier.
 4. Run the three-TaskSpec qualification manifest and prove paraphrase invariance, counterfactual sensitivity, refusal, and constraint binding.
@@ -82,7 +82,7 @@ missing live dependency.
 7. Begin physical-G1 work only with read-only preflight, physical emergency stop, supervised workspace, and operator takeover.
 8. Verify or enable GitHub Private Vulnerability Reporting in repository settings; never redirect sensitive reports to public issues.
 
-1. 基于已完成的 20-Seed 基线，用受控动作、接触、时序与场景反事实定位抬升失败原因。
+1. 基于已完成的 20-Seed 基线，用受控动作、接触、时序与场景反事实定位抬升失败原因，并执行已锁定 OpenWBT/OpenTrack 版本的匹配抬升基线。
 2. 将剩余 Processor 与 Normalization 操作迁移到 LeRobot；SmolVLA/OpenPI 共用的 Action Chunk 提案边界已经完成。
 3. 让第二个成熟 Policy 在相同 TaskSpec、Seed 和 Verifier 下完成验收。
 4. 运行三个 TaskSpec 的语言准入集，并证明同义改写不变性、反事实敏感性、拒绝能力与约束绑定。
