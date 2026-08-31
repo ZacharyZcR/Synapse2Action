@@ -59,6 +59,7 @@ def run(
     video_path: Path | None,
     vla_overlay: bool = False,
     task_spec_path: Path | None = None,
+    groot_action_path: Path | None = None,
 ) -> dict[str, object]:
     os.environ.setdefault("MUJOCO_GL", "egl")
     try:
@@ -79,7 +80,7 @@ def run(
 
     projector = None
     task = None
-    if vla_overlay:
+    if vla_overlay or groot_action_path:
         sys.path.insert(0, str(project / "src"))
         from synapse2action.g1_vla import G1VLAActionProjector
         from synapse2action.task_spec import load_task_spec
@@ -100,6 +101,14 @@ def run(
     action_scale = np.asarray(config["actions"]["JointPositionAction"]["scale"], dtype=np.float64)
     step_dt = float(config["step_dt"])
     command = np.asarray([command_x, 0.0, 0.0], dtype=np.float32)
+    groot_proposal = None
+    if groot_action_path:
+        groot_evidence = json.loads(groot_action_path.read_text())
+        mapped = groot_evidence["mapped_first_action"]
+        groot_proposal = np.asarray(mapped["joint_position_rad"], dtype=np.float64)
+        command = np.asarray(mapped["navigation_command"], dtype=np.float32)
+        if groot_proposal.shape != (29,) or command.shape != (3,):
+            raise RuntimeError("mapped GR00T evidence has an invalid shape")
 
     model = mujoco.MjModel.from_xml_path(str(model_path))
     data = mujoco.MjData(model)
@@ -185,11 +194,14 @@ def run(
             action = session.run([output_name], {input_name: obs})[0].squeeze().astype(np.float32)
             target_dds[joint_map] = default + action_scale * action
             if projector and task:
-                phase = 2.0 * math.pi * simulation_time / 2.0
-                vla_target = target_dds.copy()
-                for offset, joint in enumerate(task.controller.joint_indices):
-                    direction = 1.0 if offset % 2 == 0 else -1.0
-                    vla_target[joint] += direction * 0.25 * math.sin(phase)
+                if groot_proposal is not None:
+                    vla_target = groot_proposal
+                else:
+                    phase = 2.0 * math.pi * simulation_time / 2.0
+                    vla_target = target_dds.copy()
+                    for offset, joint in enumerate(task.controller.joint_indices):
+                        direction = 1.0 if offset % 2 == 0 else -1.0
+                        vla_target[joint] += direction * 0.25 * math.sin(phase)
                 target_dds[:] = projector.project(target_dds, vla_target)
                 if projector.last_contribution_rad > 1e-6:
                     overlay_frames += 1
@@ -213,6 +225,7 @@ def run(
         "model_dofs": int(model.nu),
         "observation_width": 480,
         "action_width": int(action.size),
+        "velocity_command": command.tolist(),
         "vla_overlay_frames": overlay_frames,
         "maximum_vla_joint_delta_rad": maximum_overlay_rad,
     }
@@ -221,12 +234,15 @@ def run(
     commits = {"unitree_rl_lab": git_head(lab), "unitree_mujoco": git_head(simulator)}
     for name, actual in commits.items():
         verdict["checks"][f"{name}_commit"] = actual == lock[name]["commit"]
-    if vla_overlay:
+    if vla_overlay or groot_action_path:
         verdict["checks"]["vla_overlay_applied"] = overlay_frames > 0 and maximum_overlay_rad > 0
     verdict["passed"] = all(verdict["checks"].values())
     return {
         "schema_version": 1,
         "profile": (
+            "unitree-official-g1-29dof-groot-action-replay"
+            if groot_action_path
+            else
             "unitree-official-g1-29dof-vla-overlay-headless"
             if vla_overlay
             else "unitree-official-g1-29dof-velocity-headless"
@@ -242,6 +258,7 @@ def run(
             "config": str(config_path.relative_to(project)),
             "commits": commits,
             "task_spec": str(task_spec_path.relative_to(project)) if task_spec_path else None,
+            "groot_action_evidence": str(groot_action_path.relative_to(project)) if groot_action_path else None,
         },
     }
 
@@ -261,12 +278,26 @@ def main() -> None:
         help="apply a bounded deterministic arm/waist proposal through the production VLA projector",
     )
     parser.add_argument("--task-spec", type=Path, default=Path("experiments/tasks/g1_pick_place.json"))
+    parser.add_argument(
+        "--groot-action-evidence",
+        type=Path,
+        help="replay a mapped real GR00T action through the bounded projector",
+    )
     args = parser.parse_args()
     if args.duration <= 0:
         parser.error("--duration must be positive")
     project = args.project.resolve()
     video = None if args.video is None else (args.video if args.video.is_absolute() else project / args.video)
     task_spec = args.task_spec if args.task_spec.is_absolute() else project / args.task_spec
+    groot_action = (
+        None
+        if args.groot_action_evidence is None
+        else args.groot_action_evidence
+        if args.groot_action_evidence.is_absolute()
+        else project / args.groot_action_evidence
+    )
+    if args.vla_overlay and groot_action:
+        parser.error("--vla-overlay and --groot-action-evidence are mutually exclusive")
     if video:
         video.parent.mkdir(parents=True, exist_ok=True)
     try:
@@ -278,7 +309,8 @@ def main() -> None:
             args.minimum_distance,
             video,
             args.vla_overlay,
-            task_spec if args.vla_overlay else None,
+            task_spec if args.vla_overlay or groot_action else None,
+            groot_action,
         )
     except (OSError, RuntimeError, ValueError) as error:
         print(f"error: {error}", file=sys.stderr)

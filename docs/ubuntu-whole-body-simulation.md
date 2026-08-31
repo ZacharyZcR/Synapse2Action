@@ -129,6 +129,29 @@ python3 -m venv .venv
 贡献。该 profile 使用确定性的有界 proposal 来验证控制合成与稳定性，不包含
 真实 VLA inference，不证明语义理解、接触、抓取、负载搬运或放置。
 
+### 4.0.2 GR00T N1.6 real-action replay
+
+官方 WBC 环境使用 Python 3.10，项目 mapper 使用 Python 3.12，因此 action
+evidence 必须跨进程保存，不能把两套依赖强行装进同一解释器。为一次官方环境
+rollout 增加 `--action-output`，随后映射并回放：
+
+```bash
+PYTHONPATH=src python3 simulation/map_groot_action_evidence.py \
+  reports/simulation/groot-real-action-contract.json \
+  --output reports/simulation/groot-real-action-mapped.json
+
+.venv/bin/python simulation/run_unitree_29dof_velocity_smoke.py \
+  --duration 5 --minimum-distance 0.02 \
+  --groot-action-evidence reports/simulation/groot-real-action-mapped.json \
+  --video reports/simulation/unitree-29dof-groot-action-replay.mp4 \
+  --output reports/simulation/unitree-29dof-groot-action-stability.json
+```
+
+该 profile 证明真实 GR00T action 能通过 mapper/projector 进入匹配的 29DoF
+locomotion loop 并保持稳定。它是 captured-action replay，不是 inference 与
+physics 同时运行的在线闭环；`0.02 m` 只验证小导航命令产生可测响应，不能用来
+替代 locomotion profile 的 `1.0 m` 门槛或完整抓取验收。
+
 ### 4.1 安装训练/仿真 Python 环境
 
 ```bash

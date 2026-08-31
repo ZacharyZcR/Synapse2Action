@@ -15,6 +15,44 @@ ENV_NAME = "gr00tlocomanip_g1_sim/LMPnPAppleToPlateDC_G1_gear_wbc"
 MIN_GRASP_STEPS = 10
 
 
+class ActionEvidencePolicy:
+    def __init__(self, policy, output: Path) -> None:
+        self.policy = policy
+        self.output = output
+        self.recorded = False
+
+    def get_action(self, observation, options=None):
+        action, info = self.policy.get_action(observation, options)
+        if not self.recorded:
+            self._write(action)
+            self.recorded = True
+        return action, info
+
+    def reset(self, options=None):
+        return self.policy.reset(options)
+
+    def _write(self, action) -> None:
+        arrays = {key.removeprefix("action."): np.asarray(value) for key, value in action.items()}
+        first = {key: value[0, 0].tolist() for key, value in arrays.items()}
+        modalities = {
+            key: {
+                "shape": list(value.shape),
+                "finite": bool(np.isfinite(value).all()),
+                "minimum": float(value.min()),
+                "maximum": float(value.max()),
+            }
+            for key, value in arrays.items()
+        }
+        payload = {
+            "schema_version": 1,
+            "modalities": modalities,
+            "all_modalities_finite": all(item["finite"] for item in modalities.values()),
+            "first_action": first,
+        }
+        self.output.parent.mkdir(parents=True, exist_ok=True)
+        self.output.write_text(json.dumps(payload, indent=2) + "\n")
+
+
 def longest_true_run(values: list[bool]) -> tuple[int | None, int]:
     best_start = None
     best_length = 0
@@ -211,6 +249,7 @@ def main() -> int:
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--policy-client-host", default="127.0.0.1")
     parser.add_argument("--policy-client-port", type=int, default=5555)
+    parser.add_argument("--action-output", type=Path)
     args = parser.parse_args()
     if args.max_episode_steps <= 0:
         parser.error("--max-episode-steps must be positive")
@@ -241,6 +280,8 @@ def main() -> int:
         args.policy_client_host,
         args.policy_client_port,
     )
+    if args.action_output:
+        policy = ActionEvidencePolicy(policy, args.action_output)
     result = rollout_policy.run_rollout_gymnasium_policy(
         env_name=ENV_NAME,
         policy=policy,

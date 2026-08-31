@@ -34,6 +34,13 @@ class Unitree29DofVelocitySmokeTests(unittest.TestCase):
         self.assertIn('verdict["checks"]["vla_overlay_applied"]', source)
         self.assertIn('"maximum_vla_joint_delta_rad"', source)
 
+    def test_real_groot_action_replay_is_separate_from_synthetic_overlay(self) -> None:
+        source = (ROOT / "simulation/run_unitree_29dof_velocity_smoke.py").read_text()
+        self.assertIn('"--groot-action-evidence"', source)
+        self.assertIn('"unitree-official-g1-29dof-groot-action-replay"', source)
+        self.assertIn("mutually exclusive", source)
+        self.assertIn('"velocity_command": command.tolist()', source)
+
 
 if __name__ == "__main__":
     unittest.main()
