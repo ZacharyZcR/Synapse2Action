@@ -13,6 +13,11 @@ from time import sleep, time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import urlparse
 
+try:
+    from console_ui import enhance_console_html
+except ModuleNotFoundError:
+    from simulation.console_ui import enhance_console_html
+
 
 STAGES = (
     ("dataset", "Open EEG dataset"),
@@ -91,7 +96,7 @@ async function loadHistory(){const r=await fetch(api('/api/history'),{cache:'no-
 async function action(path){const r=await fetch(api(path),{method:'POST'});if(r.ok)poll()}async function poll(){try{const r=await fetch(api('/api/state'),{cache:'no-store'});if(r.ok)render(await r.json())}catch(e){}setTimeout(poll,500)}document.querySelector('#start').onclick=()=>{if(confirm(copy[lang].confirm))action('/api/run')};document.querySelector('#stop').onclick=()=>action('/api/stop');document.querySelector('#language').onclick=()=>{lang=lang==='zh'?'en':'zh';translate()};translate();poll();
 document.querySelector('#liveTab').onclick=showLive;document.querySelector('#replayTab').onclick=showReplay;document.querySelector('#runSelect').onchange=renderReplay;loadHistory();
 </script></body></html>"""
-    return html
+    return enhance_console_html(html)
 
 
 class ExperimentController:

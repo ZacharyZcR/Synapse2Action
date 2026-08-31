@@ -41,6 +41,22 @@ class ExperimentConsoleTests(unittest.TestCase):
         self.assertIn("prefers-reduced-motion", html)
         self.assertNotIn("https://", html)
 
+    def test_console_exposes_operations_overview_and_accessible_feedback(self) -> None:
+        html = MODULE.console_html()
+
+        self.assertIn('class="skip-link"', html)
+        self.assertIn('id="main-content"', html)
+        self.assertIn('class="overview"', html)
+        self.assertIn('id="runtimeMetric"', html)
+        self.assertIn('id="policyMetric"', html)
+        self.assertIn('role="progressbar"', html)
+        self.assertIn('aria-valuenow="0"', html)
+        self.assertIn('role="status"', html)
+        self.assertIn('aria-busy', html)
+        self.assertIn("@media(max-width:390px)", html)
+        self.assertIn("@media(prefers-reduced-motion:reduce)", html)
+        self.assertNotIn("linear infinite", html)
+
     def test_controller_starts_with_eight_pending_stages(self) -> None:
         controller = MODULE.ExperimentController(ROOT, "http://127.0.0.1:18765/v1", "/model", "test")
         state = controller.snapshot()
