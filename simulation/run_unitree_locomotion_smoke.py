@@ -36,10 +36,11 @@ def run(
     minimum_height: float,
     minimum_distance: float,
     video_path: Path | None = None,
+    whole_body: bool = False,
+    arm_motion: bool = False,
 ) -> dict[str, object]:
     os.environ.setdefault("MUJOCO_GL", "egl")
     try:
-        import imageio.v2 as imageio
         import mujoco
         import numpy as np
         import torch
@@ -59,6 +60,13 @@ def run(
     kp = np.asarray(config["kps"], dtype=np.float32)
     kd = np.asarray(config["kds"], dtype=np.float32)
     default = np.asarray(config["default_angles"], dtype=np.float32)
+    if whole_body:
+        kp = np.concatenate([kp, np.asarray([300, 300, 300, 90, 60, 20, 60, 20, 20, 20, 90, 60, 20, 60, 20, 20, 20])])
+        kd = np.concatenate([kd, np.asarray([10, 10, 10, 2, 2, 1, 1, 1, 1, 1, 2, 2, 1, 1, 1, 1, 1])])
+        default = np.concatenate([
+            default,
+            np.asarray([0, 0, 0, 0.2, 0.3, 0, 1.28, 0, 0, 0, 0.2, -0.3, 0, 1.28, 0, 0, 0]),
+        ])
     command = np.asarray(config["cmd_init"], dtype=np.float32)
     command_scale = np.asarray(config["cmd_scale"], dtype=np.float32)
     action_scale = float(config["action_scale"])
@@ -67,7 +75,11 @@ def run(
     action = np.zeros(num_actions, dtype=np.float32)
     target = default.copy()
 
-    model = mujoco.MjModel.from_xml_path(str(model_path))
+    if whole_body:
+        selected_model_path = vendor / "resources/robots/g1_description/g1_29dof.xml"
+    else:
+        selected_model_path = model_path
+    model = mujoco.MjModel.from_xml_path(str(selected_model_path))
     data = mujoco.MjData(model)
     model.opt.timestep = dt
     policy = torch.jit.load(str(policy_path), map_location="cpu")
@@ -75,7 +87,13 @@ def run(
     minimum_z = math.inf
     renderer = mujoco.Renderer(model, height=368, width=640) if video_path else None
     camera = mujoco.MjvCamera() if video_path else None
-    writer = imageio.get_writer(video_path, fps=30, codec="libx264", quality=8) if video_path else None
+    writer = None
+    if video_path:
+        try:
+            import imageio.v2 as imageio
+        except ImportError as error:
+            raise RuntimeError("video capture requires imageio") from error
+        writer = imageio.get_writer(video_path, fps=30, codec="libx264", quality=8)
     video_frames = 0
     next_frame_time = 0.0
 
@@ -97,8 +115,8 @@ def run(
             if step % decimation:
                 continue
 
-            q = (data.qpos[7:] - default) * float(config["dof_pos_scale"])
-            dq = data.qvel[6:] * float(config["dof_vel_scale"])
+            q = (data.qpos[7:19] - default[:12]) * float(config["dof_pos_scale"])
+            dq = data.qvel[6:18] * float(config["dof_vel_scale"])
             qw, qx, qy, qz = data.qpos[3:7]
             gravity = np.asarray(
                 [2 * (-qz * qx + qw * qy), -2 * (qz * qy + qw * qx), 1 - 2 * (qw * qw + qz * qz)],
@@ -114,7 +132,13 @@ def run(
             obs[45:47] = [math.sin(2 * math.pi * phase), math.cos(2 * math.pi * phase)]
             with torch.inference_mode():
                 action = policy(torch.from_numpy(obs).unsqueeze(0)).numpy().squeeze()
-            target = action * action_scale + default
+            target[:12] = action * action_scale + default[:12]
+            if arm_motion:
+                arm_phase = 2 * math.pi * simulation_time / 2.0
+                target[15] = default[15] + 0.25 * math.sin(arm_phase)
+                target[18] = default[18] + 0.20 * math.sin(arm_phase + math.pi / 2)
+                target[22] = default[22] - 0.25 * math.sin(arm_phase)
+                target[25] = default[25] - 0.20 * math.sin(arm_phase + math.pi / 2)
     finally:
         if writer:
             writer.close()
@@ -131,6 +155,8 @@ def run(
         "lateral_distance_m": float(data.qpos[1]),
         "finite": all(math.isfinite(value) for value in values),
         "video_frames": video_frames,
+        "model_dofs": int(model.nu),
+        "upper_body_motion": arm_motion,
     }
     verdict = evaluate(metrics, minimum_height, minimum_distance)
     lock = json.loads((project / "simulation/whole_body.lock.json").read_text())
@@ -140,7 +166,13 @@ def run(
     verdict["passed"] = all(verdict["checks"].values())
     return {
         "schema_version": 1,
-        "profile": "unitree-official-g1-locomotion-headless",
+        "profile": (
+            "unitree-g1-29dof-partition-smoke"
+            if arm_motion
+            else "unitree-g1-29dof-static-upper-smoke"
+            if whole_body
+            else "unitree-official-g1-locomotion-headless"
+        ),
         "passed": verdict["passed"],
         "checks": verdict["checks"],
         "thresholds": {
@@ -154,7 +186,7 @@ def run(
             "expected_commit": expected_commit,
             "actual_commit": actual_commit,
             "policy": str(policy_path.relative_to(project)),
-            "model": str(model_path.relative_to(project)),
+            "model": str((vendor / "resources/robots/g1_description/g1_29dof.xml" if whole_body else model_path).relative_to(project)),
             "config": str(config_path.relative_to(project)),
         },
     }
@@ -168,15 +200,31 @@ def main() -> None:
     parser.add_argument("--minimum-distance", type=float, default=1.0)
     parser.add_argument("--output", type=Path, default=Path("reports/simulation/unitree-locomotion-smoke.json"))
     parser.add_argument("--video", type=Path, help="record the same rollout as a 640x368 H.264 MP4")
+    parser.add_argument(
+        "--whole-body",
+        action="store_true",
+        help="negative transfer experiment: run the 12-DoF policy on the official 29-DoF model",
+    )
+    parser.add_argument("--arm-motion", action="store_true", help="exercise bounded arm targets; requires --whole-body")
     args = parser.parse_args()
     if args.duration <= 0:
         parser.error("--duration must be positive")
+    if args.arm_motion and not args.whole_body:
+        parser.error("--arm-motion requires --whole-body")
     try:
         project = args.project.resolve()
         video = None if args.video is None else (args.video if args.video.is_absolute() else project / args.video)
         if video:
             video.parent.mkdir(parents=True, exist_ok=True)
-        report = run(project, args.duration, args.minimum_height, args.minimum_distance, video)
+        report = run(
+            project,
+            args.duration,
+            args.minimum_height,
+            args.minimum_distance,
+            video,
+            args.whole_body,
+            args.arm_motion,
+        )
     except (OSError, RuntimeError, ValueError) as error:
         print(f"error: {error}", file=sys.stderr)
         raise SystemExit(2) from error

@@ -17,6 +17,12 @@ class UnitreeLocomotionSmokeTests(unittest.TestCase):
         source = (ROOT / "simulation/run_unitree_locomotion_smoke.py").read_text()
         self.assertIn('parser.add_argument("--video"', source)
         self.assertIn('"video_frames": video_frames', source)
+        self.assertIn("if video_path:", source)
+
+    def test_labels_29dof_path_as_negative_transfer_experiment(self) -> None:
+        source = (ROOT / "simulation/run_unitree_locomotion_smoke.py").read_text()
+        self.assertIn("negative transfer experiment", source)
+        self.assertIn('"unitree-g1-29dof-static-upper-smoke"', source)
 
     def test_accepts_stable_finite_walk(self) -> None:
         verdict = MODULE.evaluate(
