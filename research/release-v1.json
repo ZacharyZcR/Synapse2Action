@@ -45,8 +45,8 @@
     {
       "collection": "protocols",
       "path": "docs/ubuntu-whole-body-simulation.md",
-      "sha256": "aef183a1723f3f0dae355d39688802da2885d9417132c4c2085a97ad7af82b31",
-      "size_bytes": 8443
+      "sha256": "d88dee430c8b84cd821cfb3f35c4c5773e5df5dc59a167e48dbc3a45c5bc4e61",
+      "size_bytes": 12262
     },
     {
       "collection": "protocols",
@@ -465,11 +465,11 @@
     {
       "collection": "dependency_locks",
       "path": "simulation/whole_body.lock.json",
-      "sha256": "7a57224e0ea2ea58f33133c77d4bb8ec1f140cb7428529d332a86f099acb6d58",
-      "size_bytes": 478
+      "sha256": "95443421e174c44975b240302c5411de25afdf53c493000bd4b33dc45d8bea98",
+      "size_bytes": 1091
     }
   ],
-  "release_digest": "044f8411b3a0a41ddfeaf43b6b5f6f2ccf188322d080658e0288086fe8826ac7",
+  "release_digest": "16f8665e9b86021093a969a01e637a4288752396c7a2e286ef5c2f05493079d5",
   "release_id": "synapse2action-research-assets-v1",
   "schema_version": 1,
   "source_catalog": "research/release-source.json",
