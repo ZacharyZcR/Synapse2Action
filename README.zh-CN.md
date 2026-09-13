@@ -4,7 +4,7 @@
 
 [English](README.md) · 简体中文
 
-[快速开始](#快速开始) · [架构](#架构) · [文档](#文档) · [参与贡献](CONTRIBUTING.md) · [MIT 许可证](LICENSE)
+[快速开始](#快速开始) · [架构](#架构) · [文档](#文档) · [参考文献](#致谢与参考文献) · [引用本项目](#引用-synapse2action) · [参与贡献](CONTRIBUTING.md) · [MIT 许可证](LICENSE)
 
 Synapse2Action（念动）是连接脑机接口、语言规划与机器人控制的开源研究框架。它将稀疏的人类意图转化为具体计划，让任务能够被审阅、确认、执行，并通过实测结果验收。
 
@@ -136,6 +136,51 @@ PYTHONPATH=src python3 simulation/run_cpu_ci.py --report reports/cpu-ci.json
 4. 开始受监督的 G1 真机预检，再逐步通过独立验证的执行门槛。
 
 详细里程碑见[交付计划](docs/industrialization-gap.md#active-delivery-plan--当前交付路线)。
+
+## 致谢与参考文献
+
+Synapse2Action 建立在开源机器人与生物信号软件之上，并参考了下列研究。感谢这些项目的作者与维护者。具体集成状态及版本锁定信息见[完整参考材料与依赖登记](docs/references.md)。
+
+### 上游仓库
+
+| 领域 | 仓库与资产 | 在本项目中的作用 |
+| --- | --- | --- |
+| 机器人学习 | [LeRobot](https://github.com/huggingface/lerobot)、[SmolVLA](https://huggingface.co/lerobot/smolvla_base) | 数据集、训练与策略运行时基础设施。 |
+| 人形 VLA | [Isaac GR00T](https://github.com/NVIDIA/Isaac-GR00T)、[GR00T Whole-Body Control](https://github.com/NVlabs/GR00T-WholeBodyControl)、[GEAR-SONIC](https://huggingface.co/nvidia/GEAR-SONIC) | VLA 与全身控制研究链路；完整 SONIC 链路仍待完成。 |
+| 替代策略 | [OpenPI](https://github.com/Physical-Intelligence/openpi) | 研究适配器与策略服务参考。 |
+| 机器人接口 | [Unitree SDK2](https://github.com/unitreerobotics/unitree_sdk2)、[SDK2 Python](https://github.com/unitreerobotics/unitree_sdk2_python)、[unitree_mujoco](https://github.com/unitreerobotics/unitree_mujoco) | G1 指令与状态契约、仿真桥接。 |
+| 移动与跟踪 | [unitree_rl_lab](https://github.com/unitreerobotics/unitree_rl_lab)、[unitree_rl_gym](https://github.com/unitreerobotics/unitree_rl_gym)、[OpenWBT](https://github.com/GalaxyGeneralRobotics/OpenWBT)、[OpenTrack](https://github.com/GalaxyGeneralRobotics/OpenTrack) | 移动控制基线与已暂存的全身控制对照候选。 |
+| 仿真与中间件 | [MuJoCo](https://github.com/google-deepmind/mujoco)、[ROS 2 / rclpy](https://github.com/ros2/rclpy)、[Cyclone DDS](https://github.com/eclipse-cyclonedds/cyclonedds) | 物理仿真、机器人中间件与传输。 |
+| EEG 与采集 | [BrainFlow](https://github.com/brainflow-dev/brainflow)、[Lab Streaming Layer](https://github.com/sccn/labstreaminglayer)、[WFDB Python](https://github.com/MIT-LCP/wfdb-python)、[MAMEM SSVEP 数据](https://physionet.org/content/mssvepdb/) | 采集、流同步与离线 EEG 实验。 |
+
+### 主要论文
+
+- [SmolVLA: A Vision-Language-Action Model for Affordable and Efficient Robotics](https://arxiv.org/abs/2506.01844) — 紧凑 VLA 与异步推理。
+- [GR00T N1: An Open Foundation Model for Generalist Humanoid Robots](https://arxiv.org/abs/2503.14734) — 人形 VLA 架构。
+- [SONIC: Supersizing Motion Tracking for Natural Humanoid Whole-Body Control](https://arxiv.org/abs/2511.07820) — 运动跟踪与全身控制。
+- [π0](https://arxiv.org/abs/2410.24164) 与 [π0.5](https://arxiv.org/abs/2504.16054) — 通用动作策略与开放世界泛化。
+- [Unleashing Humanoid Reaching Potential via Real-world-Ready Skill Space](https://arxiv.org/abs/2505.10918) 与 [Track Any Motions under Any Disturbances](https://arxiv.org/abs/2509.13833) — 全身技能空间与运动跟踪参考。
+- [RoboArena: Distributed Real-World Evaluation of Generalist Robot Policies](https://proceedings.mlr.press/v305/atreya25a.html) — 分布式评估方法。
+- [Filter bank canonical correlation analysis for implementing a high-speed SSVEP-based brain–computer interface](https://doi.org/10.1088/1741-2560/12/4/046008) — FBCCA 解码方法。
+
+其他软件库、数据集与设计参考见[完整登记表](docs/references.md)。请根据实际使用的组件和数据引用对应上游工作；列入此处不表示本项目已复现其结果，也不代表获得其作者背书。
+
+## 引用 Synapse2Action
+
+如果在研究中使用本框架，请使用引用键 **`zacharyzcr2026synapse2action`** 引用本软件。[CITATION.cff](CITATION.cff) 提供引用元数据，也可下载 [BibTeX 条目](CITATION.bib)：
+
+```bibtex
+@misc{zacharyzcr2026synapse2action,
+  author       = {ZacharyZcR and {Synapse2Action contributors}},
+  title        = {{Synapse2Action}: From Neural Intent to Safe, Verifiable Robotic Action},
+  year         = {2026},
+  howpublished = {GitHub},
+  url          = {https://github.com/ZacharyZcR/Synapse2Action},
+  note         = {Research software}
+}
+```
+
+项目以仓库 URL 标识，目前没有 DOI。为保证可复现性，请同时记录实验使用的精确 Git Commit 或 Release Tag。
 
 ## 参与贡献
 

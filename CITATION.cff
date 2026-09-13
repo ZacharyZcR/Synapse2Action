@@ -1,0 +1,17 @@
+cff-version: 1.2.0
+message: "If you use Synapse2Action in your research, please cite this software and the upstream works relevant to your experiment."
+type: software
+title: "Synapse2Action: From Neural Intent to Safe, Verifiable Robotic Action"
+authors:
+  - family-names: "ZacharyZcR"
+  - name: "Synapse2Action contributors"
+repository-code: "https://github.com/ZacharyZcR/Synapse2Action"
+url: "https://github.com/ZacharyZcR/Synapse2Action"
+license: MIT
+keywords:
+  - brain-computer interface
+  - EEG
+  - shared autonomy
+  - vision-language-action
+  - robotics
+  - reproducible research

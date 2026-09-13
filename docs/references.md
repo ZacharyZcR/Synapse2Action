@@ -47,6 +47,7 @@ This register records the libraries, models, datasets, papers, and external syst
 | Unitree SDK2 C++ | Integrated / 已集成 | Official low-level command and state contract | `9754cd153af3da471b0fe5f3aa535e426fb11db3` | [unitree_sdk2](https://github.com/unitreerobotics/unitree_sdk2) |
 | unitree_mujoco | Integrated / 已集成 | Official SDK2-to-MuJoCo bridge | `4134cb5dc7ff1ba7f484deda48b5274b58694519` | [unitree_mujoco](https://github.com/unitreerobotics/unitree_mujoco) |
 | unitree_rl_lab | Integrated / 已集成 | Exported G1 lower-body velocity policy and deployment configuration | `4960b84732b0c2ec593dccbfe963fda1bcd7b1e3` | [unitree_rl_lab](https://github.com/unitreerobotics/unitree_rl_lab) |
+| unitree_rl_gym | Integrated / 已集成 | Pinned G1 locomotion policy and MuJoCo smoke baseline | `276801e46c5d433564f24658bac64f254b7d2d4b` | [unitree_rl_gym](https://github.com/unitreerobotics/unitree_rl_gym) |
 | Cyclone DDS | Integrated / 已集成 | DDS transport used by the Unitree simulation/control path | `5041f3560c088c99e5088b2b8520b69169621196` | [eclipse-cyclonedds](https://github.com/eclipse-cyclonedds/cyclonedds) |
 | ROS 2 / rclpy | Integrated / 已集成 | Optional ROS 2 transport and message boundary | Deployment-managed | [ros2/rclpy](https://github.com/ros2/rclpy) |
 | NVIDIA Isaac GR00T | Staged / 已暂存 | Candidate humanoid VLA backend; full Ubuntu/CUDA path remains unaccepted | `51d4c89f72fda44cbf77285c6a8114b52676b8a1` | [NVIDIA/Isaac-GR00T](https://github.com/NVIDIA/Isaac-GR00T) |
@@ -86,16 +87,17 @@ These names appear in project planning but are not current dependencies. They re
 |---|---|---|---|
 | *SmolVLA: A Vision-Language-Action Model for Affordable and Efficient Robotics* | Integrated / 已集成 | Compact VLA, flow-matching action expert, community LeRobot data, asynchronous inference motivation | [arXiv:2506.01844](https://arxiv.org/abs/2506.01844) |
 | *LeRobot: State-of-the-art Machine Learning for Real-World Robotics in Pytorch* | Integrated / 已集成 | Reproducible datasets, policy training, evaluation, and hardware adapters | [LeRobot repository](https://github.com/huggingface/lerobot) |
-| *NVIDIA Isaac GR00T N1: An Open Foundation Model for Generalist Humanoid Robots* | Staged / 已暂存 | Humanoid VLA architecture and cross-embodiment training reference | [arXiv:2503.14734](https://arxiv.org/abs/2503.14734) |
-| *SONIC: Supersizing Motion Tracking for Natural Humanoid Whole-Body Control* | Staged / 已暂存 | Shared latent motion representation and whole-body control | [Project and paper](https://nvlabs.github.io/GEAR-SONIC/) |
+| *GR00T N1: An Open Foundation Model for Generalist Humanoid Robots* | Staged / 已暂存 | Humanoid VLA architecture and cross-embodiment training reference | [arXiv:2503.14734](https://arxiv.org/abs/2503.14734) |
+| *SONIC: Supersizing Motion Tracking for Natural Humanoid Whole-Body Control* | Staged / 已暂存 | Shared latent motion representation and whole-body control | [arXiv:2511.07820](https://arxiv.org/abs/2511.07820); [project](https://nvlabs.github.io/GEAR-SONIC/) |
 | *Unleashing Humanoid Reaching Potential via Real-world-Ready Skill Space* | Reference / 仅参考 | OpenWBT/R2S2 whole-body skill-space decomposition and real-world teleoperation design | [arXiv:2505.10918](https://arxiv.org/abs/2505.10918) |
 | *Track Any Motions under Any Disturbances* | Reference / 仅参考 | OpenTrack specialist teachers, DAgger generalist distillation, and dynamics adapter design | [arXiv:2509.13833](https://arxiv.org/abs/2509.13833) |
-| *π0: A Vision-Language-Action Flow Model for General Robot Control* | Reference / 仅参考 | Flow-matching VLA and cross-embodiment policy design | [Official paper](https://www.physicalintelligence.company/download/pi0.pdf) |
-| *π0.5: A Vision-Language-Action Model with Open-World Generalization* | Reference / 仅参考 | Unified high-level subtask prediction and low-level action inference | [Official paper](https://www.physicalintelligence.company/download/pi05.pdf) |
-| *RoboArena: Distributed Real-World Evaluation of Generalist Robot Policies* | Reference / 仅参考 | Multi-site physical evaluation methodology and evidence that real-world policy ranking requires repeated, distributed trials | [Proceedings of Machine Learning Research](https://proceedings.mlr.press/v270/karen25a.html) |
+| *π0: A Vision-Language-Action Flow Model for General Robot Control* | Reference / 仅参考 | Flow-matching VLA and cross-embodiment policy design | [arXiv:2410.24164](https://arxiv.org/abs/2410.24164) |
+| *π0.5: A Vision-Language-Action Model with Open-World Generalization* | Reference / 仅参考 | Unified high-level subtask prediction and low-level action inference | [arXiv:2504.16054](https://arxiv.org/abs/2504.16054) |
+| *RoboArena: Distributed Real-World Evaluation of Generalist Robot Policies* | Reference / 仅参考 | Multi-site physical evaluation methodology and evidence that real-world policy ranking requires repeated, distributed trials | [Proceedings of Machine Learning Research](https://proceedings.mlr.press/v305/atreya25a.html) |
 | *OpenVLA: An Open-Source Vision-Language-Action Model* | Reference / 仅参考 | Generalist language-conditioned action modeling and comparison baseline | [openvla/openvla](https://github.com/openvla/openvla) |
 | *VoxPoser: Composable 3D Value Maps for Robotic Manipulation with Language Models* | Reference / 仅参考 | Language-conditioned geometric planning and explicit motion-planner separation | [huangwl18/VoxPoser](https://github.com/huangwl18/VoxPoser) |
-| *Canonical Correlation Analysis* and Filter-Bank CCA for SSVEP | Integrated / 已集成 | Classical SSVEP decoding baseline and primary filter-bank decoder | [CCA overview](https://doi.org/10.2307/2333955) |
+| *Relations Between Two Sets of Variates* | Integrated / 已集成 | Canonical correlation analysis underlying the SSVEP baseline | [Hotelling, 1936](https://doi.org/10.2307/2333955) |
+| *Filter bank canonical correlation analysis for implementing a high-speed SSVEP-based brain–computer interface* | Integrated / 已集成 | Primary filter-bank CCA decoding method | [Chen et al., 2015](https://doi.org/10.1088/1741-2560/12/4/046008) |
 
 ## Design references and related systems / 设计参考与相关系统
 
@@ -131,3 +133,22 @@ These names appear in project planning but are not current dependencies. They re
 Every new external library, model, dataset, paper, or materially reused project must be added here in the same change that introduces it. Record the relationship honestly: reading a paper is not integration, a successful import is not a closed-loop result, simulation is not physical evidence, and an upstream benchmark is not a Synapse2Action result.
 
 以后每次引入外部库、模型、数据集、论文或实质参考项目，必须在同一改动中登记。关系必须如实标注：读过论文不等于完成集成，成功 import 不等于闭环通过，仿真不等于真机证据，上游 Benchmark 也不属于 Synapse2Action 自身成绩。
+
+## Cite Synapse2Action / 引用本项目
+
+Use the software citation in [CITATION.cff](../CITATION.cff) or the downloadable
+[BibTeX entry](../CITATION.bib), with citation key
+`zacharyzcr2026synapse2action`. The project is identified by its
+[repository URL](https://github.com/ZacharyZcR/Synapse2Action); it has no assigned
+DOI. Include the Git commit or release tag used in each experiment.
+
+引用本项目时，请使用 [CITATION.cff](../CITATION.cff) 或
+[BibTeX 条目](../CITATION.bib)，引用键为 `zacharyzcr2026synapse2action`。
+项目使用仓库 URL 标识，尚无 DOI；每项实验还应注明使用的 Git Commit 或 Release Tag。
+
+Citing Synapse2Action does not replace citations to the upstream software,
+models, papers, or datasets used by an experiment. Follow each upstream
+project's own citation instructions and license terms.
+
+引用 Synapse2Action 不能替代对实验实际使用的上游软件、模型、论文和数据集的引用。
+请遵循各上游项目自己的引用说明与许可条款。

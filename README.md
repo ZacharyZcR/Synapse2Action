@@ -4,7 +4,7 @@
 
 English · [简体中文](README.zh-CN.md)
 
-[Quick start](#quick-start) · [Architecture](#architecture) · [Documentation](#documentation) · [Contributing](CONTRIBUTING.md) · [MIT License](LICENSE)
+[Quick start](#quick-start) · [Architecture](#architecture) · [Documentation](#documentation) · [References](#acknowledgments-and-references) · [Citation](#citing-synapse2action) · [Contributing](CONTRIBUTING.md) · [MIT License](LICENSE)
 
 Synapse2Action is an open-source research framework connecting brain-computer interfaces, language planning, and robot control. It turns sparse human intent into a concrete plan that can be reviewed, confirmed, executed, and checked against measured results.
 
@@ -136,6 +136,51 @@ Large model weights, third-party source trees, raw EEG derivatives, and local si
 4. Begin supervised physical-G1 preflight, then progress through separately verified execution gates.
 
 Detailed milestones live in the [delivery plan](docs/industrialization-gap.md#active-delivery-plan--当前交付路线).
+
+## Acknowledgments and references
+
+Synapse2Action builds on open-source robotics and biosignal software, and learns from the research below. We thank their authors and maintainers. Integration status and exact version pins are recorded in the [full reference and dependency register](docs/references.md).
+
+### Upstream repositories
+
+| Area | Repositories and assets | Role in this project |
+| --- | --- | --- |
+| Robot learning | [LeRobot](https://github.com/huggingface/lerobot), [SmolVLA](https://huggingface.co/lerobot/smolvla_base) | Dataset, training, and policy runtime infrastructure. |
+| Humanoid VLA | [Isaac GR00T](https://github.com/NVIDIA/Isaac-GR00T), [GR00T Whole-Body Control](https://github.com/NVlabs/GR00T-WholeBodyControl), [GEAR-SONIC](https://huggingface.co/nvidia/GEAR-SONIC) | Research VLA and whole-body control paths; the complete SONIC path remains pending. |
+| Alternative policies | [OpenPI](https://github.com/Physical-Intelligence/openpi) | Research adapter and policy-serving reference. |
+| Robot interface | [Unitree SDK2](https://github.com/unitreerobotics/unitree_sdk2), [SDK2 Python](https://github.com/unitreerobotics/unitree_sdk2_python), [unitree_mujoco](https://github.com/unitreerobotics/unitree_mujoco) | G1 command/state contracts and simulation bridge. |
+| Locomotion and tracking | [unitree_rl_lab](https://github.com/unitreerobotics/unitree_rl_lab), [unitree_rl_gym](https://github.com/unitreerobotics/unitree_rl_gym), [OpenWBT](https://github.com/GalaxyGeneralRobotics/OpenWBT), [OpenTrack](https://github.com/GalaxyGeneralRobotics/OpenTrack) | Locomotion baselines and staged whole-body comparison candidates. |
+| Simulation and middleware | [MuJoCo](https://github.com/google-deepmind/mujoco), [ROS 2 / rclpy](https://github.com/ros2/rclpy), [Cyclone DDS](https://github.com/eclipse-cyclonedds/cyclonedds) | Physics, robot middleware, and transport. |
+| EEG and acquisition | [BrainFlow](https://github.com/brainflow-dev/brainflow), [Lab Streaming Layer](https://github.com/sccn/labstreaminglayer), [WFDB Python](https://github.com/MIT-LCP/wfdb-python), [MAMEM SSVEP data](https://physionet.org/content/mssvepdb/) | Acquisition, stream synchronization, and offline EEG experiments. |
+
+### Selected papers
+
+- [SmolVLA: A Vision-Language-Action Model for Affordable and Efficient Robotics](https://arxiv.org/abs/2506.01844) — compact VLA and asynchronous inference.
+- [GR00T N1: An Open Foundation Model for Generalist Humanoid Robots](https://arxiv.org/abs/2503.14734) — humanoid VLA architecture.
+- [SONIC: Supersizing Motion Tracking for Natural Humanoid Whole-Body Control](https://arxiv.org/abs/2511.07820) — motion tracking and whole-body control.
+- [π0](https://arxiv.org/abs/2410.24164) and [π0.5](https://arxiv.org/abs/2504.16054) — generalist action policies and open-world generalization.
+- [Unleashing Humanoid Reaching Potential via Real-world-Ready Skill Space](https://arxiv.org/abs/2505.10918) and [Track Any Motions under Any Disturbances](https://arxiv.org/abs/2509.13833) — whole-body skill spaces and motion tracking references.
+- [RoboArena: Distributed Real-World Evaluation of Generalist Robot Policies](https://proceedings.mlr.press/v305/atreya25a.html) — distributed evaluation methodology.
+- [Filter bank canonical correlation analysis for implementing a high-speed SSVEP-based brain–computer interface](https://doi.org/10.1088/1741-2560/12/4/046008) — the FBCCA decoding method.
+
+Additional libraries, datasets, and design references are listed in the [full register](docs/references.md). Please cite the upstream work relevant to the components and data you use; listing a work here does not imply reproduction of its results or endorsement by its authors.
+
+## Citing Synapse2Action
+
+If you use this framework in research, please cite the software using the key **`zacharyzcr2026synapse2action`**. Citation metadata is available in [CITATION.cff](CITATION.cff), with a downloadable [BibTeX entry](CITATION.bib):
+
+```bibtex
+@misc{zacharyzcr2026synapse2action,
+  author       = {ZacharyZcR and {Synapse2Action contributors}},
+  title        = {{Synapse2Action}: From Neural Intent to Safe, Verifiable Robotic Action},
+  year         = {2026},
+  howpublished = {GitHub},
+  url          = {https://github.com/ZacharyZcR/Synapse2Action},
+  note         = {Research software}
+}
+```
+
+The repository URL identifies the project; no DOI has been assigned. For reproducibility, also record the exact Git commit or release tag used in your experiment.
 
 ## Contributing
 
