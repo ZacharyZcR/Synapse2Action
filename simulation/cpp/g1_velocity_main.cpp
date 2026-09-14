@@ -1,3 +1,10 @@
+// SPDX-License-Identifier: Apache-2.0
+// Adapted from unitreerobotics/unitree_rl_lab at 4960b84732b0c2ec593dccbfe963fda1bcd7b1e3:
+// deploy/robots/g1_29dof/main.cpp
+// Modified for Synapse2Action in 2026: simulation startup, odometry-driven
+// velocity commands, target tracking, and obstacle detours.
+// See THIRD_PARTY_NOTICES.md and LICENSES/Apache-2.0.txt in the repository root.
+
 #include "FSM/CtrlFSM.h"
 #include "FSM/State_RLBase.h"
 #include "Types.h"

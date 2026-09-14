@@ -4,7 +4,7 @@
   <version>0.1.0</version>
   <description>Gazebo Harmonic navigation simulation for Synapse2Action.</description>
   <maintainer email="maintainers@synapse2action.invalid">Synapse2Action maintainers</maintainer>
-  <license>Apache-2.0</license>
+  <license>MIT</license>
 
   <buildtool_depend>ament_python</buildtool_depend>
   <exec_depend>geometry_msgs</exec_depend>

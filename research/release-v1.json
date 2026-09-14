@@ -465,11 +465,11 @@
     {
       "collection": "dependency_locks",
       "path": "simulation/whole_body.lock.json",
-      "sha256": "95443421e174c44975b240302c5411de25afdf53c493000bd4b33dc45d8bea98",
-      "size_bytes": 1091
+      "sha256": "88182bf6d1d40fda5c6419b649f42a5a590c83fb4a2aec7bf5c4241cd8cdb582",
+      "size_bytes": 1089
     }
   ],
-  "release_digest": "16f8665e9b86021093a969a01e637a4288752396c7a2e286ef5c2f05493079d5",
+  "release_digest": "37925f173434b5335350c592d9ecf69049387619474bf52fbb3e278458f95e9e",
   "release_id": "synapse2action-research-assets-v1",
   "schema_version": 1,
   "source_catalog": "research/release-source.json",

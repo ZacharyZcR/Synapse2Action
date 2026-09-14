@@ -20,7 +20,7 @@
   },
   "unitree_rl_lab": {
     "commit": "4960b84732b0c2ec593dccbfe963fda1bcd7b1e3",
-    "license": "BSD-3-Clause",
+    "license": "Apache-2.0",
     "repository": "https://github.com/unitreerobotics/unitree_rl_lab.git"
   },
   "unitree_mujoco": {

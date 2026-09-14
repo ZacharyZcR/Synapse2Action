@@ -190,6 +190,7 @@ Synapse2Action 建立在开源机器人与生物信号软件之上，并参考�
 
 ## 许可证
 
-Synapse2Action 使用 [MIT 许可证](LICENSE)。
+Synapse2Action 原创代码使用 [MIT 许可证](LICENSE)。
+改编的 Unitree C++ 控制器以 Apache-2.0 分发，来源与随附许可证见[第三方声明](THIRD_PARTY_NOTICES.md)。
 
 第三方代码、数据集、模型权重与记录仍遵循各自的许可证及条款。引用或集成这些资产，不会将其重新许可为 MIT。

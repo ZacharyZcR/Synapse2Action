@@ -14,16 +14,24 @@ treated as deployable.
 
 Do not include exploit details, credentials, human recordings, robot network
 addresses, or unsafe actuation procedures in a public issue. Use GitHub's
-private vulnerability-reporting form for this repository when it is available.
+private vulnerability-reporting [form](https://github.com/ZacharyZcR/Synapse2Action/security/advisories/new)
+for this repository when it is available.
 If the form is unavailable, contact the repository owner through an existing
 trusted private channel and disclose only the minimum information needed to
-establish contact. The API check performed on 2026-08-31 returned `404`, so the
-private reporting feature is not currently verifiable from this environment.
+establish contact. GitHub provides this feature for public repositories;
+a `404` while the repository is private does not establish an enablement failure.
+When making the repository public, maintainers must enable private reporting
+and verify that the form is accessible before advertising it as available.
 
 禁止在公开 Issue 中包含利用细节、凭据、真人记录、机器人网络地址或危险驱动
-步骤。GitHub Private Vulnerability Reporting 可用时应优先使用；若不可用，
+步骤。GitHub Private Vulnerability Reporting 的[私密报告入口](https://github.com/ZacharyZcR/Synapse2Action/security/advisories/new)
+可用时应优先使用；若不可用，
 通过已有可信私密渠道联系仓库所有者，并只发送建立联系所需的最少信息。
-2026-08-31 的 API 检查返回 `404`，因此当前环境无法验证私密报告功能已启用。
+GitHub 面向公开仓库提供此功能；仓库处于 Private 时的 `404` 不足以判定启用失败。
+维护者将仓库公开后，必须启用并验证报告表单可访问，再对外宣称该入口可用。
+
+See [GitHub's configuration instructions](https://docs.github.com/en/code-security/how-tos/report-and-fix-vulnerabilities/configure-vulnerability-reporting/configure-for-a-repository).
+具体配置见 [GitHub 官方说明](https://docs.github.com/en/code-security/how-tos/report-and-fix-vulnerabilities/configure-vulnerability-reporting/configure-for-a-repository)。
 
 Include the affected revision, boundary, prerequisites, impact, safe reproducer,
 and whether physical hardware or personal data is involved. Maintainers should

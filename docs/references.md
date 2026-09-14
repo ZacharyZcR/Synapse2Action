@@ -4,6 +4,10 @@ This register records the libraries, models, datasets, papers, and external syst
 
 本登记表记录 Synapse2Action 直接使用或实质参考的库、模型、数据集、论文与外部系统。列入本表不表示上游结论已被本项目独立复现；实际证据边界以 **关系** 一栏为准。
 
+Redistributed controller adaptations and their license texts are documented in
+[Third-party notices](../THIRD_PARTY_NOTICES.md).
+本仓库分发的控制器改编及随附许可证见[第三方声明](../THIRD_PARTY_NOTICES.md)。
+
 ## Relationship labels / 关系标签
 
 | Label | Meaning |

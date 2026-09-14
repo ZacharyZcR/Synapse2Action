@@ -190,6 +190,8 @@ Project responsibilities and participation rules are described in [Governance](G
 
 ## License
 
-Synapse2Action is licensed under the [MIT License](LICENSE).
+Original Synapse2Action code is licensed under the [MIT License](LICENSE).
+The adapted Unitree C++ controllers are distributed under Apache-2.0; their
+source attribution and bundled license are listed in [Third-party notices](THIRD_PARTY_NOTICES.md).
 
 Third-party code, datasets, model weights, and recordings retain their respective licenses and terms. Referencing or integrating those assets does not relicense them under MIT.

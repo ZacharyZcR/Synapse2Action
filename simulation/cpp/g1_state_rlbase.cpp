@@ -1,3 +1,10 @@
+// SPDX-License-Identifier: Apache-2.0
+// Adapted from unitreerobotics/unitree_rl_lab at 4960b84732b0c2ec593dccbfe963fda1bcd7b1e3:
+// deploy/robots/g1_29dof/src/State_RLBase.cpp
+// Modified for Synapse2Action in 2026: keyboard commands and task-specific
+// manipulation poses, joint mapping, interpolation, and timing.
+// See THIRD_PARTY_NOTICES.md and LICENSES/Apache-2.0.txt in the repository root.
+
 #include "FSM/State_RLBase.h"
 #include "unitree_articulation.h"
 #include "isaaclab/envs/mdp/observations/observations.h"
